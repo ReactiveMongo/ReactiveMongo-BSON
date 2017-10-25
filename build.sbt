@@ -2,7 +2,7 @@ organization := "cchantep" // "org.reactivemongo"
 
 name := "reactivemongo-bson"
 
-scalaVersion in ThisBuild := "2.12.3"
+scalaVersion in ThisBuild := "2.12.4"
 
 crossScalaVersions in ThisBuild := Seq("2.11.11", scalaVersion.value)
 
@@ -60,7 +60,7 @@ resolvers ++= Seq(
 // Test
 fork in Test := true
 
-val specsVer = "3.9.4"
+val specsVer = "4.0.1"
 
 libraryDependencies ++= Seq(
   "org.specs2" %% "specs2-core" % specsVer,

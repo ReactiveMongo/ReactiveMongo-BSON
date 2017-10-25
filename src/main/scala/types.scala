@@ -1,5 +1,9 @@
 package reactivemongo.api.bson
 
+// TODO: Make them not serializable
+
+import java.math.{ BigDecimal => JBigDec }
+
 import exceptions.{ DocumentKeyNotFoundException => DocumentKeyNotFound }
 import scala.util.{ Failure, Success, Try }
 import buffer._
@@ -17,7 +21,8 @@ object Producer {
 
   case class NameOptionValueProducer(
       private val element: (String, Option[BSONValue])) extends Producer[BSONElement] {
-    private[bson] def generate() = element._2.map(value => BSONElement(element._1, value))
+    private[bson] def generate() =
+      element._2.map(value => BSONElement(element._1, value))
   }
 
   case class OptionValueProducer(
@@ -48,6 +53,9 @@ sealed trait BSONValue {
    * The code indicating the BSON type for this value
    */
   val code: Byte
+
+  /** The number of bytes for the serialized representation */
+  private[reactivemongo] def byteSize: Int
 }
 
 object BSONValue {
@@ -89,11 +97,15 @@ object BSONValue {
 
 /** A BSON Double. */
 case class BSONDouble(value: Double) extends BSONValue {
-  val code = 0x01.toByte
+  val code = 0x01: Byte
+
+  override private[reactivemongo] val byteSize = 8
 }
 
 case class BSONString(value: String) extends BSONValue {
-  val code = 0x02.toByte
+  val code = 0x02: Byte
+
+  override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 }
 
 /**
@@ -110,7 +122,7 @@ case class BSONArray(
     stream: Stream[Try[BSONValue]])
   extends BSONValue with BSONElementSet {
 
-  val code = 0x04.toByte
+  val code = 0x04: Byte
 
   type SetType = BSONArray
 
@@ -277,10 +289,18 @@ object BSONArray {
 case class BSONBinary(value: ReadableBuffer, subtype: Subtype)
   extends BSONValue {
 
-  val code = 0x05.toByte
+  val code = 0x05: Byte
 
   /** Returns the whole binary content as array. */
   def byteArray: Array[Byte] = value.duplicate().readArray(value.size)
+
+  override private[reactivemongo] lazy val byteSize = {
+    5 /* header = 4 (value.readable: Int) + 1 (subtype.value.toByte) */ +
+      value.readable
+  }
+
+  override lazy val toString: String =
+    s"BSONBinary(${subtype}, size = ${value.readable})"
 }
 
 object BSONBinary {
@@ -290,7 +310,8 @@ object BSONBinary {
 
 /** BSON Undefined value */
 case object BSONUndefined extends BSONValue {
-  val code = 0x06.toByte
+  val code = 0x06: Byte
+  override private[reactivemongo] val byteSize = 0
 }
 
 /**
@@ -305,7 +326,7 @@ case object BSONUndefined extends BSONValue {
 class BSONObjectID private[bson] (private val raw: Array[Byte])
   extends BSONValue with Serializable with Equals {
 
-  val code = 0x07.toByte
+  val code = 0x07: Byte
 
   import java.util.Arrays
   import java.nio.ByteBuffer
@@ -332,6 +353,8 @@ class BSONObjectID private[bson] (private val raw: Array[Byte])
   def timeSecond: Int = ByteBuffer.wrap(raw.take(4)).getInt
 
   def valueAsArray = Arrays.copyOf(raw, 12)
+
+  @inline override private[reactivemongo] def byteSize = raw.size
 }
 
 object BSONObjectID {
@@ -468,18 +491,21 @@ object BSONObjectID {
 /** BSON boolean value */
 case class BSONBoolean(value: Boolean)
   extends BSONValue {
-  val code = 0x08.toByte
+  val code = 0x08: Byte
+  override private[reactivemongo] val byteSize = 1
 }
 
 /** BSON date time value */
 case class BSONDateTime(value: Long)
   extends BSONValue {
-  val code = 0x09.toByte
+  val code = 0x09: Byte
+  override private[reactivemongo] val byteSize = 8
 }
 
 /** BSON null value */
 case object BSONNull extends BSONValue {
-  val code = 0x0A.toByte
+  val code = 0x0A: Byte
+  override private[reactivemongo] val byteSize = 0
 }
 
 /**
@@ -489,46 +515,10 @@ case object BSONNull extends BSONValue {
  */
 case class BSONRegex(value: String, flags: String)
   extends BSONValue {
-  val code = 0x0B.toByte
-}
+  val code = 0x0B: Byte
 
-/** BSON DBPointer value. */
-class BSONDBPointer private[bson] (
-    val value: String,
-    internalId: () => Array[Byte])
-  extends BSONValue with Serializable with Equals {
-
-  val code = 0x0C.toByte
-
-  /** The BSONObjectID representation of this reference. */
-  val objectId = new BSONObjectID(internalId())
-
-  private[bson] def withId[T](f: Array[Byte] => T): T = f(internalId())
-
-  // ---
-
-  @SuppressWarnings(Array("IsInstanceOf"))
-  override def canEqual(that: Any): Boolean = that.isInstanceOf[BSONObjectID]
-
-  @SuppressWarnings(Array("IsInstanceOf", "AsInstanceOf"))
-  override def equals(that: Any): Boolean = that match {
-    case other: BSONDBPointer =>
-      this.value.equals(other.value) && (this.objectId == other.objectId)
-
-    case _ => false
-  }
-
-  override def hashCode: Int = (value, objectId).hashCode
-}
-
-object BSONDBPointer {
-  /** Returns a new DB pointer */
-  def apply(value: String, id: => Array[Byte]): BSONDBPointer =
-    new BSONDBPointer(value, () => id)
-
-  /** Extractor */
-  def unapply(pointer: BSONDBPointer): Option[(String, Array[Byte])] =
-    pointer.withId { id => Some(pointer.value -> id) }
+  override private[reactivemongo] lazy val byteSize =
+    2 + value.getBytes.size + flags.getBytes.size
 }
 
 /**
@@ -537,38 +527,47 @@ object BSONDBPointer {
  * @param value The JavaScript source code.
  */
 case class BSONJavaScript(value: String) extends BSONValue {
-  val code = 0x0D.toByte
+  val code = 0x0D: Byte
+
+  override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 }
 
 /** BSON Symbol value. */
 case class BSONSymbol(value: String) extends BSONValue {
-  val code = 0x0E.toByte
+  val code = 0x0E: Byte
+
+  override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 }
 
 /**
- * BSON scoped JavaScript value.
+ * BSON JavaScript value with scope (WS).
  *
  * @param value The JavaScript source code. TODO
  */
 case class BSONJavaScriptWS(value: String)
   extends BSONValue {
-  val code = 0x0F.toByte
+  val code = 0x0F: Byte
+
+  override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 }
 
 /** BSON Integer value */
 case class BSONInteger(value: Int) extends BSONValue {
-  val code = 0x10.toByte
+  val code = 0x10: Byte
+  override private[reactivemongo] val byteSize = 4
 }
 
 /** BSON Timestamp value */
 case class BSONTimestamp(value: Long) extends BSONValue {
-  val code = 0x11.toByte
+  val code = 0x11: Byte
 
   /** Seconds since the Unix epoch */
   val time = value >>> 32
 
   /** Ordinal (with the second) */
   val ordinal = value.toInt
+
+  override private[reactivemongo] val byteSize = 8
 }
 
 /** Timestamp companion */
@@ -585,17 +584,167 @@ object BSONTimestamp {
 
 /** BSON Long value */
 case class BSONLong(value: Long) extends BSONValue {
-  val code = 0x12.toByte
+  val code = 0x12: Byte
+  override private[reactivemongo] val byteSize = 8
+}
+
+/**
+ * Value wrapper for a [[https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.rst BSON 128-bit decimal]].
+ *
+ * @param high the high-order 64 bits
+ * @param low the low-order 64 bits
+ */
+@SerialVersionUID(1667418254L)
+final class BSONDecimal(val high: Long, val low: Long)
+  extends BSONValue with Product2[Long, Long] {
+
+  val code = 0x13: Byte
+
+  /** Returns true if is negative. */
+  lazy val isNegative: Boolean =
+    (high & Decimal128.SignBitMask) == Decimal128.SignBitMask
+
+  /** Returns true if is infinite. */
+  lazy val isInfinite: Boolean =
+    (high & Decimal128.InfMask) == Decimal128.InfMask
+
+  /** Returns true if is Not-A-Number (NaN). */
+  lazy val isNaN: Boolean =
+    (high & Decimal128.NaNMask) == Decimal128.NaNMask
+
+  override private[reactivemongo] lazy val byteSize = 16
+
+  // ---
+
+  /**
+   * Returns the [[https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.rst#to-string-representation string representation]].
+   */
+  override def toString: String = Decimal128.toString(this)
+
+  @inline def _1 = high
+  @inline def _2 = low
+
+  def canEqual(that: Any): Boolean = that match {
+    case BSONDecimal(_, _) => true
+    case _                 => false
+  }
+
+  override def equals(that: Any): Boolean = that match {
+    case BSONDecimal(h, l) => (high == h) && (low == l)
+    case _                 => false
+  }
+
+  override lazy val hashCode: Int = {
+    val result = (low ^ (low >>> 32)).toInt
+
+    31 * result + (high ^ (high >>> 32)).toInt
+  }
+}
+
+object BSONDecimal {
+  import java.math.MathContext
+
+  /**
+   * Factory alias.
+   *
+   * @param high the high-order 64 bits
+   * @param low the low-order 64 bits
+   */
+  @inline def apply(high: Long, low: Long): BSONDecimal =
+    new BSONDecimal(high, low)
+
+  /**
+   * Returns a BSON decimal (Decimal128) corresponding to the given BigDecimal.
+   *
+   * @param value the BigDecimal representation
+   */
+  @inline def fromBigDecimal(value: JBigDec): Try[BSONDecimal] =
+    Decimal128.fromBigDecimal(value, value.signum == -1)
+
+  /**
+   * Returns a BSON decimal (Decimal128) corresponding to the given BigDecimal.
+   *
+   * @param value the BigDecimal representation
+   */
+  @inline def fromBigDecimal(value: BigDecimal): Try[BSONDecimal] =
+    Decimal128.fromBigDecimal(value.bigDecimal, value.signum == -1)
+
+  /**
+   * Returns a Decimal128 value represented the given high 64bits value,
+   * using a default for the low one.
+   *
+   * @param high the high-order 64 bits
+   */
+  @inline def fromLong(high: Long): Try[BSONDecimal] =
+    fromBigDecimal(new JBigDec(high, MathContext.DECIMAL128))
+
+  /**
+   * Returns the Decimal128 corresponding to the given string representation.
+   *
+   * @param repr the Decimal128 value represented as string
+   * @see [[https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.rst#from-string-representation Decimal128 string representation]]
+   */
+  def parse(repr: String): Try[BSONDecimal] = Decimal128.parse(repr)
+
+  /** Returns the corresponding BigDecimal. */
+  def toBigDecimal(decimal: BSONDecimal): Try[BigDecimal] =
+    Decimal128.toBigDecimal(decimal).map(BigDecimal(_))
+
+  /** Extracts the (high, low) representation. */
+  def unapply(that: Any): Option[(Long, Long)] = that match {
+    case decimal: BSONDecimal => Some(decimal.high -> decimal.low)
+    case _                    => None
+  }
+
+  // ---
+
+  /**
+   * Decimal128 representation of the positive infinity
+   */
+  val PositiveInf: BSONDecimal = BSONDecimal(Decimal128.InfMask, 0)
+
+  /**
+   * Decimal128 representation of the negative infinity
+   */
+  val NegativeInf: BSONDecimal =
+    BSONDecimal(Decimal128.InfMask | Decimal128.SignBitMask, 0)
+
+  /**
+   * Decimal128 representation of a negative Not-a-Number (-NaN) value
+   */
+  val NegativeNaN: BSONDecimal =
+    BSONDecimal(Decimal128.NaNMask | Decimal128.SignBitMask, 0)
+
+  /**
+   * Decimal128 representation of a Not-a-Number (NaN) value
+   */
+  val NaN: BSONDecimal = BSONDecimal(Decimal128.NaNMask, 0)
+
+  /**
+   * Decimal128 representation of a postive zero value
+   */
+  val PositiveZero: BSONDecimal =
+    BSONDecimal(0x3040000000000000L, 0x0000000000000000L)
+
+  /**
+   * Decimal128 representation of a negative zero value
+   */
+  val NegativeZero: BSONDecimal =
+    BSONDecimal(0xb040000000000000L, 0x0000000000000000L)
 }
 
 /** BSON Min key value */
 object BSONMinKey extends BSONValue {
   val code = 0xFF.toByte
+  override private[reactivemongo] val byteSize = 0
+  override val toString = "BSONMinKey"
 }
 
 /** BSON Max key value */
 object BSONMaxKey extends BSONValue {
-  val code = 0x7F.toByte
+  val code = 0x7F: Byte
+  override private[reactivemongo] val byteSize = 0
+  override val toString = "BSONMaxKey"
 }
 
 /** Binary Subtype */
@@ -605,12 +754,12 @@ sealed trait Subtype {
 }
 
 object Subtype {
-  case object GenericBinarySubtype extends Subtype { val value = 0x00.toByte }
-  case object FunctionSubtype extends Subtype { val value = 0x01.toByte }
-  case object OldBinarySubtype extends Subtype { val value = 0x02.toByte }
-  case object OldUuidSubtype extends Subtype { val value = 0x03.toByte }
-  case object UuidSubtype extends Subtype { val value = 0x04.toByte }
-  case object Md5Subtype extends Subtype { val value = 0x05.toByte }
+  case object GenericBinarySubtype extends Subtype { val value = 0x00: Byte }
+  case object FunctionSubtype extends Subtype { val value = 0x01: Byte }
+  case object OldBinarySubtype extends Subtype { val value = 0x02: Byte }
+  case object OldUuidSubtype extends Subtype { val value = 0x03: Byte }
+  case object UuidSubtype extends Subtype { val value = 0x04: Byte }
+  case object Md5Subtype extends Subtype { val value = 0x05: Byte }
   case object UserDefinedSubtype extends Subtype { val value = 0x80.toByte }
 
   def apply(code: Byte) = code match {
@@ -648,7 +797,7 @@ sealed trait BSONElementSet extends ElementProducer { self: BSONValue =>
   /** Returns a `Map` representation for this element set. */
   def toMap: Map[String, BSONValue] = elements.map {
     case BSONElement(name, value) => name -> value
-  }.toMap
+  }(scala.collection.breakOut)
 
   /**
    * Checks whether the given key is found in this element set.
@@ -677,6 +826,12 @@ sealed trait BSONElementSet extends ElementProducer { self: BSONValue =>
 
   /** Indicates whether this element set is empty */
   def isEmpty: Boolean
+
+  override private[reactivemongo] lazy val byteSize: Int =
+    elements.foldLeft(5) {
+      case (sz, BSONElement(n, v)) =>
+        sz + 2 + n.getBytes.size + v.byteSize
+    }
 }
 
 object BSONElementSet {
@@ -700,7 +855,7 @@ object BSONElementSet {
 case class BSONDocument(
     // TODO: Refactor internal representation of values
     stream: Stream[Try[BSONElement]])
-    extends BSONValue with BSONElementSet {
+  extends BSONValue with BSONElementSet {
 
   val code = 0x03.toByte
 

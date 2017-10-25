@@ -113,7 +113,7 @@ trait ReadableBuffer {
   /**
    * Reads an array of Byte of the given length.
    *
-   * @param length Length of the newly created array.
+   * @param length the length of the newly created array.
    */
   def readArray(length: Int): Array[Byte] = {
     val bytes = new Array[Byte](length)
@@ -138,13 +138,13 @@ trait ReadableBuffer {
 
 trait BSONBuffer extends ReadableBuffer with WritableBuffer
 
-import java.nio.{ ByteBuffer, ByteOrder }, ByteOrder._
+import java.nio.{ ByteBuffer, ByteOrder }
 
 /** An array-backed readable buffer. */
 case class ArrayReadableBuffer private (
     bytebuffer: ByteBuffer) extends ReadableBuffer {
 
-  bytebuffer.order(LITTLE_ENDIAN)
+  bytebuffer.order(ByteOrder.LITTLE_ENDIAN)
 
   def size = bytebuffer.limit()
 
@@ -183,7 +183,8 @@ case class ArrayReadableBuffer private (
 
 object ArrayReadableBuffer {
   /** Returns an [[ArrayReadableBuffer]] which source is the given `array`. */
-  def apply(array: Array[Byte]) = new ArrayReadableBuffer(ByteBuffer.wrap(array))
+  def apply(array: Array[Byte]): ArrayReadableBuffer =
+    new ArrayReadableBuffer(ByteBuffer.wrap(array))
 }
 
 /** An array-backed writable buffer. */
@@ -191,7 +192,7 @@ class ArrayBSONBuffer protected[buffer] (
     protected val buffer: ArrayBuffer[Byte]) extends WritableBuffer {
   def index = buffer.length // useless
 
-  def bytebuffer(size: Int) = {
+  def bytebuffer(size: Int): ByteBuffer = {
     val b = ByteBuffer.allocate(size)
     b.order(java.nio.ByteOrder.LITTLE_ENDIAN)
     b
@@ -202,7 +203,7 @@ class ArrayBSONBuffer protected[buffer] (
   /** Returns an array containing all the data that were put in this buffer. */
   def array = buffer.toArray
 
-  def setInt(index: Int, value: Int) = {
+  def setInt(index: Int, value: Int): this.type = {
     val array = bytebuffer(4).putInt(value).array
     buffer.update(index, array(0))
     buffer.update(index + 1, array(1))
