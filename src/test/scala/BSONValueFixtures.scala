@@ -1,3 +1,5 @@
+package reactivemongo
+
 import reactivemongo.api.bson._
 
 object BSONValueFixtures {
@@ -5,6 +7,7 @@ object BSONValueFixtures {
     BSONDouble(0D), BSONDouble(-2D), BSONDouble(12.34D))
 
   val bsonStrFixtures = List(BSONString("foo"), BSONString("lorem"))
+  val bsonStrByteSizes = List(8, 10)
 
   val bsonIntFixtures = List(BSONInteger(-1), BSONInteger(2345))
 
@@ -12,6 +15,8 @@ object BSONValueFixtures {
     BSONArray(bsonDoubleFixtures), BSONArray(bsonStrFixtures),
     BSONArray(bsonIntFixtures),
     BSONArray(bsonIntFixtures ++ bsonStrFixtures))
+
+  val bsonArrayByteSizes = List(38, 29, 19, 43)
 
   val bsonDocFixtures = List(
     BSONDocument.empty,
@@ -23,9 +28,14 @@ object BSONValueFixtures {
       "position" -> 1000,
       "nested" -> BSONDocument("lorem" -> 2, "ipsum" -> "value")))
 
+  val bsonDocByteSizes = List(5, 18, 33, 35, 58, 60)
+
   val bsonBinFixtures = List(
     BSONBinary(Array[Byte](0, 1, 2), Subtype.GenericBinarySubtype),
-    BSONBinary(Array[Byte](3, 4, 4), Subtype.FunctionSubtype))
+    BSONBinary(Array[Byte](3, 4, 4), Subtype.FunctionSubtype),
+    BSONBinary(Array[Byte](4, 5, 6, 7, 8), Subtype.GenericBinarySubtype))
+
+  val bsonBinByteSizes = List(8, 8, 10)
 
   val bsonOidFixtures = List(
     BSONObjectID.generate(), BSONObjectID.generate(), BSONObjectID.generate())
@@ -37,29 +47,39 @@ object BSONValueFixtures {
   val bsonRegexFixtures = List(
     BSONRegex("/foo/bar/", "g"), BSONRegex("/LOREM/ipsum/", "i"))
 
-  val bsonDBPFixtures: List[BSONDBPointer] = bsonOidFixtures.map { oid =>
-    BSONDBPointer(
-      value = System.identityHashCode(oid).toString,
-      id = oid.valueAsArray)
-  }
+  val bsonRegexByteSizes = List(12, 16)
 
-  val bsonJSFixtures = List(BSONJavaScript("foo()"), BSONJavaScript("bar()"))
+  val bsonJSFixtures = List(
+    BSONJavaScript("foo()"), BSONJavaScript("bar()"),
+    BSONJavaScript("lorem(0)"))
 
-  val bsonSymFixtures = List(BSONSymbol("foo"), BSONSymbol("bar"))
+  val bsonJSByteSizes = List(10, 10, 13)
 
   val bsonJSWsFixtures = List(
-    BSONJavaScriptWS("foo()"), BSONJavaScriptWS("bar()"))
+    BSONJavaScriptWS("foo()"), BSONJavaScriptWS("bar()"),
+    BSONJavaScriptWS("lorem(0)"))
 
   val bsonTsFixtures = List(BSONTimestamp(0L), BSONTimestamp(1L),
     BSONTimestamp(123L), BSONTimestamp(45678L))
 
   val bsonLongFixtures = List(BSONLong(-1L), BSONLong(0), BSONLong(12345L))
 
-  val bsonConstFixtures = List(BSONUndefined, BSONNull, BSONMinKey, BSONMaxKey)
+  val bsonDecimalFixtures = List(
+    BSONDecimal.PositiveZero,
+    BSONDecimal.NegativeZero,
+    BSONDecimal.PositiveInf,
+    BSONDecimal.NegativeInf,
+    BSONDecimal.NaN,
+    BSONDecimal(0x3040000000000000L, 0x0000000000000001L),
+    BSONDecimal(-5746593124524752896L, -9223372036854775808L),
+    BSONDecimal(3476778912330022912L, 9223372036854775807L),
+    BSONDecimal(0x3040000000000000L, 0x000000e67a93c822L),
+    BSONDecimal(0x3036000000000000L, 0x0000000000003039L),
+    BSONDecimal(0x3032000000000000L, 0x0000000000003039L))
 
-  lazy val bsonValueFixtures = bsonDoubleFixtures ++ bsonStrFixtures ++ (
-    bsonIntFixtures ++ bsonArrayFixtures ++ bsonDocFixtures ++ bsonBinFixtures) ++ bsonOidFixtures ++ bsonBoolFixtures ++ bsonDateTimeFixtures ++ (
-      bsonRegexFixtures ++ bsonDBPFixtures ++ bsonJSFixtures ++ bsonSymFixtures) ++ bsonJSWsFixtures ++ bsonTsFixtures ++ bsonLongFixtures
+  val bsonConstFixtures = List(BSONNull, BSONMinKey, BSONMaxKey)
+
+  lazy val bsonValueFixtures = bsonDoubleFixtures ++ bsonStrFixtures ++ bsonIntFixtures ++ bsonArrayFixtures ++ bsonDocFixtures ++ bsonBinFixtures ++ bsonOidFixtures ++ bsonBoolFixtures ++ bsonDateTimeFixtures ++ bsonRegexFixtures ++ bsonJSFixtures ++ bsonJSWsFixtures ++ bsonTsFixtures ++ bsonLongFixtures ++ bsonDecimalFixtures
 
   lazy val elementProducerFixtures: List[ElementProducer] =
     bsonValueFixtures.map {

@@ -2,6 +2,8 @@ package reactivemongo.api.bson
 
 import java.util.Date
 
+import scala.util.Success
+
 class HandlerSpec extends org.specs2.mutable.Specification {
   val doc = {
     @SuppressWarnings(Array("TryGet"))
@@ -76,13 +78,17 @@ class HandlerSpec extends org.specs2.mutable.Specification {
       doc.getAsUnflattenedTry[BSONDouble]("score").get.isDefined must beTrue
 
       doc.getAsTry[BSONNumberLike]("score") must beSuccessfulTry.like {
-        case num =>
-          num.toDouble mustEqual 3.88 and (num.toFloat mustEqual 3.88f) and (
-            num.toLong mustEqual 3) and (num.toInt mustEqual 3)
+        case num => num.toDouble must beSuccessfulTry(3.88) and {
+          num.toFloat must beSuccessfulTry(3.88F)
+        } and {
+          num.toLong must beSuccessfulTry(3L)
+        } and {
+          num.toInt must beSuccessfulTry(3)
+        }
+      } and {
+        doc.getAsTry[BSONBooleanLike]("score").
+          flatMap(_.toBoolean) must beSuccessfulTry(true)
       }
-
-      doc.getAsTry[BSONBooleanLike]("score").
-        map(_.toBoolean) must beSuccessfulTry(true)
     }
 
     "should not have a surname2" in {
@@ -96,8 +102,8 @@ class HandlerSpec extends org.specs2.mutable.Specification {
     }
 
     "be written" in {
-      BSONDocumentWriter { s: String => BSONDocument("$foo" -> s) }.
-        write("bar") must_== BSONDocument("$foo" -> "bar")
+      BSONDocumentWriter { s: String => BSONDocument(f"$$foo" -> s) }.
+        write("bar") must_== BSONDocument(f"$$foo" -> "bar")
     }
   }
 
@@ -125,7 +131,7 @@ class HandlerSpec extends org.specs2.mutable.Specification {
         case tarray =>
           tarray.getAs[BSONLong](0) must beSome(BSONLong(0L)) and (
             tarray.getAs[BSONBooleanLike](0).
-            map(_.toBoolean) must beSome(false))
+            map(_.toBoolean) must beSome(Success(false)))
       }
     }
   }
@@ -207,9 +213,9 @@ class HandlerSpec extends org.specs2.mutable.Specification {
       val num = time / 1000L
       val bson = BSONTimestamp(num)
 
-      reader.readOpt(bson).map(_.toLong) must beSome(num * 1000L) and (
+      reader.readOpt(bson).map(_.toLong) must beSome(Success(num * 1000L)) and (
         reader.widenReader.readTry(bson: BSONValue).
-        map(_.toLong) must beSuccessfulTry(num * 1000L)) and (
+        flatMap(_.toLong) must beSuccessfulTry(num * 1000L)) and (
           reader.widenReader.readTry {
             val l: BSONValue = BSONArray(1L)
             l
@@ -320,19 +326,19 @@ class HandlerSpec extends org.specs2.mutable.Specification {
     "produce the expected BSONDocument" in {
       val doc = BSON.write(neilYoung)
       BSONDocument.pretty(doc) mustEqual """{
-  name: "Neil Young",
-  albums: [
-    0: {
-      name: "Everybody Knows this is Nowhere",
-      releaseYear: BSONInteger(1969),
-      tracks: [
-        0: "Cinnamon Girl",
-        1: "Everybody Knows this is Nowhere",
-        2: "Round & Round (it Won't Be Long)",
-        3: "Down By the River",
-        4: "Losing End (When You're On)",
-        5: "Running Dry (Requiem For the Rockets)",
-        6: "Cowgirl in the Sand"
+  "name": "Neil Young",
+  "albums": [
+    {
+      "name": "Everybody Knows this is Nowhere",
+      "releaseYear": 1969,
+      "tracks": [
+        "Cinnamon Girl",
+        "Everybody Knows this is Nowhere",
+        "Round & Round (it Won't Be Long)",
+        "Down By the River",
+        "Losing End (When You're On)",
+        "Running Dry (Requiem For the Rockets)",
+        "Cowgirl in the Sand"
       ]
     }
   ]

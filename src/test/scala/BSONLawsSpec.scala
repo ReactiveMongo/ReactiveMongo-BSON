@@ -12,6 +12,8 @@ import spire.algebra.{
   Semigroup
 }
 
+import reactivemongo.BSONValueFixtures
+
 class BSONLawsSpecs
   extends org.specs2.mutable.Specification with Discipline {
 
