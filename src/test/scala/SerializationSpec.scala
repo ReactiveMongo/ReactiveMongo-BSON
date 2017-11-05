@@ -12,6 +12,8 @@ import org.specs2.specification.core.Fragments
 class SerializationSpec extends org.specs2.mutable.Specification {
   "Serialization" title
 
+  section("unit")
+
   "BSON Default Serializer" should {
     def codec[T <: BSONValue](expected: T): Option[T] = {
       val buffer = new ArrayBSONBuffer
@@ -311,6 +313,8 @@ class SerializationSpec extends org.specs2.mutable.Specification {
       }
     }
   }
+
+  section("unit")
 
   // ---
 

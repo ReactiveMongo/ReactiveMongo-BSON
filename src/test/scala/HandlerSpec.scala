@@ -5,36 +5,9 @@ import java.util.Date
 import scala.util.Success
 
 class HandlerSpec extends org.specs2.mutable.Specification {
-  val doc = {
-    @SuppressWarnings(Array("TryGet"))
-    def bson = BSONDocument(
-      "name" -> "James",
-      "age" -> 27,
-      "surname1" -> Some("Jim"),
-      "surname2" -> Option.empty[String], // TODO: Doc that None no longer ok
-      "score" -> 3.88,
-      "online" -> true,
-      "_id" -> BSONObjectID.parse("5117c6391aa562a90098f621").get,
-      "contact" -> BSONDocument(
-        "emails" -> BSONArray(
-          Some("james@example.org"),
-          None,
-          Some("spamaddrjames@example.org")),
-        "adress" -> BSONString("coucou")),
-      "lastSeen" -> BSONLong(1360512704747L))
+  "Handler" title
 
-    bson
-  }
-
-  val array = BSONArray(
-    BSONString("elem0"),
-    None,
-    1,
-    2.222,
-    BSONDocument(
-      "name" -> "Joe"),
-    BSONArray(0L),
-    "pp[4]")
+  section("unit")
 
   "BSONBinary" should {
     import reactivemongo.api.bson.buffer.ArrayReadableBuffer
@@ -273,7 +246,40 @@ class HandlerSpec extends org.specs2.mutable.Specification {
     }
   }
 
+  section("unit")
+
   // ---
+
+  lazy val doc = {
+    @SuppressWarnings(Array("TryGet"))
+    def bson = BSONDocument(
+      "name" -> "James",
+      "age" -> 27,
+      "surname1" -> Some("Jim"),
+      "surname2" -> Option.empty[String], // TODO: Doc that None no longer ok
+      "score" -> 3.88,
+      "online" -> true,
+      "_id" -> BSONObjectID.parse("5117c6391aa562a90098f621").get,
+      "contact" -> BSONDocument(
+        "emails" -> BSONArray(
+          Some("james@example.org"),
+          None,
+          Some("spamaddrjames@example.org")),
+        "adress" -> BSONString("coucou")),
+      "lastSeen" -> BSONLong(1360512704747L))
+
+    bson
+  }
+
+  lazy val array = BSONArray(
+    BSONString("elem0"),
+    None,
+    1,
+    2.222,
+    BSONDocument(
+      "name" -> "Joe"),
+    BSONArray(0L),
+    "pp[4]")
 
   case class Album(
       name: String,
