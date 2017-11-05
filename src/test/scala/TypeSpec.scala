@@ -3,19 +3,7 @@ import reactivemongo.api.bson._
 class TypeSpec extends org.specs2.mutable.Specification {
   "BSON types" title
 
-  "Generating BSONObjectID" should {
-    "not throw a SocketException" in {
-
-      /*
-       * for i in `seq 1 257`; do
-       *   openvpn --mktun --dev tun$i
-       *   ip link set tun$i up
-       *   ip -6 addr add 2001:DB8::`printf %04x $i`/128 dev tun$i
-       * done
-       */
-      BSONObjectID.generate() must beAnInstanceOf[BSONObjectID]
-    }
-  }
+  section("unit")
 
   "BSON document" should {
     "be empty" in {
@@ -83,4 +71,6 @@ class TypeSpec extends org.specs2.mutable.Specification {
       BSONTimestamp(1412180887L, 6) must_== BSONTimestamp(6065270725701271558L)
     }
   }
+
+  section("unit")
 }
