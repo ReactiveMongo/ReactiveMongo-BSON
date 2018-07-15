@@ -102,6 +102,16 @@ lazy val publishSettings = {
       </developers>))
 }
 
+// FindBugs
+findbugsExcludeFilters := Some(
+  scala.xml.XML.loadFile(baseDirectory.value / "project" / (
+    "findbugs-exclude-filters.xml"))
+)
+
+findbugsReportType := Some(FindbugsReport.PlainHtml)
+
+findbugsReportPath := Some(target.value / "findbugs.html")
+
 // Scalariform
 import scalariform.formatter.preferences._
 import com.typesafe.sbt.SbtScalariform
@@ -133,4 +143,4 @@ scapegoatReports in ThisBuild := Seq("xml")
  */
 
 lazy val root = (project in file(".")).
-  settings(publishSettings)
+  settings(publishSettings ++ Scapegoat.settings)
