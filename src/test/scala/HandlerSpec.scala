@@ -119,7 +119,7 @@ class HandlerSpec extends org.specs2.mutable.Specification {
 
     "read primitives values" in {
       val input = BSONDocument("a" -> 1, "b" -> 2)
-      val handler = implicitly[BSONReader[BSONDocument, Map[String, Int]]]
+      val handler = implicitly[BSONReader[Map[String, Int]]]
       val result = handler.read(input)
 
       result mustEqual Map("a" -> 1, "b" -> 2)
@@ -150,7 +150,7 @@ class HandlerSpec extends org.specs2.mutable.Specification {
       val input = BSONDocument(
         "a" -> BSONDocument("label" -> "foo", "count" -> 10),
         "b" -> BSONDocument("label" -> "foo2", "count" -> 20))
-      val handler = implicitly[BSONReader[BSONDocument, Map[String, Foo]]]
+      val handler = implicitly[BSONReader[Map[String, Foo]]]
       val result = handler.read(input)
 
       result mustEqual expectedResult
@@ -164,13 +164,7 @@ class HandlerSpec extends org.specs2.mutable.Specification {
     val handler = implicitly[BSONHandler[BSONDateTime, Date]]
 
     "be read as date" in {
-      handler.read(bson) must_== date and (
-        handler.widenReader.readTry(bson: BSONValue).
-        aka("widen read") must beSuccessfulTry(date)) and (
-          handler.widenReader.readTry {
-            val str: BSONValue = BSONString("foo")
-            str
-          } must beFailedTry)
+      handler.read(bson) must_== date
     }
 
     "be written from a date" in {
@@ -179,25 +173,19 @@ class HandlerSpec extends org.specs2.mutable.Specification {
   }
 
   "BSONNumberLike" should {
-    val reader = implicitly[BSONReader[BSONValue, BSONNumberLike]]
+    val reader = implicitly[BSONReader[BSONNumberLike]]
 
     "read BSONTimestamp" in {
       val time = System.currentTimeMillis()
       val num = time / 1000L
       val bson = BSONTimestamp(num)
 
-      reader.readOpt(bson).map(_.toLong) must beSome(Success(num * 1000L)) and (
-        reader.widenReader.readTry(bson: BSONValue).
-        flatMap(_.toLong) must beSuccessfulTry(num * 1000L)) and (
-          reader.widenReader.readTry {
-            val l: BSONValue = BSONArray(1L)
-            l
-          } must beFailedTry)
+      reader.readOpt(bson).map(_.toLong) must beSome(Success(num * 1000L))
     }
   }
 
   "BSONString" should {
-    val reader = BSONReader { bson: BSONString => bson.value }
+    val reader = BSONReader.collect[String] { case BSONString(str) => str }
 
     "be read #1" in {
       reader.afterRead(_ => 1).readTry(BSONString("lorem")).
@@ -205,8 +193,8 @@ class HandlerSpec extends org.specs2.mutable.Specification {
     }
 
     "be read #2" in {
-      reader.beforeRead { i: BSONInteger =>
-        BSONString(s"lorem:${i.value}")
+      reader.beforeRead {
+        case BSONInteger(i) => BSONString(s"lorem:${i}")
       }.readTry(BSONInteger(2)) must beSuccessfulTry("lorem:2")
     }
 
@@ -226,7 +214,7 @@ class HandlerSpec extends org.specs2.mutable.Specification {
   "Custom class" should {
     case class Foo(bar: String)
     implicit val w = BSONWriter[Foo, BSONString] { f => BSONString(f.bar) }
-    implicit val r = BSONReader[BSONString, Foo] { s => Foo(s.value) }
+    implicit val r = BSONReader.collect[Foo] { case BSONString(s) => Foo(s) }
 
     val foo = Foo("lorem")
     val bson = BSONString("lorem")
@@ -311,7 +299,7 @@ class HandlerSpec extends org.specs2.mutable.Specification {
       "releaseYear" -> album.releaseYear,
       "tracks" -> album.tracks)
 
-    def read(doc: BSONDocument) = Album(
+    def readDocument(doc: BSONDocument) = Album(
       doc.getAs[String]("name").get,
       doc.getAs[Int]("releaseYear").get,
       doc.getAs[List[String]]("tracks").get)
@@ -323,7 +311,7 @@ class HandlerSpec extends org.specs2.mutable.Specification {
         "name" -> artist.name,
         "albums" -> artist.albums)
 
-    def read(doc: BSONDocument) = Artist(
+    def readDocument(doc: BSONDocument) = Artist(
       doc.getAs[String]("name").get,
       doc.getAs[List[Album]]("albums").get)
   }

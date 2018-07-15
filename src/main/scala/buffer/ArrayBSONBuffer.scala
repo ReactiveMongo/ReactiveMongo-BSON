@@ -15,6 +15,7 @@ class ArrayBSONBuffer protected[buffer] (
     b
   }
 
+  // TODO: apply in companion
   def this() = this(new ArrayBuffer[Byte]())
 
   /** Returns an array containing all the data that were put in this buffer. */

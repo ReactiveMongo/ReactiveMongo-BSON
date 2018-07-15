@@ -4,8 +4,10 @@ package reactivemongo.api.bson
 
 import java.math.{ BigDecimal => JBigDec }
 
+import scala.util.Try
+
 import exceptions.{ DocumentKeyNotFoundException => DocumentKeyNotFound }
-import scala.util.{ Failure, Success, Try }
+import scala.util.{ Failure, Success }
 import buffer._
 import utils.Converters
 
@@ -56,28 +58,28 @@ sealed trait BSONValue {
 
   /** The number of bytes for the serialized representation */
   private[reactivemongo] def byteSize: Int
+
+  def asTry[T](implicit reader: BSONReader[T]): Try[T] = reader.readTry(this)
+
+  def asOpt[T](implicit reader: BSONReader[T]): Option[T] =
+    this.asTry(reader).toOption
+
+  def seeAsTry[T](implicit reader: BSONReader[T]): Try[T] = Try {
+    reader.readTry(this)
+  }.flatten
+
+  def seeAsOpt[T](implicit reader: BSONReader[T]): Option[T] =
+    seeAsTry[T].toOption
+
 }
 
 object BSONValue {
-  import scala.util.Try
   import scala.reflect.ClassTag
 
+  /* TODO: Move in BSONValue
   implicit class ExtendedBSONValue[B <: BSONValue](val bson: B) extends AnyVal {
-    def asTry[T](implicit reader: BSONReader[B, T]): Try[T] = {
-      reader.readTry(bson)
-    }
-
-    def asOpt[T](implicit reader: BSONReader[B, T]): Option[T] = asTry(reader).toOption
-
-    @SuppressWarnings(Array("AsInstanceOf")) // TODO: Review
-    def seeAsTry[T](implicit reader: BSONReader[_ <: BSONValue, T]): Try[T] =
-      Try {
-        reader.asInstanceOf[BSONReader[BSONValue, T]].readTry(bson)
-      }.flatten
-
-    def seeAsOpt[T](implicit reader: BSONReader[_ <: BSONValue, T]): Option[T] =
-      seeAsTry[T].toOption
   }
+   */
 
   def narrow[T <: BSONValue](v: BSONValue)(implicit tag: ClassTag[T]): Option[T] = tag.unapply(v)
 
@@ -173,9 +175,9 @@ case class BSONArray(
    * If there is no matching value, or the value could not be deserialized or converted, returns a `None`.
    */
   @SuppressWarnings(Array("AsInstanceOf")) // TODO: Review
-  def getAs[T](index: Int)(implicit reader: BSONReader[_ <: BSONValue, T]): Option[T] = {
+  def getAs[T](index: Int)(implicit reader: BSONReader[T]): Option[T] = {
     getTry(index).toOption.flatMap { element =>
-      Try(reader.asInstanceOf[BSONReader[BSONValue, T]].read(element)).toOption
+      Try(reader.read(element)).toOption
     }
   }
 
@@ -187,9 +189,9 @@ case class BSONArray(
    * The `Failure` holds a [[exceptions.DocumentKeyNotFound]] if the key could not be found.
    */
   @SuppressWarnings(Array("AsInstanceOf")) // TODO: Review
-  def getAsTry[T](index: Int)(implicit reader: BSONReader[_ <: BSONValue, T]): Try[T] = {
+  def getAsTry[T](index: Int)(implicit reader: BSONReader[T]): Try[T] = {
     getTry(index).flatMap { element =>
-      Try(reader.asInstanceOf[BSONReader[BSONValue, T]].read(element))
+      Try(reader.asInstanceOf[BSONReader[T]].read(element))
     }
   }
 
@@ -200,7 +202,7 @@ case class BSONArray(
    * If there is no matching value, returns a `Success` holding `None`.
    * If the value could not be deserialized or converted, returns a `Failure`.
    */
-  def getAsUnflattenedTry[T](index: Int)(implicit reader: BSONReader[_ <: BSONValue, T]): Try[Option[T]] = getAsTry(index)(reader) match {
+  def getAsUnflattenedTry[T](index: Int)(implicit reader: BSONReader[T]): Try[Option[T]] = getAsTry(index)(reader) match {
     case Failure(_: DocumentKeyNotFound) => Success(None)
     case Failure(e)                      => Failure(e)
     case Success(e)                      => Success(Some(e))
@@ -906,12 +908,13 @@ case class BSONDocument(
    *
    * @note When implementing a [[http://reactivemongo.org/releases/latest/documentation/bson/typeclasses.html custom reader]], [[getAsTry]] must be preferred.
    */
-  def getAs[T](key: String)(implicit reader: BSONReader[_ <: BSONValue, T]): Option[T] = get(key).flatMap { element =>
-    reader match {
-      case r: BSONReader[BSONValue, T] @unchecked => r.readOpt(element)
-      case _                                      => None
+  def getAs[T](key: String)(implicit reader: BSONReader[T]): Option[T] =
+    get(key).flatMap { element =>
+      reader match {
+        case r: BSONReader[T] @unchecked => r.readOpt(element)
+        case _                           => None
+      }
     }
-  }
 
   /**
    * Returns the [[BSONValue]] associated with the given `key`,
@@ -923,9 +926,9 @@ case class BSONDocument(
    * @param key $keyParam
    */
   @SuppressWarnings(Array("AsInstanceOf")) // TODO: Review
-  def getAsTry[T](key: String)(implicit reader: BSONReader[_ <: BSONValue, T]): Try[T] = {
+  def getAsTry[T](key: String)(implicit reader: BSONReader[T]): Try[T] = {
     getTry(key).flatMap { element =>
-      Try(reader.asInstanceOf[BSONReader[BSONValue, T]].read(element))
+      Try(reader.read(element))
     }
   }
 
@@ -935,7 +938,7 @@ case class BSONDocument(
    * If there is no matching value, returns a `Success` holding `None`.
    * If the value could not be deserialized or converted, returns a `Failure`.
    */
-  def getAsUnflattenedTry[T](key: String)(implicit reader: BSONReader[_ <: BSONValue, T]): Try[Option[T]] = getAsTry(key)(reader) match {
+  def getAsUnflattenedTry[T](key: String)(implicit reader: BSONReader[T]): Try[Option[T]] = getAsTry(key)(reader) match {
     case Failure(_: DocumentKeyNotFound) => Success(None)
     case Failure(e)                      => Failure(e)
     case Success(e)                      => Success(Some(e))

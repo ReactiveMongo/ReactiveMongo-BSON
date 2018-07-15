@@ -1,6 +1,6 @@
 package reactivemongo.api.bson
 
-import scala.util.{ Failure, Success, Try }
+import scala.util.Try
 
 sealed trait UnsafeBSONReader[T] {
   def readTry(value: BSONValue): Try[T]
@@ -9,7 +9,7 @@ sealed trait UnsafeBSONReader[T] {
 /**
  * A reader that produces an instance of `T` from a subtype of [[BSONValue]].
  */
-trait BSONReader[B <: BSONValue, T] { self =>
+trait BSONReader[T] { self =>
 
   /**
    * Reads a BSON value and produce an instance of `T`.
@@ -17,13 +17,13 @@ trait BSONReader[B <: BSONValue, T] { self =>
    * This method may throw exceptions at runtime.
    * If used outside a reader, one should consider `readTry(bson: B): Try[T]` or `readOpt(bson: B): Option[T]`.
    */
-  def read(bson: B): T // TODO: Keep only readTry
+  def read(bson: BSONValue): T // TODO: Keep only readTry
 
   /** Tries to produce an instance of `T` from the `bson` value, returns `None` if an error occurred. */
-  def readOpt(bson: B): Option[T] = readTry(bson).toOption
+  def readOpt(bson: BSONValue): Option[T] = readTry(bson).toOption
 
   /** Tries to produce an instance of `T` from the `bson` value. */
-  def readTry(bson: B): Try[T] = Try(read(bson))
+  def readTry(bson: BSONValue): Try[T] = Try(read(bson))
 
   /**
    * Returns a BSON reader that returns the result of applying `f`
@@ -31,12 +31,13 @@ trait BSONReader[B <: BSONValue, T] { self =>
    *
    * @param f the function to apply
    */
-  final def afterRead[U](f: T => U): BSONReader[B, U] =
-    BSONReader[B, U]((read _) andThen f)
+  final def afterRead[U](f: T => U): BSONReader[U] =
+    BSONReader[U]((read _) andThen f)
 
-  final def beforeRead[U <: BSONValue](f: U => B): BSONReader[U, T] =
-    BSONReader[U, T](f andThen (read _))
+  final def beforeRead(f: PartialFunction[BSONValue, BSONValue]): BSONReader[T] =
+    BSONReader.collect[T](f andThen (read _))
 
+  /*
   private[reactivemongo] def widenReader[U >: T]: UnsafeBSONReader[U] =
     new UnsafeBSONReader[U] {
       @SuppressWarnings(Array("AsInstanceOf", "TryGet")) // TODO: Review
@@ -48,14 +49,22 @@ trait BSONReader[B <: BSONValue, T] { self =>
           case Success(bson) => self.readTry(bson)
         }
     }
+   */
 }
 
 object BSONReader {
-  private class Default[B <: BSONValue, T](
-      _read: B => T) extends BSONReader[B, T] {
-    def read(bson: B): T = _read(bson)
-  }
+  def apply[T](read: BSONValue => T): BSONReader[T] = new Default[T](read)
 
-  def apply[B <: BSONValue, T](read: B => T): BSONReader[B, T] =
-    new Default[B, T](read)
+  def collect[T](read: PartialFunction[BSONValue, T]): BSONReader[T] =
+    new Default[T]({ bson =>
+      read.lift(bson).getOrElse {
+        sys.error(s"TODO: Unexpected BSON value: $bson")
+      }
+    })
+
+  // ---
+
+  private class Default[T](_read: BSONValue => T) extends BSONReader[T] {
+    def read(bson: BSONValue): T = _read(bson)
+  }
 }

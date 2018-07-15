@@ -2,9 +2,9 @@ organization := "cchantep" // "org.reactivemongo"
 
 name := "reactivemongo-bson"
 
-scalaVersion in ThisBuild := "2.12.4"
+scalaVersion in ThisBuild := "2.12.6"
 
-crossScalaVersions in ThisBuild := Seq("2.11.11", scalaVersion.value)
+crossScalaVersions in ThisBuild := Seq("2.11.12", scalaVersion.value)
 
 crossVersion in ThisBuild := CrossVersion.binary
 
@@ -60,13 +60,13 @@ resolvers ++= Seq(
 // Test
 fork in Test := true
 
-val specsVer = "4.0.1"
+val specsVer = "4.2.0"
 
 libraryDependencies ++= Seq(
   "org.specs2" %% "specs2-core" % specsVer,
   "org.specs2" %% "specs2-scalacheck" % specsVer,
-  "org.typelevel" %% "discipline" % "0.8",
-  "org.spire-math" %% "spire-laws" % "0.13.0",
+  "org.typelevel" %% "discipline" % "0.9.0",
+  "org.typelevel" %% "spire-laws" % "0.15.0",
   "org.slf4j" % "slf4j-simple" % "1.7.13").map(_ % Test)
 
 lazy val publishSettings = {
@@ -102,29 +102,10 @@ lazy val publishSettings = {
       </developers>))
 }
 
-// FindBugs
-import de.johoop.findbugs4sbt.{ FindBugs, ReportType }, FindBugs.{
-  findbugsExcludeFilters, findbugsReportPath, findbugsReportType,
-  findbugsSettings
-}
-
-findbugsSettings
-
-findbugsExcludeFilters := Some(
-  scala.xml.XML.loadFile(baseDirectory.value / "project" / (
-    "findbugs-exclude-filters.xml"))
-)
-
-findbugsReportType := Some(ReportType.PlainHtml)
-
-findbugsReportPath := Some(target.value / "findbugs.html")
-
 // Scalariform
 import scalariform.formatter.preferences._
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
-
-scalariformSettings(autoformat = true)
 
 ScalariformKeys.preferences := ScalariformKeys.preferences.value.
   setPreference(AlignParameters, false).
@@ -145,9 +126,11 @@ ScalariformKeys.preferences := ScalariformKeys.preferences.value.
   setPreference(SpacesAroundMultiImports, true).
   setPreference(SpacesWithinPatternBinders, true)
 
-scapegoatVersion := "1.3.0"
+/*
+scapegoatVersion in ThisBuild := "1.3.4"
 
-scapegoatReports := Seq("xml")
+scapegoatReports in ThisBuild := Seq("xml")
+ */
 
 lazy val root = (project in file(".")).
   settings(publishSettings)

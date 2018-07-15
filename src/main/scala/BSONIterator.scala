@@ -14,7 +14,7 @@ private[bson] object BSONIterator {
           case array: BSONArray => s"${prefix}[\n" + pretty(i + 1, array.elements.map(Success(_)).iterator, _ => "") + s"\n${indent}]"
 
           case BSONBoolean(b) =>
-            s"${indent}${name}: $b"
+            s"${prefix}$b"
 
           case BSONDocument(elements) =>
             s"${prefix}{\n" + pretty(i + 1, elements.iterator) + s"\n$indent}"
