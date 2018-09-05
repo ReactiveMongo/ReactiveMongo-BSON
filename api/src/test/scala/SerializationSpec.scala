@@ -1,9 +1,9 @@
 package reactivemongo
 
-import reactivemongo.api.bson._
-import buffer._
 import java.util.Arrays
-import reactivemongo.api.bson.DefaultBSONHandlers._
+
+import reactivemongo.api._, bson._
+import reactivemongo.api.bson.buffer._
 
 import java.util.Arrays
 
@@ -11,8 +11,6 @@ import org.specs2.specification.core.Fragments
 
 class SerializationSpec extends org.specs2.mutable.Specification {
   "Serialization" title
-
-  section("unit")
 
   "BSON Default Serializer" should {
     def codec[T <: BSONValue](expected: T): Option[T] = {
@@ -313,8 +311,6 @@ class SerializationSpec extends org.specs2.mutable.Specification {
       }
     }
   }
-
-  section("unit")
 
   // ---
 

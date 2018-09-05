@@ -6,7 +6,7 @@ import java.nio.ByteBuffer
 
 /** An array-backed writable buffer. */
 class ArrayBSONBuffer protected[buffer] (
-    protected val buffer: ArrayBuffer[Byte]) extends WritableBuffer {
+  protected val buffer: ArrayBuffer[Byte]) extends WritableBuffer {
   def index = buffer.length // useless
 
   def bytebuffer(size: Int): ByteBuffer = {

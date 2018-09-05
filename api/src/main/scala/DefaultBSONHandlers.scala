@@ -3,13 +3,11 @@ package reactivemongo.api.bson
 import scala.collection.generic.CanBuildFrom
 import scala.util.Try
 
-trait DefaultBSONHandlers {
-  import scala.language.higherKinds
-
+private[bson] trait DefaultBSONHandlers extends LowPriorityBSONHandler {
   implicit object BSONIntegerHandler extends BSONHandler[BSONInteger, Int] {
     def read(bson: BSONValue) = bson match {
       case BSONInteger(i) => i
-      case _              => sys.error("TODO")
+      case _ => sys.error("TODO")
     }
 
     def write(int: Int) = BSONInteger(int)
@@ -18,7 +16,7 @@ trait DefaultBSONHandlers {
   implicit object BSONLongHandler extends BSONHandler[BSONLong, Long] {
     def read(bson: BSONValue) = bson match {
       case BSONLong(l) => l
-      case _           => sys.error("TODO")
+      case _ => sys.error("TODO")
     }
 
     def write(long: Long) = BSONLong(long)
@@ -27,7 +25,7 @@ trait DefaultBSONHandlers {
   implicit object BSONDoubleHandler extends BSONHandler[BSONDouble, Double] {
     def read(bson: BSONValue) = bson match {
       case BSONDouble(d) => d
-      case _             => sys.error("TODO")
+      case _ => sys.error("TODO")
     }
 
     def write(double: Double) = BSONDouble(double)
@@ -36,7 +34,7 @@ trait DefaultBSONHandlers {
   implicit object BSONDecimalHandler extends BSONHandler[BSONDecimal, BigDecimal] {
     def read(bson: BSONValue): BigDecimal = bson match {
       case d: BSONDecimal => BSONDecimal.toBigDecimal(d).get
-      case _              => sys.error("TODO")
+      case _ => sys.error("TODO")
     }
 
     def write(value: BigDecimal) = BSONDecimal.fromBigDecimal(value).get
@@ -45,7 +43,7 @@ trait DefaultBSONHandlers {
   implicit object BSONStringHandler extends BSONHandler[BSONString, String] {
     def read(bson: BSONValue) = bson match {
       case BSONString(s) => s
-      case _             => sys.error("TODO")
+      case _ => sys.error("TODO")
     }
 
     def write(string: String) = BSONString(string)
@@ -53,7 +51,7 @@ trait DefaultBSONHandlers {
   implicit object BSONBooleanHandler extends BSONHandler[BSONBoolean, Boolean] {
     def read(bson: BSONValue) = bson match {
       case BSONBoolean(b) => b
-      case _              => sys.error("TODO")
+      case _ => sys.error("TODO")
     }
 
     def write(boolean: Boolean) = BSONBoolean(boolean)
@@ -62,7 +60,7 @@ trait DefaultBSONHandlers {
   implicit object BSONBinaryHandler extends BSONHandler[BSONBinary, Array[Byte]] {
     def read(bson: BSONValue) = bson match {
       case bin: BSONBinary => bin.value.duplicate().readArray(bin.value.size)
-      case _               => sys.error("TODO")
+      case _ => sys.error("TODO")
     }
 
     def write(xs: Array[Byte]) = BSONBinary(xs, Subtype.GenericBinarySubtype)
@@ -73,7 +71,7 @@ trait DefaultBSONHandlers {
   implicit object BSONDateTimeHandler extends BSONHandler[BSONDateTime, Date] {
     def read(bson: BSONValue) = bson match {
       case BSONDateTime(value) => new java.util.Date(value)
-      case _                   => sys.error("TODO")
+      case _ => sys.error("TODO")
     }
 
     def write(date: Date) = BSONDateTime(date.getTime)
@@ -85,13 +83,13 @@ trait DefaultBSONHandlers {
 
   class BSONNumberLikeReader extends BSONReader[BSONNumberLike] {
     def read(bson: BSONValue): BSONNumberLike = bson match {
-      case i: BSONInteger    => BSONIntegerNumberLike(i)
-      case l: BSONLong       => BSONLongNumberLike(l)
-      case d: BSONDouble     => BSONDoubleNumberLike(d)
-      case dt: BSONDateTime  => BSONDateTimeNumberLike(dt)
+      case i: BSONInteger => BSONIntegerNumberLike(i)
+      case l: BSONLong => BSONLongNumberLike(l)
+      case d: BSONDouble => BSONDoubleNumberLike(d)
+      case dt: BSONDateTime => BSONDateTimeNumberLike(dt)
       case ts: BSONTimestamp => BSONTimestampNumberLike(ts)
-      case dec: BSONDecimal  => BSONDecimalNumberLike(dec)
-      case _                 => throw new UnsupportedOperationException()
+      case dec: BSONDecimal => BSONDecimalNumberLike(dec)
+      case _ => throw new UnsupportedOperationException()
     }
   }
 
@@ -103,14 +101,14 @@ trait DefaultBSONHandlers {
 
   class BSONBooleanLikeReader extends BSONReader[BSONBooleanLike] {
     def read(bson: BSONValue): BSONBooleanLike = bson match {
-      case int: BSONInteger      => BSONIntegerBooleanLike(int)
-      case double: BSONDouble    => BSONDoubleBooleanLike(double)
-      case long: BSONLong        => BSONLongBooleanLike(long)
-      case boolean: BSONBoolean  => BSONBooleanBooleanLike(boolean)
-      case _: BSONNull.type      => BSONNullBooleanLike(BSONNull)
+      case int: BSONInteger => BSONIntegerBooleanLike(int)
+      case double: BSONDouble => BSONDoubleBooleanLike(double)
+      case long: BSONLong => BSONLongBooleanLike(long)
+      case boolean: BSONBoolean => BSONBooleanBooleanLike(boolean)
+      case _: BSONNull.type => BSONNullBooleanLike(BSONNull)
       case _: BSONUndefined.type => BSONUndefinedBooleanLike(BSONUndefined)
-      case dec: BSONDecimal      => BSONDecimalBooleanLike(dec)
-      case _                     => throw new UnsupportedOperationException()
+      case dec: BSONDecimal => BSONDecimalBooleanLike(dec)
+      case _ => throw new UnsupportedOperationException()
     }
   }
 
@@ -121,18 +119,8 @@ trait DefaultBSONHandlers {
   implicit def bsonBooleanLikeReader = new BSONBooleanLikeReader
 
   // Collections Handlers
-  class BSONArrayCollectionReader[M[_], T](implicit cbf: CanBuildFrom[M[_], T, M[T]], reader: BSONReader[T]) extends BSONReader[M[T]] {
-    @SuppressWarnings(Array("AsInstanceOf", "TryGet")) // TODO: Review
-    def read(bson: BSONValue) = bson match {
-      case array @ BSONArray(_) => array.elements.map {
-        case BSONElement(_, v) => reader.read(v)
-      }.to[M]
 
-      case _ => sys.error("TODO")
-    }
-  }
-
-  class BSONArrayCollectionWriter[T, Repr <% Traversable[T]](implicit writer: BSONWriter[T, _ <: BSONValue]) extends BSONWriter[Repr, BSONArray] {
+  private class BSONArrayCollectionWriter[T, Repr <% Traversable[T]](implicit writer: BSONWriter[T, _ <: BSONValue]) extends BSONWriter[Repr, BSONArray] {
     def write(repr: Repr) = {
       new BSONArray(repr.map(s => Try(writer.write(s))).to[Stream])
     }
@@ -140,11 +128,9 @@ trait DefaultBSONHandlers {
 
   implicit def collectionToBSONArrayCollectionWriter[T, Repr <% Traversable[T]](implicit writer: BSONWriter[T, _ <: BSONValue]): BSONWriter[Repr, BSONArray] = new BSONArrayCollectionWriter[T, Repr]
 
-  implicit def bsonArrayToCollectionReader[M[_], T](implicit cbf: CanBuildFrom[M[_], T, M[T]], reader: BSONReader[T]): BSONReader[M[T]] = new BSONArrayCollectionReader
-
   abstract class IdentityBSONConverter[T <: BSONValue](
-      implicit
-      m: Manifest[T]) extends BSONReader[T] with BSONWriter[T, T] {
+    implicit
+    m: Manifest[T]) extends BSONReader[T] with BSONWriter[T, T] {
 
     def write(t: T): T = t
 
@@ -196,7 +182,7 @@ trait DefaultBSONHandlers {
 
     def read(b: BSONValue) = b match {
       case v @ BSONJavaScript(_) => v
-      case _                     => sys.error("TODO")
+      case _ => sys.error("TODO")
     }
 
     def write(b: BSONJavaScript) = b
@@ -223,7 +209,10 @@ trait DefaultBSONHandlers {
       }
     }
 
-  implicit def mapWriter[K, V](implicit keyWriter: BSONWriter[K, BSONString], valueWriter: BSONWriter[V, _ <: BSONValue]): BSONDocumentWriter[Map[K, V]] =
+  implicit def mapWriter[K, V](
+    implicit
+    keyWriter: BSONWriter[K, BSONString],
+    valueWriter: BSONWriter[V, _ <: BSONValue]): BSONDocumentWriter[Map[K, V]] =
     new BSONDocumentWriter[Map[K, V]] {
       def write(inputMap: Map[K, V]): BSONDocument = {
         val elements = inputMap.map { tuple =>
@@ -234,13 +223,30 @@ trait DefaultBSONHandlers {
     }
 }
 
+private[bson] trait LowPriorityBSONHandler { _: DefaultBSONHandlers =>
+  import scala.language.higherKinds
+
+  implicit def bsonArrayToCollectionReader[M[_], T](implicit cbf: CanBuildFrom[M[_], T, M[T]], reader: BSONReader[T]): BSONReader[M[T]] = new BSONArrayCollectionReader
+
+  private class BSONArrayCollectionReader[M[_], T](implicit cbf: CanBuildFrom[M[_], T, M[T]], reader: BSONReader[T]) extends BSONReader[M[T]] {
+    @SuppressWarnings(Array("AsInstanceOf", "TryGet")) // TODO: Review
+    def read(bson: BSONValue) = bson match {
+      case array @ BSONArray(_) => array.elements.map {
+        case BSONElement(_, v) => reader.read(v)
+      }.to[M]
+
+      case _ => sys.error("TODO")
+    }
+  }
+}
+
 private[bson] final class BSONDocumentHandlerImpl[T](
-    r: BSONDocument => T,
-    w: T => BSONDocument) extends BSONDocumentReader[T]
+  r: BSONDocument => T,
+  w: T => BSONDocument) extends BSONDocumentReader[T]
   with BSONDocumentWriter[T] with BSONHandler[BSONDocument, T] {
 
   def readDocument(doc: BSONDocument): T = r(doc)
   def write(value: T): BSONDocument = w(value)
 }
 
-object DefaultBSONHandlers extends DefaultBSONHandlers
+//object DefaultBSONHandlers extends DefaultBSONHandlers

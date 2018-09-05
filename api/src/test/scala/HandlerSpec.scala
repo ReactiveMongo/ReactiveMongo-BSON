@@ -7,8 +7,6 @@ import scala.util.Success
 class HandlerSpec extends org.specs2.mutable.Specification {
   "Handler" title
 
-  section("unit")
-
   "BSONBinary" should {
     import reactivemongo.api.bson.buffer.ArrayReadableBuffer
 
@@ -24,7 +22,6 @@ class HandlerSpec extends org.specs2.mutable.Specification {
 
   "Complex Document" should {
     "have a name == 'James'" in {
-      doc.getTry("name") must beSuccessfulTry(BSONString("James"))
       doc.getAsTry[BSONString]("name") must beSuccessfulTry(BSONString("James"))
       doc.getAsTry[String]("name") must beSuccessfulTry("James")
 
@@ -40,15 +37,11 @@ class HandlerSpec extends org.specs2.mutable.Specification {
     }
 
     "have a score == 3.88" in {
-      doc.getTry("score") must beSuccessfulTry(BSONDouble(3.88))
       doc.getAsTry[BSONDouble]("score") must beSuccessfulTry(BSONDouble(3.88))
       doc.getAsTry[Double]("score") must beSuccessfulTry(3.88)
 
       doc.getAsTry[BSONInteger]("score") must beFailedTry
       doc.getAsTry[Int]("score") must beFailedTry
-
-      doc.getAsUnflattenedTry[BSONInteger]("score") must beFailedTry
-      doc.getAsUnflattenedTry[BSONDouble]("score").get.isDefined must beTrue
 
       doc.getAsTry[BSONNumberLike]("score") must beSuccessfulTry.like {
         case num => num.toDouble must beSuccessfulTry(3.88) and {
@@ -62,11 +55,6 @@ class HandlerSpec extends org.specs2.mutable.Specification {
         doc.getAsTry[BSONBooleanLike]("score").
           flatMap(_.toBoolean) must beSuccessfulTry(true)
       }
-    }
-
-    "should not have a surname2" in {
-      doc.getTry("surname2") must beFailedTry and (
-        doc.getUnflattenedTry("surname2") must beSuccessfulTry(None))
     }
 
     "should be read" in {
@@ -110,9 +98,12 @@ class HandlerSpec extends org.specs2.mutable.Specification {
   }
 
   "Map" should {
+    import reactivemongo.api.bson
+
     "write primitives values" in {
       val input = Map("a" -> 1, "b" -> 2)
-      val result = DefaultBSONHandlers.mapWriter(BSONStringHandler, BSONIntegerHandler).write(input)
+      val result = bson.mapWriter(
+        BSONStringHandler, BSONIntegerHandler).write(input)
 
       result mustEqual BSONDocument("a" -> 1, "b" -> 2)
     }
@@ -140,7 +131,7 @@ class HandlerSpec extends org.specs2.mutable.Specification {
         "a" -> BSONDocument("label" -> "foo", "count" -> 10),
         "b" -> BSONDocument("label" -> "foo2", "count" -> 20))
       val input = Map("a" -> Foo("foo", 10), "b" -> Foo("foo2", 20))
-      val result = DefaultBSONHandlers.mapWriter(BSONStringHandler, fooWriter).write(input)
+      val result = mapWriter(BSONStringHandler, fooWriter).write(input)
 
       result mustEqual expectedResult
     }
@@ -234,8 +225,6 @@ class HandlerSpec extends org.specs2.mutable.Specification {
     }
   }
 
-  section("unit")
-
   // ---
 
   lazy val doc = {
@@ -270,13 +259,13 @@ class HandlerSpec extends org.specs2.mutable.Specification {
     "pp[4]")
 
   case class Album(
-      name: String,
-      releaseYear: Int,
-      tracks: List[String])
+    name: String,
+    releaseYear: Int,
+    tracks: List[String])
 
   case class Artist(
-      name: String,
-      albums: List[Album])
+    name: String,
+    albums: List[Album])
 
   val neilYoung = Artist(
     "Neil Young",

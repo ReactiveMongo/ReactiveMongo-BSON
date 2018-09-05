@@ -57,18 +57,6 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/")
 
-// Test
-fork in Test := true
-
-val specsVer = "4.2.0"
-
-libraryDependencies ++= Seq(
-  "org.specs2" %% "specs2-core" % specsVer,
-  "org.specs2" %% "specs2-scalacheck" % specsVer,
-  "org.typelevel" %% "discipline" % "0.9.0",
-  "org.typelevel" %% "spire-laws" % "0.15.0",
-  "org.slf4j" % "slf4j-simple" % "1.7.13").map(_ % Test)
-
 lazy val publishSettings = {
   @inline def env(n: String): String = sys.env.get(n).getOrElse(n)
 
@@ -142,5 +130,25 @@ scapegoatVersion in ThisBuild := "1.3.4"
 scapegoatReports in ThisBuild := Seq("xml")
  */
 
+lazy val api = (project in file("api")).settings(
+  fork in Test := true,
+  libraryDependencies ++= {
+    val specsVer = "4.3.2"
+
+    Seq(
+      "org.specs2" %% "specs2-core" % specsVer,
+      "org.specs2" %% "specs2-junit" % specsVer,
+      "org.specs2" %% "specs2-scalacheck" % specsVer,
+      "org.typelevel" %% "discipline" % "0.9.0",
+      "org.typelevel" %% "spire-laws" % "0.15.0",
+      "org.slf4j" % "slf4j-simple" % "1.7.13").map(_ % Test)
+  }
+)
+
+lazy val benchmarks = (project in file("benchmarks")).
+  enablePlugins(JmhPlugin).
+  dependsOn(api % "compile->test")
+
 lazy val root = (project in file(".")).
-  settings(publishSettings ++ Scapegoat.settings)
+  settings(publishSettings ++ Scapegoat.settings).
+  aggregate(api, benchmarks)

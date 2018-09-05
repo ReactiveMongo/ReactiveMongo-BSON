@@ -1,7 +1,10 @@
 package reactivemongo.api.bson.buffer
 
-import reactivemongo.api.bson._
 import scala.util.Try
+
+import scala.collection.immutable.ListMap
+
+import reactivemongo.api.bson._
 
 object DefaultBufferHandler extends BufferHandler {
   sealed trait BufferWriter[B <: BSONValue] {
@@ -9,7 +12,7 @@ object DefaultBufferHandler extends BufferHandler {
   }
 
   sealed trait BufferReader[B <: BSONValue] {
-    def read(buffer: ReadableBuffer): B
+    def read(buffer: ReadableBuffer): B // TODO: returns Try[B]
   }
 
   sealed trait BufferRW[B <: BSONValue]
@@ -47,6 +50,7 @@ object DefaultBufferHandler extends BufferHandler {
     def write(value: BSONString, buffer: WritableBuffer): WritableBuffer = buffer.writeString(value.value)
     def read(buffer: ReadableBuffer): BSONString = BSONString(buffer.readString)
   }
+
   object BSONDocumentBufferHandler extends BufferRW[BSONDocument] {
     def write(doc: BSONDocument, buffer: WritableBuffer) = {
       val now = buffer.index
@@ -69,25 +73,30 @@ object DefaultBufferHandler extends BufferHandler {
       val length = b.readInt
       val buffer = b.slice(length - 4)
       b.discard(length - 4)
-      def makeStream(): Stream[Try[BSONElement]] = {
+
+      val builder = ListMap.newBuilder[String, BSONValue]
+
+      @scala.annotation.tailrec
+      def makeMap(): ListMap[String, BSONValue] = {
         if (buffer.readable > 1) { // last is 0
           val code = buffer.readByte
           val name = buffer.readCString
-          val value = Try {
+
+          val value: BSONValue = // TODO: Try
             DefaultBufferHandler.handlersByCode.get(code).
               map(_.read(buffer)) match {
                 case Some(v) => v
                 case _ => throw new NoSuchElementException(
                   "buffer can not be read, end of buffer reached")
               }
-          }
 
-          value.map(BSONElement(name, _)) #:: makeStream
-        } else Stream.empty
+          builder += name -> value
+
+          makeMap()
+        } else builder.result()
       }
-      val stream = makeStream
-      stream.force // TODO remove
-      new BSONDocument(stream)
+
+      new BSONDocument(makeMap())
     }
   }
 
@@ -258,7 +267,7 @@ object DefaultBufferHandler extends BufferHandler {
 
       handlersByCode.get(code).map(_.read(buffer)) match {
         case Some(v) => buffer.readString -> v
-        case _       => throw readError
+        case _ => throw readError
       }
     } else throw readError
   }

@@ -64,38 +64,38 @@ private[bson] object ExtendedNumeric {
 
 object BSONNumberLike {
   implicit class BSONDateTimeNumberLike(
-      private[bson] val underlying: BSONDateTime)
+    private[bson] val underlying: BSONDateTime)
     extends BSONNumberLikeClass[BSONDateTime] with IsNumeric[Long] {
     private[bson] lazy val number = ExtendedNumeric.pure(underlying.value)
   }
 
   implicit final class BSONDecimalNumberLike(
-      private[bson] val underlying: BSONDecimal)
+    private[bson] val underlying: BSONDecimal)
     extends BSONNumberLikeClass[BSONDecimal] with IsNumeric[BigDecimal] {
     private[bson] lazy val number = new ExtendedNumeric(
       BSONDecimal.toBigDecimal(underlying))
   }
 
   implicit class BSONDoubleNumberLike(
-      private[bson] val underlying: BSONDouble)
+    private[bson] val underlying: BSONDouble)
     extends BSONNumberLikeClass[BSONDouble] with IsNumeric[Double] {
     private[bson] lazy val number = ExtendedNumeric.pure(underlying.value)
   }
 
   implicit class BSONIntegerNumberLike(
-      private[bson] val underlying: BSONInteger)
+    private[bson] val underlying: BSONInteger)
     extends BSONNumberLikeClass[BSONInteger] with IsNumeric[Int] {
     private[bson] lazy val number = ExtendedNumeric.pure(underlying.value)
   }
 
   implicit class BSONLongNumberLike(
-      private[bson] val underlying: BSONLong)
+    private[bson] val underlying: BSONLong)
     extends BSONNumberLikeClass[BSONLong] with IsNumeric[Long] {
     private[bson] lazy val number = ExtendedNumeric.pure(underlying.value)
   }
 
   implicit class BSONTimestampNumberLike(
-      private[bson] val underlying: BSONTimestamp)
+    private[bson] val underlying: BSONTimestamp)
     extends BSONNumberLikeClass[BSONTimestamp] with IsNumeric[Long] {
     private[bson] lazy val number = ExtendedNumeric.pure(underlying.value * 1000L)
   }
@@ -122,14 +122,14 @@ sealed trait BSONBooleanLikeClass[B <: BSONValue] extends BSONBooleanLike
 
 object BSONBooleanLike {
   implicit class BSONBooleanBooleanLike(
-      private[bson] val underlying: BSONBoolean)
+    private[bson] val underlying: BSONBoolean)
     extends BSONBooleanLikeClass[BSONBoolean] {
     def toBoolean = Success(underlying.value)
     override def toString = s"BSONBooleanBooleanLike($underlying)"
   }
 
   implicit final class BSONDecimalBooleanLike(
-      private[bson] val underlying: BSONDecimal)
+    private[bson] val underlying: BSONDecimal)
     extends BSONBooleanLikeClass[BSONDecimal]
     with IsBooleanLike[BigDecimal] {
     private[bson] lazy val number = new ExtendedNumeric(
@@ -138,35 +138,35 @@ object BSONBooleanLike {
   }
 
   implicit class BSONDoubleBooleanLike(
-      private[bson] val underlying: BSONDouble)
+    private[bson] val underlying: BSONDouble)
     extends BSONBooleanLikeClass[BSONDouble] with IsBooleanLike[Double] {
     private[bson] lazy val number = ExtendedNumeric.pure(underlying.value)
     override def toString = s"BSONDoubleBooleanLike($underlying)"
   }
 
   implicit class BSONNullBooleanLike(
-      private[bson] val underlying: BSONNull.type)
+    private[bson] val underlying: BSONNull.type)
     extends BSONBooleanLikeClass[BSONNull.type] {
     val toBoolean = Success(false)
     override def toString = "BSONNullBooleanLike"
   }
 
   implicit class BSONUndefinedBooleanLike(
-      private[bson] val underlying: BSONUndefined.type)
+    private[bson] val underlying: BSONUndefined.type)
     extends BSONBooleanLikeClass[BSONUndefined.type] {
     val toBoolean = Success(false)
     override def toString = "BSONUndefinedBooleanLike"
   }
 
   implicit class BSONIntegerBooleanLike(
-      private[bson] val underlying: BSONInteger)
+    private[bson] val underlying: BSONInteger)
     extends BSONBooleanLikeClass[BSONInteger] with IsBooleanLike[Int] {
     private[bson] lazy val number = ExtendedNumeric.pure(underlying.value)
     override def toString = s"BSONIntegerBooleanLike($underlying)"
   }
 
   implicit class BSONLongBooleanLike(
-      private[bson] val underlying: BSONLong)
+    private[bson] val underlying: BSONLong)
     extends BSONBooleanLikeClass[BSONDouble] with IsBooleanLike[Long] {
     private[bson] lazy val number = ExtendedNumeric.pure(underlying.value)
     override def toString = s"BSONLongBooleanLike($underlying)"

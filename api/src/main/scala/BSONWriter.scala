@@ -35,7 +35,7 @@ trait BSONWriter[T, B <: BSONValue] {
 
 object BSONWriter {
   private class Default[T, B <: BSONValue](
-      _write: T => B) extends BSONWriter[T, B] {
+    _write: T => B) extends BSONWriter[T, B] {
     def write(value: T): B = _write(value)
   }
 

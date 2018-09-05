@@ -3,8 +3,6 @@ import reactivemongo.api.bson._
 class TypeSpec extends org.specs2.mutable.Specification {
   "BSON types" title
 
-  section("unit")
-
   "BSON document" should {
     "be empty" in {
       BSONDocument().elements must beEmpty and (
@@ -56,6 +54,16 @@ class TypeSpec extends org.specs2.mutable.Specification {
       bson.byteArray aka "read #1" must_== bytes and (
         bson.byteArray aka "read #2" must_== bytes)
     }
+
+    "be created from UUID" in {
+      val uuid = java.util.UUID.fromString(
+        "b32e4733-0679-4dd3-9978-230e70b55dce")
+
+      val expectedBytes = Array[Byte](
+        -77, 46, 71, 51, 6, 121, 77, -45, -103, 120, 35, 14, 112, -75, 93, -50)
+
+      BSONBinary(uuid) must_=== BSONBinary(expectedBytes, Subtype.UuidSubtype)
+    }
   }
 
   "BSONTimestamp" should {
@@ -71,6 +79,4 @@ class TypeSpec extends org.specs2.mutable.Specification {
       BSONTimestamp(1412180887L, 6) must_== BSONTimestamp(6065270725701271558L)
     }
   }
-
-  section("unit")
 }

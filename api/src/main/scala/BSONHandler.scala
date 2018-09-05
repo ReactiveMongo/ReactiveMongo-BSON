@@ -9,15 +9,15 @@ trait BSONHandler[B <: BSONValue, T]
 
 object BSONHandler {
   private[bson] class MappedHandler[B <: BSONValue, T, U](
-      parent: BSONHandler[B, T],
-      to: T => U,
-      from: U => T) extends BSONHandler[B, U] {
+    parent: BSONHandler[B, T],
+    to: T => U,
+    from: U => T) extends BSONHandler[B, U] {
     def write(u: U) = parent.write(from(u))
     def read(b: BSONValue) = to(parent.read(b))
   }
 
   private[bson] class DefaultHandler[B <: BSONValue, T](
-      r: BSONValue => T, w: T => B)
+    r: BSONValue => T, w: T => B)
     extends BSONHandler[B, T] {
     def read(x: BSONValue): T = r(x)
     def write(x: T): B = w(x)

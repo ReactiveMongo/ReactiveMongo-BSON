@@ -11,8 +11,6 @@ import org.specs2.specification.core.Fragments
 class BSONDecimalSpec extends org.specs2.mutable.Specification {
   "BSON decimal (128bits)" title
 
-  section("unit")
-
   import buffer.DefaultBufferHandler.{
     BSONDecimalBufferHandler,
     BSONDocumentBufferHandler
@@ -776,8 +774,6 @@ class BSONDecimalSpec extends org.specs2.mutable.Specification {
       }
     }
   }
-
-  section("unit")
 
   // ---
 

@@ -22,6 +22,6 @@ trait BufferHandler {
   def stream(buffer: ReadableBuffer): Stream[(String, BSONValue)] =
     deserialize(buffer) match {
       case Success(elem) => elem #:: stream(buffer)
-      case _             => Stream.empty
+      case _ => Stream.empty
     }
 }
