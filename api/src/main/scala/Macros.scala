@@ -3,64 +3,173 @@ package reactivemongo.api.bson
 import scala.util.Success
 
 /**
- * Macros for generating `BSONReader` and `BSONWriter` implementations for case
- * at compile time. Invoking these macros is equivalent to writing anonymous
- * class implementations by hand.
+ * @define macroBrief Macros for generating `BSONReader` and `BSONWriter` at compile time.
  *
  * {{{
  * case class Person(name: String, surname: String)
  * implicit val personHandler = Macros.handler[Person]
  * }}}
  *
- * @see Macros.Options for specific options
+ * @see [[Macros.Options]] for specific options
+ * @see [[MacroConfiguration]] for extended configuration
+ *
+ * @define readerMacro Creates a [[BSONDocumentReader]] for type `A`
+ * @define writerMacro Creates a [[BSONDocumentWriter]] for type `A`
+ * @define handlerMacro Creates a [[BSONDocumentHandler]] for type `A`
+ * @define tparam @tparam A the type of the value represented as BSON
+ * @define tparamOpts @tparam Opts the compile-time options
  */
 object Macros {
   import language.experimental.macros
 
   /**
-   * Creates an instance of BSONReader for case class A
-   * @see Macros
+   * $readerMacro.
+   *
+   * $tparam
    */
+  @SuppressWarnings(Array("NullParameter"))
   def reader[A]: BSONDocumentReader[A] = macro MacroImpl.reader[A, Options.Default]
 
-  /** Creates an instance of BSONReader for case class A and takes additional options */
+  /**
+   * $readerMacro and takes additional options.
+   *
+   * $tparam
+   * $tparamOpts
+   */
+  @SuppressWarnings(Array("NullParameter"))
   def readerOpts[A, Opts <: Options.Default]: BSONDocumentReader[A] = macro MacroImpl.reader[A, Opts]
 
-  /** Creates an instance of BSONWriter for case class A */
+  /**
+   * $writerMacro.
+   *
+   * $tparam
+   */
+  @SuppressWarnings(Array("NullParameter"))
   def writer[A]: BSONDocumentWriter[A] = macro MacroImpl.writer[A, Options.Default]
 
-  /** Creates an instance of BSONWriter for case class A and takes additional options */
+  /**
+   * $writerMacro and takes additional options.
+   *
+   * $tparam
+   * $tparamOpts
+   */
+  @SuppressWarnings(Array("NullParameter"))
   def writerOpts[A, Opts <: Options.Default]: BSONDocumentWriter[A] = macro MacroImpl.writer[A, Opts]
 
-  /** Creates an instance of BSONReader and BSONWriter for case class A */
+  /**
+   * $handlerMacro.
+   *
+   * $tparam
+   */
+  @SuppressWarnings(Array("NullParameter"))
   def handler[A]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, Options.Default]
 
   /**
-   * Creates an instance of BSONReader and BSONWriter for case class A,
-   * and takes additional options.
+   * $handlerMacro and takes additional options.
+   *
+   * $tparam
+   * $tparamOpts
    */
+  @SuppressWarnings(Array("NullParameter"))
   def handlerOpts[A, Opts <: Options.Default]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, Opts]
 
+  // ---
+
   /**
-   * Methods with 'Opts' postfix will take additional options in the form of
+   * Returns macros using the current BSON configuration.
+   *
+   * $tparamOpts
+   *
+   * {{{
+   * import reactivemongo.api.bson.{
+   *   BSONDocumentReader, MacroConfiguration, Macros
+   * }
+   *
+   * // Materializes a `BSONDocumentReader[Foo]`,
+   * // with the configuration resolved at compile time
+   * val r1: BSONDocumentReader[Foo] = Macros.configured.reader[Foo]
+   *
+   * val r2: BSONDocumentReader[Foo] = Macros.configured(
+   *   MacroConfiguration.simpleTypeName).reader[Foo]
+   *
+   * }}}
+   */
+  def configured[Opts <: Options](implicit config: MacroConfiguration.Aux[Opts]) = new WithOptions[Opts](config)
+
+  /**
+   * Returns an inference context to call the BSON macros,
+   * using explicit compile-time options.
+   *
+   * $tparamOpts
+   *
+   * {{{
+   * import reactivemongo.api.bson.{
+   *   BSONDocumentReader, MacroConfiguration, Macros
+   * }
+   *
+   * val w: BSONDocumentWriter[Bar] =
+   *   Macros.using[Options.Default].writer[Bar]
+   * }}}
+   */
+  def using[Opts <: Options] = new WithOptions[Opts](MacroConfiguration[Opts]())
+
+  // ---
+
+  /**
+   * $macroBrief
+   *
+   * $tparamOpts
+   */
+  final class WithOptions[Opts <: Options](
+    val config: MacroConfiguration.Aux[Opts]) {
+
+    def this() = this(MacroConfiguration.default)
+
+    // ---
+
+    /**
+     * $readerMacro.
+     *
+     * $tparam
+     */
+    @SuppressWarnings(Array("NullParameter"))
+    def reader[A]: BSONDocumentReader[A] = macro MacroImpl.configuredReader[A, Opts]
+
+    /**
+     * $writerMacro.
+     *
+     * $tparam
+     */
+    @SuppressWarnings(Array("NullParameter"))
+    def writer[A]: BSONDocumentWriter[A] = macro MacroImpl.configuredWriter[A, Opts]
+
+    /**
+     * $handlerMacro.
+     *
+     * $tparam
+     */
+    @SuppressWarnings(Array("NullParameter"))
+    def handler[A]: BSONDocumentHandler[A] = macro MacroImpl.configuredHandler[A, Opts]
+  }
+
+  // ---
+
+  /**
+   * Macros with 'Opts' suffix will take additional options in the form of
    * type parameters that will customize behaviour of
    * the macros during compilation.
    */
-  object Options {
+  sealed trait Options
 
+  object Options {
     /**
      * The default options that are implied if invoking "non-Opts" method.
      * All other options extend this.
      */
-    trait Default
+    trait Default extends Options
 
     /** Print out generated code during compilation. */
     trait Verbose extends Default
-
-    /**
-     * Uses the class simple name (i.e. Not the fully-qualified name).
-     */
-    trait SaveSimpleName extends Default
 
     /**
      * Use type parameter `A` as static type but use pattern matching to handle
@@ -73,14 +182,6 @@ object Macros {
      * @tparam Types to use in pattern matching. Listed in a "type list" \/
      */
     trait UnionType[Types <: \/[_, _]] extends Default
-
-    /**
-     * Same as [[UnionType]] but saving the class’ simple name io. the
-     * fully-qualified name.
-     * @tparam Types to use in pattern matching. Listed in a "type list" \/
-     */
-    trait SimpleUnionType[Types <: \/[_, _]]
-      extends UnionType[Types] with SaveSimpleName with Default
 
     /**
      * Type for making type-level lists for UnionType.
@@ -102,6 +203,27 @@ object Macros {
      * (disabled by default).
      */
     trait AutomaticMaterialization extends Default
+
+    // ---
+
+    trait ValueOf[O <: Options]
+
+    trait LowPriorityValueOfImplicits {
+      /**
+       * Low priority implicit used when some explicit Options
+       * instance is passed.
+       */
+      implicit def lowPriorityDefault[O <: Options]: ValueOf[O] =
+        new ValueOf[O] {}
+    }
+
+    object ValueOf extends LowPriorityValueOfImplicits {
+
+      /**
+       * This will be the default that's passed when no Options is specified.
+       */
+      implicit object optionsDefault extends ValueOf[Options]
+    }
   }
 
   /** Annotations to use on case classes that are being processed by macros. */
@@ -187,6 +309,8 @@ object Macros {
     }
   }
 
+  // --- Internal
+
   /** Only for internal purposes */
   final class Placeholder private () {}
 
@@ -216,86 +340,5 @@ object Macros {
     }
 
     def value(): T = underlying
-  }
-
-  /**
-   * Naming strategy, to map each class property to the corresponding column.
-   */
-  trait ColumnNaming extends (String => String) {
-    /**
-     * Returns the column name for the class property.
-     *
-     * @param property the name of the case class property
-     */
-    def apply(property: String): String
-  }
-
-  /** Naming companion */
-  object ColumnNaming {
-    /** Keep the original property name. */
-    object Identity extends ColumnNaming {
-      def apply(property: String) = property
-    }
-
-    /**
-     * For each class property, use the snake case equivalent
-     * to name its column (e.g. fooBar -> foo_bar).
-     */
-    object SnakeCase extends ColumnNaming {
-      private val re = "[A-Z]+".r
-
-      def apply(property: String): String =
-        re.replaceAllIn(property, { m => s"_${m.matched.toLowerCase}" })
-    }
-
-    /** Naming using a custom transformation function. */
-    def apply(transformation: String => String): ColumnNaming =
-      new ColumnNaming {
-        def apply(property: String): String = transformation(property)
-      }
-  }
-
-  trait Discriminate extends (String => String) {
-    /**
-     * Returns the value representing the specified type,
-     * to be used as a discriminator within a sealed family.
-     *
-     * @param tname the name of type (class or object) to be discriminated
-     */
-    def apply(tname: String): String
-  }
-
-  object Discriminate {
-    sealed class Function(f: String => String) extends Discriminate {
-      def apply(tname: String) = f(tname)
-    }
-
-    /** Uses the type name as-is as value for the discriminator */
-    object Identity extends Function(identity[String])
-
-    /** Returns a `Discriminate` function from any `String => String`. */
-    def apply(discriminate: String => String): Discriminate =
-      new Function(discriminate)
-  }
-
-  trait DiscriminatorNaming extends (String => String) {
-    /**
-     * Returns the name for the discriminator column.
-     * @param familyType the name of the famility type (sealed trait)
-     */
-    def apply(familyType: String): String
-  }
-
-  object DiscriminatorNaming {
-    sealed class Function(f: String => String) extends DiscriminatorNaming {
-      def apply(familyType: String) = f(familyType)
-    }
-
-    /** Always use "classname" as name for the discriminator column. */
-    object Default extends Function(_ => "classname")
-
-    /** Returns a naming according from any `String => String`. */
-    def apply(naming: String => String): DiscriminatorNaming =
-      new Function(naming)
   }
 }
