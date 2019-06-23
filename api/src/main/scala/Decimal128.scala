@@ -68,7 +68,6 @@ private[bson] object Decimal128 {
           }
         }
 
-        // TODO: common with computeLow
         @annotation.tailrec
         def computeHigh(i: Int, localHigh: Long): Long = {
           if (i >= bitLength) localHigh
@@ -187,7 +186,7 @@ private[bson] object Decimal128 {
   }
 
   private def bigDecimalString(decimal: BSONDecimal): String = {
-    val buffer = StringBuilder.newBuilder
+    val buffer = new StringBuilder
     val value = noNegativeZero(decimal)
     val significand = value.unscaledValue.abs.toString
 
@@ -207,7 +206,7 @@ private[bson] object Decimal128 {
         if (pad >= 0) {
           buffer ++= "0."
 
-          (0 until pad).foreach { i =>
+          (0 until pad).foreach { _ =>
             buffer += '0'
           }
 

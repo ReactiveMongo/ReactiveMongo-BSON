@@ -1,4 +1,4 @@
-import reactivemongo.api.bson._
+package reactivemongo.api.bson
 
 import org.typelevel.discipline.specs2.mutable.Discipline
 
@@ -14,7 +14,7 @@ import spire.algebra.{
 
 import reactivemongo.BSONValueFixtures
 
-class BSONLawsSpecs
+final class BSONLawsSpecs
   extends org.specs2.mutable.Specification with Discipline {
 
   "BSON laws" title
@@ -46,7 +46,7 @@ class BSONLawsSpecs
 }
 
 object LawEvidences {
-  implicit def defaultEq[T <% Any]: Eq[T] = new Eq[T] {
+  implicit def defaultEq[T]: Eq[T] = new Eq[T] {
     def eqv(x: T, y: T): Boolean = x == y
   }
 }

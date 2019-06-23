@@ -1,44 +1,85 @@
 package reactivemongo.api.bson
 
-import scala.util.Try
+import scala.util.{ Failure, Success, Try }
 
 /**
  * A writer that produces a subtype of [[BSONValue]] from an instance of `T`.
  */
-trait BSONWriter[T, B <: BSONValue] {
-  /**
-   * Writes an instance of `T` as a BSON value.
-   *
-   * This method may throw exceptions at runtime.
-   * If used outside a reader, one should consider `writeTry(bson: B): Try[T]` or `writeOpt(bson: B): Option[T]`.
-   */
-  def write(t: T): B
-
-  /** Tries to produce a BSON value from an instance of `T`, returns `None` if an error occurred. */
-  def writeOpt(t: T): Option[B] = writeTry(t).toOption
-
+trait BSONWriter[T] {
   /** Tries to produce a BSON value from an instance of `T`. */
-  def writeTry(t: T): Try[B] = Try(write(t))
+  def writeTry(t: T): Try[BSONValue]
 
   /**
-   * Returns a BSON writer that returns the result of applying `f`
+   * Tries to produce a BSON value from an instance of `T`,
+   * returns `None` if an error occurred.
+   */
+  def writeOpt(t: T): Option[BSONValue] = writeTry(t).toOption
+
+  /**
+   * Prepares a BSON writer that returns the result of applying `f`
    * on the BSON value from this writer.
    *
-   * @param f the function to apply
+   * If the `f` function is not defined for a [[BSONValue]],
+   * it will results in a `Failure`.
+   *
+   * @param f the partial function to apply
    */
-  final def afterWrite[U <: BSONValue](f: B => U): BSONWriter[T, U] =
-    BSONWriter[T, U]((write _) andThen f)
+  final def afterWrite(f: PartialFunction[BSONValue, BSONValue]): BSONWriter[T] = BSONWriter.from[T] {
+    writeTry(_).flatMap { before =>
+      f.lift(before) match {
+        case Some(after) =>
+          Success(after)
 
-  final def beforeWrite[U](f: U => T): BSONWriter[U, B] =
-    BSONWriter[U, B](f andThen (write _))
+        case _ =>
+          Failure(exceptions.ValueDoesNotMatchException(
+            BSONValue pretty before))
+      }
+    }
+  }
+
+  /**
+   * Prepares a BSON writer that converts the input before calling
+   * the current writer.
+   *
+   * @param f the function apply the `U` input value to convert at `T` value used to the current writer
+   */
+  def beforeWrite[U](f: U => T): BSONWriter[U] =
+    BSONWriter.from[U] { u => writeTry(f(u)) }
 }
 
 object BSONWriter {
-  private class Default[T, B <: BSONValue](
-    _write: T => B) extends BSONWriter[T, B] {
-    def write(value: T): B = _write(value)
+  /** Creates a [[BSONWriter]] based on the given `write` function. */
+  def apply[T](write: T => BSONValue): BSONWriter[T] =
+    new FunctionalWriter[T](write)
+
+  /** Creates a [[BSONWriter]] based on the given `write` function. */
+  def from[T](write: T => Try[BSONValue]): BSONWriter[T] =
+    new DefaultWriter[T](write)
+
+  // ---
+
+  private class DefaultWriter[T](
+    write: T => Try[BSONValue]) extends BSONWriter[T] {
+    def writeTry(value: T): Try[BSONValue] = write(value)
   }
 
-  def apply[T, B <: BSONValue](write: T => B): BSONWriter[T, B] =
-    new Default[T, B](write)
+  private class FunctionalWriter[T](
+    write: T => BSONValue) extends BSONWriter[T] {
+    def writeTry(value: T): Try[BSONValue] = Try(write(value))
+  }
+}
+
+/** A write that is safe, as `writeTry` can always return a `Success`. */
+private[bson] trait SafeBSONWriter[T] { writer: BSONWriter[T] =>
+  def safeWrite(value: T): BSONValue
+
+  final def writeTry(value: T): Success[BSONValue] = Success(safeWrite(value))
+}
+
+private[bson] object SafeBSONWriter {
+  @com.github.ghik.silencer.silent
+  def unapply[T](w: BSONWriter[T]): Option[SafeBSONWriter[T]] = w match {
+    case s: SafeBSONWriter[T] => Some(s)
+    case _ => None
+  }
 }

@@ -15,14 +15,14 @@ package reactivemongo.api.bson
  *     "salary" -> 12345L, "inventory" -> array("foo", 7.8, 0L, false)))
  * }}}
  */
-object `package` extends DefaultBSONHandlers {
+object `package` extends DefaultBSONHandlers with Aliases with Utils {
   // DSL helpers:
 
   /** Returns an empty document. */
   def document = BSONDocument.empty
 
   /** Returns a document with given elements. */
-  def document(elements: Producer[BSONElement]*) = BSONDocument(elements: _*)
+  def document(elements: ElementProducer*) = BSONDocument(elements: _*)
 
   /** Returns an empty array. */
   def array = BSONArray.empty
@@ -36,11 +36,15 @@ object `package` extends DefaultBSONHandlers {
   def element(name: String, value: BSONValue) = BSONElement(name, value)
 
   /** Convenient type alias for document handlers */
-  type BSONDocumentHandler[T] = BSONDocumentReader[T] with BSONDocumentWriter[T] with BSONHandler[BSONDocument, T]
+  type BSONDocumentHandler[T] = BSONDocumentReader[T] with BSONDocumentWriter[T] with BSONHandler[T]
 
   /** Handler factory */
-  @SuppressWarnings(Array("MethodNames"))
-  def BSONDocumentHandler[T](
-    read: BSONDocument => T,
-    write: T => BSONDocument): BSONDocumentHandler[T] = new BSONDocumentHandlerImpl[T](read, write)
+  object BSONDocumentHandler {
+    def apply[T](
+      read: BSONDocument => T,
+      write: T => BSONDocument): BSONDocumentHandler[T] =
+      new FunctionalDocumentHandler[T](read, write)
+
+    def provided[T](implicit r: BSONDocumentReader[T], w: BSONDocumentWriter[T]): BSONDocumentHandler[T] = new DefaultDocumentHandler[T](r, w)
+  }
 }

@@ -1,57 +1,50 @@
 package reactivemongo.api.bson.buffer
 
+import java.nio.{ ByteBuffer, ByteOrder }
+
+import reactivemongo.io.netty.buffer.Unpooled
+
 import scala.collection.mutable.ArrayBuffer
 
 /**
  * A readable buffer.
  *
- * The implementation '''MUST''' ensure it reads data in little endian when needed.
+ * @param buffer the underlying NIO buffer (must be little endian)
  */
-trait ReadableBuffer {
-  /** Returns the current read index of this buffer. */
-  def index: Int
-
-  def index_=(i: Int): Unit
-
-  /** Sets the read index to `index + n` (in other words, skips `n` bytes). */
-  def discard(n: Int): Unit
-
-  /** Fills the given array with the bytes read from this buffer. */
-  def readBytes(bytes: Array[Byte]): Unit
-
-  /** Reads a `Byte` from this buffer. */
-  def readByte(): Byte
-
-  /** Reads an `Int` from this buffer. */
-  def readInt(): Int
-
-  /** Reads a `Long` from this buffer. */
-  def readLong(): Long
-
-  /** Reads a `Double` from this buffer. */
-  def readDouble(): Double
-
-  /** Returns the number of readable remaining bytes of this buffer. */
-  def readable(): Int
-
-  def toWritableBuffer: WritableBuffer
-
-  /**
-   * Returns a new instance of ReadableBuffer,
-   * which starts at the current index and contains `n` bytes.
-   *
-   * This method does not update the read index of the original buffer.
-   */
-  def slice(n: Int): ReadableBuffer
+private[bson] final class ReadableBuffer private[bson] (
+  val buffer: ByteBuffer) extends AnyVal {
 
   /** Returns the buffer size. */
-  def size: Int
+  @inline def size = buffer.capacity
 
-  /** Reads a UTF-8 String. */
-  def readString(): String = {
+  /** Fills the given array with the bytes read from this buffer. */
+  def readBytes(bytes: Array[Byte]): ReadableBuffer = {
+    buffer.get(bytes)
+    this
+  }
+
+  /** Reads a `Byte` from this buffer. */
+  def readByte(): Byte = buffer.get()
+
+  /** Reads an `Int` from this buffer. */
+  def readInt(): Int = buffer.getInt()
+
+  /** Reads a `Long` from this buffer. */
+  def readLong(): Long = buffer.getLong()
+
+  /** Reads a `Double` from this buffer. */
+  def readDouble(): Double = buffer.getDouble()
+
+  /**
+   * Reads a UTF-8 String.
+   * @see WritableBuffer#writeBsonString
+   */
+  def readBsonString(): String = {
     val bytes = new Array[Byte](this.readInt - 1)
+
     this.readBytes(bytes)
-    this.readByte
+    this.readByte() // 0 delimiter byte
+
     new String(bytes, "UTF-8")
   }
 
@@ -61,22 +54,67 @@ trait ReadableBuffer {
    * @param length the length of the newly created array.
    */
   def readArray(length: Int): Array[Byte] = {
-    val bytes = new Array[Byte](length)
-    this.readBytes(bytes)
+    val bytes = Array.ofDim[Byte](length)
+    readBytes(bytes)
     bytes
   }
 
   /** Reads a UTF-8 C-Style String. */
-  def readCString(): String = readCString(new ArrayBuffer[Byte](16))
+  def readCString(): String =
+    new String(takeUntilZero(new ArrayBuffer[Byte](16)), "UTF-8")
 
-  @scala.annotation.tailrec
-  private def readCString(array: ArrayBuffer[Byte]): String = {
-    val byte = this.readByte
+  /** Returns the number of readable remaining bytes of this buffer. */
+  def readable(): Int = buffer.remaining()
 
-    if (byte == 0x00) {
-      new String(array.toArray, "UTF-8")
-    } else readCString(array += byte)
+  /** Returns a writable buffer with the same content as this one. */
+  def toWritableBuffer: WritableBuffer =
+    new WritableBuffer(Unpooled wrappedBuffer buffer)
+
+  /** Returns a duplicate buffer. */
+  def duplicate(): ReadableBuffer = new ReadableBuffer(buffer.duplicate())
+
+  /** Skips the buffer content until `condition` is reached. */
+  def skipUntil(condition: Byte => Boolean): ReadableBuffer = {
+    @annotation.tailrec
+    def go(): Unit = {
+      if (buffer.remaining() > 0 && !condition(buffer.get())) go()
+      else ()
+    }
+
+    go()
+
+    this
   }
 
-  def duplicate(): ReadableBuffer
+  /**
+   * Splits this buffer after `n` bytes.
+   * Note: The second buffer shares its state with the current one.
+   */
+  def splitAt(n: Int): (ReadableBuffer, ReadableBuffer) = {
+    val r = buffer.remaining()
+    val lim = if (r < n) r else n
+
+    ReadableBuffer(readArray(lim)) -> this
+  }
+
+  // ---
+
+  @scala.annotation.tailrec
+  private def takeUntilZero(array: ArrayBuffer[Byte]): Array[Byte] = {
+    val byte = this.readByte
+
+    if (byte == (0x00: Byte /* C end marker */ )) {
+      array.toArray
+    } else takeUntilZero(array += byte)
+  }
+}
+
+private[reactivemongo] object ReadableBuffer {
+  /** Returns an [[ReadableBuffer]] which source is the given `array`. */
+  def apply(bytes: Array[Byte]): ReadableBuffer = {
+    val buf = ByteBuffer.wrap(bytes)
+    buf.order(ByteOrder.LITTLE_ENDIAN)
+
+    new ReadableBuffer(buf)
+  }
 }

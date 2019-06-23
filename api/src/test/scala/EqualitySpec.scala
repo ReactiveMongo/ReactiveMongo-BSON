@@ -1,57 +1,69 @@
-import reactivemongo.api.bson._
+package reactivemongo
+package api.bson
+
+import org.specs2.specification.core.Fragments
+
 import reactivemongo.api.bson.buffer.{
-  ArrayReadableBuffer,
   DefaultBufferHandler,
-  ArrayBSONBuffer
+  WritableBuffer
 }, DefaultBufferHandler._
 
-class EqualitySpec extends org.specs2.mutable.Specification {
+final class EqualitySpec extends org.specs2.mutable.Specification {
   "Equality" title
 
   section("unit")
 
-  "BSONObjectID" should {
-    "permit equality to work" in {
-      val boid1 = BSONObjectID.parse("0102030405060708090a0b0c").get
-      val boid2 = BSONObjectID.parse("0102030405060708090a0b0c").get
+  "BSONBinary" should {
+    def bin() = BSONBinary(Array[Byte](1, 2, 3), Subtype.GenericBinarySubtype)
 
-      boid1 must beTypedEqualTo(boid2)
+    "permit equality to work" in {
+      bin() must_=== bin()
     }
 
     "retain equality through serialization/deserialization" in {
-      val boid1 = BSONObjectID.parse("0102030405060708090a0b0c").get
-      val writeBuffer = new ArrayBSONBuffer
-      BSONObjectIDBufferHandler.write(boid1, writeBuffer)
-      val writeBytes = writeBuffer.array
-      val readBuffer = ArrayReadableBuffer(writeBytes)
-      val readBytes = readBuffer.slice(readBuffer.readable()).readArray(readBuffer.size)
-      writeBytes must beEqualTo(readBytes)
-      val boid2 = BSONObjectIDBufferHandler.read(readBuffer)
-      boid1 must beEqualTo(boid2)
+      val expected = bin()
+      val writeBuffer = WritableBuffer.empty
+      writeBinary(expected, writeBuffer)
+
+      expected must_=== readBinary(writeBuffer.toReadableBuffer)
+    }
+  }
+
+  "BSONObjectID" should {
+    def oid() = BSONObjectID.parse("0102030405060708090a0b0c").get
+    "permit equality to work" in {
+      oid() must_=== oid()
+    }
+
+    "retain equality through serialization/deserialization" in {
+      val boid1 = oid()
+      val writeBuffer = WritableBuffer.empty
+      writeObjectID(boid1, writeBuffer)
+
+      boid1 must_=== readObjectID(writeBuffer.toReadableBuffer)
     }
   }
 
   "BSONArray" should {
     "permit equality to work" in {
-      val ba1 = BSONArray(Seq(BSONInteger(42), BSONString("42"), BSONDouble(42.0), BSONDateTime(0)))
-      val ba2 = ba1.copy()
-      ba1 must beEqualTo(ba2)
+      val ba1 = BSONArray(Seq(
+        BSONInteger(42), BSONString("42"), BSONDouble(42.0), BSONDateTime(0)))
+
+      ba1 must_=== ba1.copy()
     }
 
     "retain equality through serialization/deserialization" in {
       val ba1 = BSONArray(Seq(
         BSONInteger(42), BSONString("42"), BSONDouble(42.0), BSONDateTime(0)))
 
-      val writeBuffer = new ArrayBSONBuffer
-      BSONArrayBufferHandler.write(ba1, writeBuffer)
+      val writeBuffer = WritableBuffer.empty
+      writeArray(ba1.values, writeBuffer)
 
-      val writeBytes = writeBuffer.array
-      val readBuffer = ArrayReadableBuffer(writeBytes)
-      val readBytes = readBuffer.slice(readBuffer.readable()).
-        readArray(readBuffer.size)
-      writeBytes must beEqualTo(readBytes)
+      val input = writeBuffer.toReadableBuffer
 
-      BSONArrayBufferHandler.read(readBuffer) must beTypedEqualTo(ba1)
+      input.size must_=== writeBuffer.size and {
+        readArray(input) must_=== ba1
+      }
     }
   }
 
@@ -69,16 +81,45 @@ class EqualitySpec extends org.specs2.mutable.Specification {
         "objectid" -> BSONObjectID.parse(Array[Byte](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)).get,
         "array" -> BSONArray(Seq(BSONInteger(42), BSONString("42"), BSONDouble(42.0), BSONDateTime(0)))))
 
-      val writeBuffer = new ArrayBSONBuffer
-      DefaultBufferHandler.write(writeBuffer, b1)
-      val writeBytes = writeBuffer.array
-      val readBuffer = ArrayReadableBuffer(writeBytes)
-      val readBytes = readBuffer.slice(readBuffer.readable()).readArray(readBuffer.size)
-      writeBytes must beEqualTo(readBytes)
+      val writeBuffer = WritableBuffer.empty
+      writeDocument(b1, writeBuffer)
 
-      DefaultBufferHandler.readDocument(readBuffer).
-        aka("result") must beSuccessfulTry(b1)
+      readDocument(writeBuffer.toReadableBuffer) must_=== b1
     }
+  }
+
+  "BSONBooleanLike" should {
+    Fragments.foreach[BSONValue](
+      BSONValueFixtures.bsonIntFixtures ++
+        BSONValueFixtures.bsonDoubleFixtures ++
+        BSONValueFixtures.bsonLongFixtures ++
+        BSONValueFixtures.bsonBoolFixtures ++
+        BSONValueFixtures.bsonDecimalFixtures ++
+        Seq(BSONNull, BSONUndefined)) { v =>
+
+        s"retain equality through handler for $v" in {
+          BSON.read[BSONBooleanLike](v) must beSuccessfulTry[BSONBooleanLike].like {
+            case r1 => BSON.read[BSONBooleanLike](v) must beSuccessfulTry(r1)
+          }
+        }
+      }
+  }
+
+  "BSONNumberLike" should {
+    Fragments.foreach[BSONValue](
+      BSONValueFixtures.bsonIntFixtures ++
+        BSONValueFixtures.bsonDoubleFixtures ++
+        BSONValueFixtures.bsonLongFixtures ++
+        BSONValueFixtures.bsonDateTimeFixtures ++
+        BSONValueFixtures.bsonTsFixtures ++
+        BSONValueFixtures.bsonDecimalFixtures) { v =>
+
+        s"retain equality through handler for $v" in {
+          BSON.read[BSONNumberLike](v) must beSuccessfulTry[BSONNumberLike].like {
+            case r1 => BSON.read[BSONNumberLike](v) must beSuccessfulTry(r1)
+          }
+        }
+      }
   }
 
   section("unit")

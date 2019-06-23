@@ -4,7 +4,7 @@ import java.math.{ BigDecimal => JBigDec }
 
 import scala.util.{ Success, Try }
 
-import reactivemongo.api.bson.buffer.ArrayBSONBuffer
+import reactivemongo.api.bson.buffer.WritableBuffer
 
 import org.specs2.specification.core.Fragments
 
@@ -12,8 +12,9 @@ class BSONDecimalSpec extends org.specs2.mutable.Specification {
   "BSON decimal (128bits)" title
 
   import buffer.DefaultBufferHandler.{
-    BSONDecimalBufferHandler,
-    BSONDocumentBufferHandler
+    readDecimal,
+    writeDecimal,
+    writeDocument
   }
 
   "BSONDecimal" should {
@@ -533,14 +534,14 @@ class BSONDecimalSpec extends org.specs2.mutable.Specification {
     "consider a BSONDecimal like a number" in {
       val big = BigDecimal("12.345")
 
-      BSONDecimal.fromBigDecimal(big).flatMap { dec =>
-        implicitly[BSONNumberLike](dec).toDouble
+      BSONDecimal.fromBigDecimal(big).flatMap {
+        _.asTry[BSONNumberLike].flatMap(_.toDouble)
       } must beSuccessfulTry(12.345D)
     }
 
     "consider a BSONDecimal like a boolean" in {
-      BSONDecimal.fromLong(123L).flatMap { dec =>
-        implicitly[BSONBooleanLike](dec).toBoolean
+      BSONDecimal.fromLong(123L).flatMap {
+        _.asTry[BSONBooleanLike].flatMap(_.toBoolean)
       } must beSuccessfulTry(true)
     }
   }
@@ -761,9 +762,9 @@ class BSONDecimalSpec extends org.specs2.mutable.Specification {
     "properly write bytes" >> {
       Fragments.foreach(fixtures) {
         case (repr, Success(dec)) => s"for '$repr'" in {
-          val buf = new ArrayBSONBuffer
+          val buf = WritableBuffer.empty
 
-          BSONDocumentBufferHandler.write(BSONDocument("d" -> dec), buf)
+          writeDocument(BSONDocument("d" -> dec), buf)
 
           buf.array.map("%02X" format _).mkString must_=== repr
         }
@@ -778,10 +779,10 @@ class BSONDecimalSpec extends org.specs2.mutable.Specification {
   // ---
 
   @inline private def bufferTrip(in: BSONDecimal): BSONDecimal = {
-    val buf = new ArrayBSONBuffer
+    val buf = WritableBuffer.empty
 
-    BSONDecimalBufferHandler.write(in, buf)
+    writeDecimal(in, buf)
 
-    BSONDecimalBufferHandler.read(buf.toReadableBuffer)
+    readDecimal(buf.toReadableBuffer)
   }
 }

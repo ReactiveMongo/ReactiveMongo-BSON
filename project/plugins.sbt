@@ -11,10 +11,8 @@ addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.0")
 
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.3.0")
 
-addSbtPlugin("com.github.sbt" % "sbt-findbugs" % "2.0.0")
-
 addSbtPlugin("com.github.gseitz" % "sbt-release" % "1.0.9")
 
 addSbtPlugin("com.sksamuel.scapegoat" %% "sbt-scapegoat" % "1.0.9")
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.4")
+addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.6")

@@ -1,154 +1,93 @@
-organization := "cchantep" // "org.reactivemongo"
+import Dependencies._
 
-name := "reactivemongo-bson"
+ThisBuild / organization := "org.reactivemongo"
 
-scalaVersion in ThisBuild := "2.12.6"
+val baseArtifact = "reactivemongo-bson"
 
-crossScalaVersions in ThisBuild := Seq("2.11.12", scalaVersion.value)
+name := s"reactivemongo-biːsən"
 
-crossVersion in ThisBuild := CrossVersion.binary
-
-scalacOptions ++= Seq(
-  "-encoding", "UTF-8", "-target:jvm-1.8",
-  "-unchecked",
-  "-deprecation",
-  "-feature",
-  "-Xfatal-warnings",
-  "-Xlint",
-  "-Ywarn-numeric-widen",
-  "-Ywarn-dead-code",
-  "-Ywarn-value-discard",
-  "-Ywarn-infer-any",
-  "-Ywarn-unused",
-  "-Ywarn-unused-import",
-  "-g:vars"
-)
-
-scalacOptions in Compile ++= {
-  if (!scalaVersion.value.startsWith("2.11.")) Nil
-  else Seq(
-    "-Yconst-opt",
-    "-Yclosure-elim",
-    "-Ydead-code",
-    "-Yopt:_"
-  )
-}
-
-scalacOptions in Test ~= {
-  _.filterNot(_ == "-Xfatal-warnings")
-}
-
-scalacOptions in (Compile, doc) := (scalacOptions in Test).value
-
-scalacOptions in (Compile, console) ~= {
-  _.filterNot { opt => opt.startsWith("-X") || opt.startsWith("-Y") }
-}
-
-scalacOptions in (Test, console) ~= {
-  _.filterNot { opt => opt.startsWith("-X") || opt.startsWith("-Y") }
-}
-
-scalacOptions in (Compile, doc) ++= Seq(
-  "-Ywarn-dead-code", "-Ywarn-unused-import", "-unchecked", "-deprecation",
-  /*"-diagrams", */"-implicits", "-skip-packages", "samples") ++
-  Opts.doc.title("ReactiveMongo BSON API")
-
-resolvers ++= Seq(
+resolvers in ThisBuild ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/")
 
-lazy val publishSettings = {
-  @inline def env(n: String): String = sys.env.get(n).getOrElse(n)
+val commonSettings = Seq(
+  unmanagedSourceDirectories in Compile += {
+    val base = (sourceDirectory in Compile).value
 
-  val repoName = env("PUBLISH_REPO_NAME")
-  val repoUrl = env("PUBLISH_REPO_URL")
-
-  Seq(
-    publishMavenStyle := true,
-    publishArtifact in Test := false,
-    publishTo := Some(repoUrl).map(repoName at _),
-    credentials += Credentials(repoName, env("PUBLISH_REPO_ID"),
-        env("PUBLISH_USER"), env("PUBLISH_PASS")),
-    pomIncludeRepository := { _ => false },
-    licenses := {
-      Seq("Apache 2.0" ->
-        url("http://www.apache.org/licenses/LICENSE-2.0"))
-    },
-    homepage := Some(url("http://reactivemongo.org")),
-    autoAPIMappings := true,
-    pomExtra := (
-      <scm>
-        <url>git://github.com/ReactiveMongo/ReactiveMongo-Play-Json.git</url>
-        <connection>scm:git://github.com/ReactiveMongo/ReactiveMongo-Play-Json.git</connection>
-      </scm>
-      <developers>
-        <developer>
-          <id>cchantep</id>
-          <name>Cedric Chantepie</name>
-          <url>http://github.org/cchantep</url>
-        </developer>
-      </developers>))
-}
-
-// FindBugs
-findbugsExcludeFilters := Some(
-  scala.xml.XML.loadFile(baseDirectory.value / "project" / (
-    "findbugs-exclude-filters.xml"))
-)
-
-findbugsReportType := Some(FindbugsReport.PlainHtml)
-
-findbugsReportPath := Some(target.value / "findbugs.html")
-
-// Scalariform
-import scalariform.formatter.preferences._
-import com.typesafe.sbt.SbtScalariform
-import com.typesafe.sbt.SbtScalariform.ScalariformKeys
-
-ScalariformKeys.preferences := ScalariformKeys.preferences.value.
-  setPreference(AlignParameters, false).
-  setPreference(AlignSingleLineCaseStatements, true).
-  setPreference(CompactControlReadability, false).
-  setPreference(CompactStringConcatenation, false).
-  setPreference(DoubleIndentConstructorArguments, true).
-  setPreference(FormatXml, true).
-  setPreference(IndentLocalDefs, false).
-  setPreference(IndentPackageBlocks, true).
-  setPreference(IndentSpaces, 2).
-  setPreference(MultilineScaladocCommentsStartOnFirstLine, false).
-  setPreference(PreserveSpaceBeforeArguments, false).
-  setPreference(DanglingCloseParenthesis, Preserve).
-  setPreference(RewriteArrowSymbols, false).
-  setPreference(SpaceBeforeColon, false).
-  setPreference(SpaceInsideBrackets, false).
-  setPreference(SpacesAroundMultiImports, true).
-  setPreference(SpacesWithinPatternBinders, true)
-
-/*
-scapegoatVersion in ThisBuild := "1.3.4"
-
-scapegoatReports in ThisBuild := Seq("xml")
- */
-
-lazy val api = (project in file("api")).settings(
-  fork in Test := true,
-  libraryDependencies ++= {
-    val specsVer = "4.3.2"
-
-    Seq(
-      "org.specs2" %% "specs2-core" % specsVer,
-      "org.specs2" %% "specs2-junit" % specsVer,
-      "org.specs2" %% "specs2-scalacheck" % specsVer,
-      "org.typelevel" %% "discipline" % "0.9.0",
-      "org.typelevel" %% "spire-laws" % "0.15.0",
-      "org.slf4j" % "slf4j-simple" % "1.7.13").map(_ % Test)
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((2, n)) if n >= 13 => base / "scala-2.13+"
+      case _                       => base / "scala-2.13-"
+    }
   }
 )
 
-lazy val benchmarks = (project in file("benchmarks")).
-  enablePlugins(JmhPlugin).
-  dependsOn(api % "compile->test")
+val reactivemongoShaded = Def.setting[ModuleID] {
+  "org.reactivemongo" % "reactivemongo-shaded" % (version in ThisBuild).value
+}
 
-lazy val root = (project in file(".")).
-  settings(publishSettings ++ Scapegoat.settings).
-  aggregate(api, benchmarks)
+val discipline = Def.setting[ModuleID] {
+  if (scalaVersion.value startsWith "2.10.") {
+    "org.typelevel" %% "discipline" % "0.9.0"
+  } else {
+    "org.typelevel" %% "discipline-specs2" % "0.12.0-M3"
+  }
+}
+
+val spireLaws = Def.setting[ModuleID] {
+  val sm = CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((major, minor)) => s"${major}.${minor}"
+    case _ => "x"
+  }
+
+  val ver = {
+    if (scalaVersion.value startsWith "2.10.") "0.15.0"
+    else "0.17.0-M1"
+  }
+
+  ("org.typelevel" %% "spire-laws" % ver).
+    exclude("org.typelevel", s"discipline-scalatest_${sm}"),
+}
+
+libraryDependencies in ThisBuild ++= specsDeps.map(_ % Test)
+
+lazy val api = (project in file("api")).settings(
+  commonSettings ++ Seq(
+    name := s"${baseArtifact}-api",
+    fork in Test := true,
+    libraryDependencies ++= Seq(
+      "org.specs2" %% "specs2-scalacheck" % specsVer,
+      discipline.value,
+      spireLaws.value,
+      "com.chuusai" %% "shapeless" % "2.3.3",
+      "org.slf4j" % "slf4j-simple" % "1.7.13").map(_ % Test),
+    libraryDependencies ++= Seq(reactivemongoShaded.value % Provided)
+  ))
+
+lazy val compat = (project in file("compat")).settings(
+  name := s"${baseArtifact}-compat",
+  fork in Test := true,
+  libraryDependencies ++= Seq(
+    "org.slf4j" % "slf4j-simple" % "1.7.13" % Test,
+    "org.reactivemongo" %% "reactivemongo-bson" % version.value % Provided)
+).dependsOn(api)
+
+lazy val collection = (project in file("collection")).settings(
+  commonSettings ++ Seq(
+    name := s"${baseArtifact}-collection",
+    fork in Test := true,
+    libraryDependencies ++= Seq(
+      "org.slf4j" % "slf4j-simple" % "1.7.13" % Test,
+      "org.reactivemongo" %% "reactivemongo" % version.value % Provided)
+  )).dependsOn(api, compat)
+
+lazy val benchmarks = (project in file("benchmarks")).
+  enablePlugins(JmhPlugin).settings(
+    libraryDependencies ++= Seq(reactivemongoShaded.value),
+    publish := ({}),
+    publishTo := None,
+  ).dependsOn(api % "compile->test")
+
+lazy val root = (project in file(".")).settings(
+  publish := ({}),
+  publishTo := None,
+).aggregate(api, compat, collection, benchmarks)

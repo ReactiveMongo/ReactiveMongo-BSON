@@ -1,7 +1,7 @@
-package reactivemongo.api.bson.utils
+package reactivemongo.api.bson
 
 /** Common functions */
-object Converters {
+private[reactivemongo] object Digest {
   private val HEX_CHARS: Array[Char] = "0123456789abcdef".toCharArray
 
   /** Turns an array of Byte into a String representation in hexadecimal. */
@@ -49,5 +49,4 @@ object Converters {
   /** Computes the MD5 hash of the given `bytes`. */
   def md5(bytes: Array[Byte]): Array[Byte] =
     java.security.MessageDigest.getInstance("MD5").digest(bytes)
-
 }

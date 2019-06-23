@@ -1,7 +1,16 @@
 import reactivemongo.api.bson._
 
-class TypeSpec extends org.specs2.mutable.Specification {
+import scala.util.{ Failure, Success }
+
+import reactivemongo.BSONValueFixtures
+
+final class TypeSpec extends org.specs2.mutable.Specification {
   "BSON types" title
+
+  implicit def bsonValue[T](value: T)(implicit writer: BSONWriter[T]): BSONValue = writer.writeTry(value) match {
+    case Success(bson) => bson
+    case Failure(cause) => throw cause
+  }
 
   "BSON document" should {
     "be empty" in {
@@ -13,21 +22,21 @@ class TypeSpec extends org.specs2.mutable.Specification {
     }
 
     "be created with a new element " in {
-      val doc = BSONDocument.empty :~ ("foo" -> 1)
+      val doc = BSONDocument.empty ++ ("foo" -> 1)
 
-      doc must_== BSONDocument("foo" -> 1) and (
+      doc must_=== BSONDocument("foo" -> 1) and (
         doc.contains("foo") must beTrue)
     }
 
     "remove specified elements" in {
       val doc = BSONDocument("Foo" -> 1, "Bar" -> 2, "Lorem" -> 3)
 
-      doc.remove("Bar", "Lorem") must_== BSONDocument("Foo" -> 1) and (
-        doc -- ("Foo", "Bar") must_== BSONDocument("Lorem" -> 3))
+      doc.--("Bar", "Lorem") must_=== BSONDocument("Foo" -> 1) and (
+        doc -- ("Foo", "Bar") must_=== BSONDocument("Lorem" -> 3))
     }
   }
 
-  "BSONArray" should {
+  "BSON array" should {
     "be empty" in {
       BSONArray().values must beEmpty and (
         BSONArray.empty.values must beEmpty) and (
@@ -37,22 +46,40 @@ class TypeSpec extends org.specs2.mutable.Specification {
     }
 
     "be created with a new element " in {
-      val arr = BSONArray.empty ++ ("foo", "bar")
-      arr must_== BSONArray("foo", "bar")
+      BSONArray.empty.++("foo", "bar") must_=== BSONArray("foo", "bar")
     }
 
-    "be returned with a prepended element" in {
-      BSONString("bar") +: BSONArray("foo") must_== BSONArray("bar", "foo")
+    "be returned with a added element" in {
+      BSONArray("foo").++(BSONString("bar")) must_=== BSONArray("foo", "bar")
+    }
+
+    "support optional values" in {
+      BSONArray(
+        Option.empty[String], // should be skipped
+        BSONBoolean(true),
+        BSONString("foo"),
+        None // should be skipped
+      ).values must contain(
+          exactly(BSONBoolean(true), BSONString("foo")).inOrder)
+    }
+
+    "be pretty-printed" in {
+      BSONValueFixtures.bsonArrayFixtures.headOption.
+        map(BSONArray.pretty(_)).mkString must_=== """[
+  0.0,
+  -2.0,
+  12.34
+]"""
     }
   }
 
-  "BSONBinary" should {
+  "BSON binary/blob" should {
     "be read as byte array" in {
       val bytes = Array[Byte](1, 2, 3)
       val bson = BSONBinary(bytes, Subtype.GenericBinarySubtype)
 
-      bson.byteArray aka "read #1" must_== bytes and (
-        bson.byteArray aka "read #2" must_== bytes)
+      bson.byteArray aka "read #1" must_=== bytes and (
+        bson.byteArray aka "read #2" must_=== bytes)
     }
 
     "be created from UUID" in {
@@ -64,19 +91,42 @@ class TypeSpec extends org.specs2.mutable.Specification {
 
       BSONBinary(uuid) must_=== BSONBinary(expectedBytes, Subtype.UuidSubtype)
     }
+
+    "be pretty-printed" in {
+      BSONBinary.pretty(BSONBinary(
+        Array(4, 5, 6), Subtype.GenericBinarySubtype)).
+        aka("pretty") must_=== "BinData(0, 'BAUG')"
+    }
   }
 
-  "BSONTimestamp" should {
+  "BSON object ID" should {
+    "be pretty-printed" in {
+      val oid = BSONObjectID.generate()
+
+      BSONObjectID.pretty(oid) must_=== s"ObjectId('${oid.stringify}')"
+    }
+  }
+
+  "BSON string" should {
+    "be pretty-printed" in {
+      BSONString.pretty(BSONString(
+        "foo 'bar'")) must_=== "'foo \\'bar\\''"
+    }
+  }
+
+  "BSON timestamp" should {
     "extract time and ordinal values" in {
       val ts = BSONTimestamp(6065270725701271558L)
 
-      ts.value aka "raw value" must_== 6065270725701271558L and (
-        ts.time aka "time" must_== 1412180887L) and (
-          ts.ordinal aka "ordinal" must_== 6)
+      ts.value aka "raw value" must_=== 6065270725701271558L and {
+        ts.time aka "time" must_=== 1412180887L
+      } and {
+        ts.ordinal aka "ordinal" must_=== 6
+      }
     }
 
     "be created from the time and ordinal values" in {
-      BSONTimestamp(1412180887L, 6) must_== BSONTimestamp(6065270725701271558L)
+      BSONTimestamp(1412180887L, 6) must_=== BSONTimestamp(6065270725701271558L)
     }
   }
 }

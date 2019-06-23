@@ -1,60 +1,28 @@
 package reactivemongo.api.bson
 
-// TODO: Make them not serializable
-
 import java.math.{ BigDecimal => JBigDec }
 
-import scala.util.Try
+import java.time.Instant
 
-import scala.util.{ Failure, Success }
-
-import scala.collection.immutable.ListMap
-
-import exceptions.{ DocumentKeyNotFoundException => DocumentKeyNotFound }
-
-import buffer._
-import utils.Converters
+import java.nio.ByteBuffer
 
 import scala.language.implicitConversions
 
+import scala.util.{ Failure, Success, Try }
+import scala.util.control.NonFatal
+
+import scala.collection.mutable.{ HashMap => MMap }
+import scala.collection.immutable.{ HashMap, IndexedSeq }
+
+import buffer._
+
+import exceptions.{ BSONValueNotFoundException, TypeDoesNotMatchException }
+
 sealed trait Producer[T] {
-  private[bson] def generate(): Traversable[T]
+  private[bson] def generate(): Iterable[T]
 }
 
-object Producer {
-  private[bson] def apply[T](f: => Traversable[T]): Producer[T] =
-    new Producer[T] { def generate() = f }
-
-  case class NameOptionValueProducer(
-    private val element: (String, Option[BSONValue])) extends Producer[BSONElement] {
-    private[bson] def generate() =
-      element._2.map(value => BSONElement(element._1, value))
-  }
-
-  case class OptionValueProducer(
-    private val element: Option[BSONValue]) extends Producer[BSONValue] {
-    private[bson] def generate() = element
-  }
-
-  implicit def element2Producer[E <% BSONElement](element: E): Producer[BSONElement] = {
-    val e = implicitly[BSONElement](element)
-    NameOptionValueProducer(e.name -> Some(e.value))
-  }
-
-  implicit def nameOptionValue2Producer[T](element: (String, Option[T]))(implicit writer: BSONWriter[T, _ <: BSONValue]): Producer[BSONElement] = NameOptionValueProducer(element._1 -> element._2.map(value => writer.write(value)))
-
-  implicit def noneOptionValue2Producer(element: (String, None.type)): Producer[BSONElement] = NameOptionValueProducer(element._1 -> None)
-
-  implicit def valueProducer[T](element: T)(implicit writer: BSONWriter[T, _ <: BSONValue]): Producer[BSONValue] = OptionValueProducer(Some(writer.write(element)))
-
-  implicit def optionValueProducer[T](element: Option[T])(implicit writer: BSONWriter[T, _ <: BSONValue]): Producer[BSONValue] = OptionValueProducer(element.map(writer.write(_)))
-
-  implicit val noneOptionValueProducer: None.type => Producer[BSONValue] =
-    _ => OptionValueProducer(None)
-
-}
-
-sealed trait BSONValue {
+sealed trait BSONValue { self =>
   /**
    * The code indicating the BSON type for this value
    */
@@ -63,29 +31,103 @@ sealed trait BSONValue {
   /** The number of bytes for the serialized representation */
   private[reactivemongo] def byteSize: Int
 
-  def asTry[T](implicit reader: BSONReader[T]): Try[T] = reader.readTry(this)
+  /**
+   * Tries to parse this value as a `T` one.
+   *
+   * {{{
+   * import scala.util.Try
+   * import reactivemongo.api.bson.BSONValue
+   *
+   * def foo(v: BSONValue): Try[String] = v.asTry[String]
+   * }}}
+   */
+  final def asTry[T](implicit reader: BSONReader[T]): Try[T] =
+    reader.readTry(this) // TODO: as[M[_]] ?
 
-  def asOpt[T](implicit reader: BSONReader[T]): Option[T] =
-    this.asTry(reader).toOption
+  /**
+   * Optionally parses this value as a `T` one.
+   *
+   * @return `Some` successfully parsed value, or `None` if fails
+   *
+   * {{{
+   * import scala.util.Try
+   * import reactivemongo.api.bson.BSONValue
+   *
+   * def foo(v: BSONValue): Option[String] = v.asOpt[String]
+   * }}}
+   */
+  final def asOpt[T](implicit reader: BSONReader[T]): Option[T] = try {
+    reader.readOpt(this)
+  } catch {
+    case NonFatal(_) => Option.empty[T]
+  }
 
-  def seeAsTry[T](implicit reader: BSONReader[T]): Try[T] = Try {
-    reader.readTry(this)
-  }.flatten
+  // --- Optimized/builtin conversions
 
-  def seeAsOpt[T](implicit reader: BSONReader[T]): Option[T] =
-    seeAsTry[T].toOption
+  @inline private[bson] def asBoolean: Try[Boolean] =
+    Failure(TypeDoesNotMatchException(
+      "BSONBoolean", self.getClass.getSimpleName))
+
+  @inline private[bson] def asDecimal: Try[BigDecimal] =
+    Failure(TypeDoesNotMatchException(
+      "BSONDecimal", self.getClass.getSimpleName))
+
+  @inline private[bson] def asDateTime: Try[Instant] =
+    Failure(TypeDoesNotMatchException(
+      "BSONDateTime", self.getClass.getSimpleName))
+
+  @inline private[bson] def asDouble: Try[Double] =
+    Failure(TypeDoesNotMatchException(
+      "BSONDouble", self.getClass.getSimpleName))
+
+  @inline private[bson] def asLong: Try[Long] =
+    Failure(TypeDoesNotMatchException(
+      "BSONLong", self.getClass.getSimpleName))
+
+  @inline private[bson] def asInt: Try[Int] =
+    Failure(TypeDoesNotMatchException(
+      "BSONInteger", self.getClass.getSimpleName))
+
+  @inline private[bson] def asString: Try[String] =
+    Failure(TypeDoesNotMatchException(
+      "BSONString", self.getClass.getSimpleName))
 
 }
 
-object BSONValue {
-  import scala.reflect.ClassTag
+object BSONValue extends BSONValueLowPriority1 {
+  /** Returns a String representation for the value. */
+  def pretty(value: BSONValue): String = value match {
+    case arr: BSONArray => BSONArray.pretty(arr)
 
-  /* TODO: Move in BSONValue
-  implicit class ExtendedBSONValue[B <: BSONValue](val bson: B) extends AnyVal {
+    case bin: BSONBinary => BSONBinary.pretty(bin)
+
+    case BSONBoolean(bool) => bool.toString
+
+    case time: BSONDateTime => BSONDateTime.pretty(time)
+
+    case doc: BSONDocument => BSONDocument.pretty(doc)
+
+    case BSONDouble(d) => d.toString
+
+    case BSONInteger(i) => i.toString
+
+    case l: BSONLong => BSONLong.pretty(l)
+
+    case d: BSONDecimal => BSONDecimal.pretty(d)
+
+    case s: BSONString => BSONString.pretty(s)
+
+    case id: BSONObjectID => BSONObjectID.pretty(id)
+
+    case ts: BSONTimestamp => BSONTimestamp.pretty(ts)
+
+    case BSONNull => BSONNull.pretty
+    case BSONUndefined => BSONUndefined.pretty
+    case BSONMinKey => BSONMinKey.pretty
+    case BSONMaxKey => BSONMaxKey.pretty
+
+    case _ => value.toString
   }
-   */
-
-  def narrow[T <: BSONValue](v: BSONValue)(implicit tag: ClassTag[T]): Option[T] = tag.unapply(v)
 
   /**
    * An addition operation for [[BSONValue]],
@@ -93,197 +135,274 @@ object BSONValue {
    */
   object Addition extends ((BSONValue, BSONValue) => BSONArray) {
     def apply(x: BSONValue, y: BSONValue): BSONArray = (x, y) match {
-      case (a @ BSONArray(_), b @ BSONArray(_)) => a.merge(b)
-      case (a @ BSONArray(_), _) => a.merge(y)
-      case (_, b @ BSONArray(_)) => x +: b
-      case _ => BSONArray(List(x, y))
+      case (a: BSONArray, b: BSONArray) => a ++ b
+      case (a: BSONArray, _) => a ++ y
+      case (_, b: BSONArray) => x +: b
+      case _ => new BSONArray(IndexedSeq(x, y))
     }
+  }
+
+  implicit def identityValueProducer[B <: BSONValue](value: B): Producer[BSONValue] = new SomeValueProducer(value)
+
+  // ---
+
+  protected final class SomeValueProducer(
+    private val value: BSONValue) extends Producer[BSONValue] {
+    private[bson] def generate() = Seq(value)
+  }
+}
+
+// Conversions (for BSONArray factories)
+private[bson] sealed trait BSONValueLowPriority1
+  extends BSONValueLowPriority2 { _: BSONValue.type =>
+
+  implicit def optionProducer[T](value: Option[T])(implicit writer: BSONWriter[T]): Producer[BSONValue] = value.flatMap(writer.writeOpt) match {
+    case Some(bson) => new SomeValueProducer(bson)
+    case _ => NoneValueProducer
+  }
+
+  implicit val noneProducer: None.type => Producer[BSONValue] =
+    _ => NoneValueProducer
+
+  // ---
+
+  protected object NoneValueProducer extends Producer[BSONValue] {
+    private val underlying = Seq.empty[BSONValue]
+    @inline private[bson] def generate() = underlying
+  }
+}
+
+private[bson] sealed trait BSONValueLowPriority2 {
+  _: BSONValue.type with BSONValueLowPriority1 =>
+
+  implicit def valueProducer[T](value: T)(implicit writer: BSONWriter[T]): Producer[BSONValue] = writer.writeOpt(value) match {
+    case Some(v) => new SomeValueProducer(v)
+    case _ => NoneValueProducer
   }
 }
 
 /** A BSON Double. */
-case class BSONDouble(value: Double) extends BSONValue {
+final class BSONDouble private[bson] (val value: Double) extends BSONValue {
   val code = 0x01: Byte
 
   override private[reactivemongo] val byteSize = 8
+
+  override private[bson] lazy val asDouble: Try[Double] = Success(value)
+
+  override private[bson] lazy val asDecimal: Try[BigDecimal] =
+    Try(BigDecimal exact value)
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONDouble => value.compare(other.value) == 0
+    case _ => false
+  }
+
+  override def toString: String = s"BSONDouble($value)"
 }
 
-case class BSONString(value: String) extends BSONValue {
+object BSONDouble {
+  /** Extracts the double value if `that`'s a [[BSONDouble]]. */
+  def unapply(that: Any): Option[Double] = that match {
+    case bson: BSONDouble => Some(bson.value)
+    case _ => None
+  }
+
+  /** Returns a [[BSONDouble]] */
+  @inline def apply(value: Double): BSONDouble = new BSONDouble(value)
+}
+
+final class BSONString private[bson] (val value: String) extends BSONValue {
   val code = 0x02: Byte
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
+
+  override private[reactivemongo] lazy val asString: Try[String] =
+    Success(value)
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONString => value == other.value
+    case _ => false
+  }
+
+  override def toString: String = s"BSONString($value)"
+}
+
+object BSONString {
+  /** Extracts the string value if `that`'s a [[BSONString]]. */
+  def unapply(that: Any): Option[String] = that match {
+    case bson: BSONString => Some(bson.value)
+    case _ => None
+  }
+
+  /** Returns a [[BSONString]] */
+  @inline def apply(value: String): BSONString = new BSONString(value)
+
+  /** Returns the plain string representation for the given [[BSONString]]. */
+  @inline def pretty(str: BSONString): String =
+    s"""'${str.value.replaceAll("\'", "\\\\'")}'"""
 }
 
 /**
  * A `BSONArray` structure (BSON type `0x04`).
  *
- * A `BSONArray` is a straightforward `BSONDocument` where keys are a sequence of positive integers.
+ * A `BSONArray` is a indexed sequence of [[BSONValue]].
  *
- * A `BSONArray` is basically a stream of tuples `(String, BSONValue)` where the first member is a string representation of an index.
- * It is completely lazy. The stream it wraps is a `Stream[Try[(String, BSONValue)]]` since
- * we cannot be sure that a not yet deserialized value will be processed without error.
+ * @define indexParam the index to be found in the array
  */
-case class BSONArray(
-  // TODO: Refactor internal representation of values
-  stream: Stream[Try[BSONValue]])
-  extends BSONValue with BSONElementSet {
+final class BSONArray private[bson] (
+  val values: IndexedSeq[BSONValue]) extends BSONValue {
 
   val code = 0x04: Byte
 
-  type SetType = BSONArray
-
   /**
    * Returns the [[BSONValue]] at the given `index`.
    *
-   * If there is no such `index` or the matching value cannot be deserialized, returns `None`.
+   * If there is no such `index`, or if the matching value
+   * cannot be deserialized returns `None`.
+   *
+   * @param index $indexParam
    */
-  def get(index: Int): Option[BSONValue] = getTry(index).toOption
+  def get(index: Int): Option[BSONValue] = values.lift(index)
 
-  /**
-   * Returns the [[BSONValue]] matching the given `name`,
-   * provided it is a valid string representation of a valid index.
-   */
-  def get(name: String): Option[BSONValue] = get(name.toInt)
+  /** The first/mandatory value, if any */
+  def headOption: Option[BSONValue] = values.headOption
 
-  /** Returns true if the given `name` corresponds to a valid index. */
-  def contains(name: String): Boolean = get(name).isDefined
+  /** Returns a BSON array with the given value prepended. */
+  def +:(value: BSONValue): BSONArray = new BSONArray(value +: values)
 
-  def headOption: Option[BSONElement] = stream.collectFirst {
-    case Success(v) => BSONElement("0", v)
+  /** Returns a BSON array with the values of the given one appended. */
+  def ++(arr: BSONArray): BSONArray = new BSONArray(values ++ arr.values)
+
+  /** Returns a BSON array with the given values appended. */
+  def ++(values: BSONValue*): BSONArray = {
+    val vs = IndexedSeq.newBuilder[BSONValue]
+
+    values.foreach { vs += _ }
+
+    new BSONArray(this.values ++ vs.result())
   }
 
-  /**
-   * Returns the [[BSONValue]] at the given `index`.
-   *
-   * If there is no such `index` or the matching value cannot be deserialized, returns a `Failure`.
-   * The `Failure` holds a [[exceptions.DocumentKeyNotFound]] if the key could not be found.
-   */
-  def getTry(index: Int): Try[BSONValue] = stream.drop(index).headOption.
-    getOrElse(Failure(DocumentKeyNotFound(index.toString)))
+  /** The number of values */
+  @inline def size = values.size
+
+  /** Indicates whether this array is empty */
+  @inline def isEmpty: Boolean = values.isEmpty
 
   /**
-   * Returns the [[BSONValue]] at the given `index`.
+   * Returns the [[BSONValue]] at the given `index`,
+   * and converts it with the given implicit [[BSONReader]].
    *
-   * If there is no such `index`, the resulting option will be `None`.
-   * If the matching value could not be deserialized, returns a `Failure`.
-   */
-  def getUnflattenedTry(index: Int): Try[Option[BSONValue]] = getTry(index) match {
-    case Failure(_: DocumentKeyNotFound) => Success(None)
-    case Failure(e) => Failure(e)
-    case Success(e) => Success(Some(e))
-  }
-
-  /**
-   * Gets the [[BSONValue]] at the given `index`, and converts it with the given implicit [[BSONReader]].
+   * If there is no matching value, or the value could not be deserialized,
+   * or converted, returns a `None`.
    *
-   * If there is no matching value, or the value could not be deserialized or converted, returns a `None`.
+   * @param index $indexParam
    */
-  @SuppressWarnings(Array("AsInstanceOf")) // TODO: Review
-  def getAs[T](index: Int)(implicit reader: BSONReader[T]): Option[T] = {
-    getTry(index).toOption.flatMap { element =>
-      Try(reader.read(element)).toOption
+  def getAsOpt[T](index: Int)(implicit reader: BSONReader[T]): Option[T] =
+    get(index).flatMap {
+      case BSONNull => Option.empty[T]
+      case value => reader.readOpt(value)
     }
-  }
 
   /**
    * Gets the [[BSONValue]] at the given `index`,
    * and converts it with the given implicit [[BSONReader]].
    *
-   * If there is no matching value, or the value could not be deserialized or converted, returns a `Failure`.
-   * The `Failure` holds a [[exceptions.DocumentKeyNotFound]] if the key could not be found.
+   * If there is no matching value, or the value could not be deserialized,
+   * or converted, returns a `Failure`.
+   *
+   * The `Failure` holds a [[exceptions.BSONValueNotFoundException]]
+   * if the index could not be found.
+   *
+   * @param index $indexParam
    */
-  @SuppressWarnings(Array("AsInstanceOf")) // TODO: Review
-  def getAsTry[T](index: Int)(implicit reader: BSONReader[T]): Try[T] = {
-    getTry(index).flatMap { element =>
-      Try(reader.asInstanceOf[BSONReader[T]].read(element))
+  def getAsTry[T](index: Int)(implicit reader: BSONReader[T]): Try[T] =
+    get(index) match {
+      case None | Some(BSONNull) =>
+        Failure(BSONValueNotFoundException(index, this))
+
+      case Some(v) => reader.readTry(v)
     }
-  }
 
   /**
    * Gets the [[BSONValue]] at the given `index`,
    * and converts it with the given implicit [[BSONReader]].
    *
-   * If there is no matching value, returns a `Success` holding `None`.
-   * If the value could not be deserialized or converted, returns a `Failure`.
+   * If there is no matching value, `Success(None)` is returned.
+   * If there is a value, it must be valid or a `Failure` is returned.
+   *
+   * @param index $indexParam
    */
-  def getAsUnflattenedTry[T](index: Int)(implicit reader: BSONReader[T]): Try[Option[T]] = getAsTry(index)(reader) match {
-    case Failure(_: DocumentKeyNotFound) => Success(None)
-    case Failure(e) => Failure(e)
-    case Success(e) => Success(Some(e))
+  def getAsUnflattendTry[T](index: Int)(
+    implicit
+    reader: BSONReader[T]): Try[Option[T]] = get(index) match {
+    case None | Some(BSONNull) =>
+      Success(Option.empty[T])
+
+    case Some(v) => reader.readTry(v).map(Some(_))
   }
 
-  /** Creates a new [[BSONArray]] containing all the elements of this one and the elements of the given document. */
-  def merge(doc: BSONArray): BSONArray = new BSONArray(stream ++ doc.stream)
+  private[bson] def copy(values: IndexedSeq[BSONValue] = this.values): BSONArray = new BSONArray(values)
 
-  /** Creates a new [[BSONArray]] containing all the elements of this one and the given `elements`. */
-  def merge(values: Producer[BSONValue]*): BSONArray =
-    new BSONArray(stream ++ values.flatMap { v =>
-      v.generate().map(value => Try(value))
-    }.toStream)
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONArray => {
+      if (values == other.values) true
+      else values.sortBy(_.hashCode) == other.values.sortBy(_.hashCode)
+    }
 
-  /** Returns a [[BSONArray]] with the given value prepended to its elements. */
-  def prepend(value: Producer[BSONValue]): BSONArray =
-    new BSONArray(value.generate().map(Try(_)) ++: stream)
+    case _ => false
+  }
 
-  /** Alias for [[BSONArray.prepend]] */
-  def +:(value: Producer[BSONValue]): BSONArray = prepend(value)
-
-  /** Alias for the corresponding `merge` */
-  @inline def ++(array: BSONArray): BSONArray = merge(array)
-
-  /** Alias for `add` */
-  def ++(values: Producer[BSONValue]*): BSONArray = merge(values: _*)
-
-  @inline private def values(elements: Producer[BSONElement]) =
-    Producer[BSONValue](elements.generate().map(_.value))
-
-  /**
-   * The name of the produced elements are ignored,
-   * instead the indexes are used.
-   */
-  def :~(elements: Producer[BSONElement]*): BSONArray =
-    this ++ (elements.map(values(_)): _*)
-
-  def ~:(elements: Producer[BSONElement]): BSONArray =
-    BSONArray(values(elements)) ++ this
-
-  @inline def size = stream.size
-
-  @inline def isEmpty: Boolean = stream.isEmpty
+  override def hashCode: Int = values.hashCode
 
   override def toString: String = s"BSONArray(<${if (isEmpty) "empty" else "non-empty"}>)"
 
-  def elements: List[BSONElement] = stream.zipWithIndex.collect {
-    case (Success(v), index) => BSONElement(index.toString, v)
-  }.toList
-
-  private[bson] def generate() = elements
-
-  def values: Stream[BSONValue] = stream.collect {
-    case Success(v) => v
-  }
+  private[reactivemongo] lazy val byteSize: Int =
+    values.zipWithIndex.foldLeft(5) {
+      case (sz, (v, i)) =>
+        sz + 2 + i.toString.getBytes.size + v.byteSize
+    }
 }
 
 object BSONArray {
-  // TODO: newBuilder as for Seq
+  /** Extracts the values sequence if `that`'s a [[BSONArray]]. */
+  @inline def unapply(that: Any): Option[IndexedSeq[BSONValue]] = that match {
+    case array: BSONArray => Some(array.values)
+    case _ => None
+  }
 
-  /** Creates a new [[BSONArray]] containing all the given `elements`. */
-  def apply(elements: Producer[BSONValue]*): BSONArray =
-    new BSONArray(elements.flatMap {
-      _.generate().map(value => Try(value))
-    }.toStream)
+  /** Creates a new [[BSONArray]] containing all the given `values`. */
+  def apply(values: Producer[BSONValue]*): BSONArray = {
+    val vs = IndexedSeq.newBuilder[BSONValue]
 
-  /** Creates a new [[BSONArray]] containing all the `elements` in the given `Traversable`. */
-  def apply(elements: Traversable[BSONValue]): BSONArray = {
-    new BSONArray(elements.toStream.map(Try(_)))
+    values.foreach {
+      vs ++= _.generate()
+    }
+
+    new BSONArray(vs.result())
+  }
+
+  /**
+   * Creates a new [[BSONArray]] containing all the `values`
+   * in the given `Iterable`.
+   */
+  def apply(values: Iterable[BSONValue]): BSONArray = {
+    val vs = IndexedSeq.newBuilder[BSONValue]
+
+    values.foreach { vs += _ }
+
+    new BSONArray(vs.result())
   }
 
   /** Returns a String representing the given [[BSONArray]]. */
-  def pretty(array: BSONArray) =
-    BSONIterator.pretty(array.elements.map(Try(_)).iterator)
+  def pretty(array: BSONArray): String =
+    s"[\n${BSONIterator.pretty(0, array.values)}\n]"
 
   /** An empty BSONArray. */
-  val empty: BSONArray = BSONArray()
+  val empty: BSONArray = new BSONArray(IndexedSeq.empty[BSONValue])
 }
 
 /**
@@ -292,8 +411,9 @@ object BSONArray {
  * @param value The binary content.
  * @param subtype The type of the binary content.
  */
-case class BSONBinary(value: ReadableBuffer, subtype: Subtype)
-  extends BSONValue {
+final class BSONBinary private[bson] (
+  private[bson] val value: ReadableBuffer,
+  val subtype: Subtype) extends BSONValue {
 
   val code = 0x05: Byte
 
@@ -305,28 +425,71 @@ case class BSONBinary(value: ReadableBuffer, subtype: Subtype)
       value.readable
   }
 
+  override lazy val hashCode: Int = {
+    import scala.util.hashing.MurmurHash3
+
+    val nh = MurmurHash3.mix(MurmurHash3.productSeed, subtype.##)
+
+    MurmurHash3.mixLast(nh, value.hashCode)
+  }
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONBinary =>
+      (subtype == other.subtype &&
+        (value == other.value ||
+          // compare content ignoring indexes
+          value.duplicate().equals(other.value.duplicate())))
+
+    case _ => false
+  }
+
   override lazy val toString: String =
     s"BSONBinary(${subtype}, size = ${value.readable})"
 }
 
 object BSONBinary {
-  def apply(value: Array[Byte], subtype: Subtype): BSONBinary =
-    BSONBinary(ArrayReadableBuffer(value), subtype)
+  /** Extracts the [[Subtype]] if `that`'s a [[BSONBinary]]. */
+  def unapply(that: Any): Option[Subtype] = that match {
+    case other: BSONBinary => Some(other.subtype)
+    case _ => None
+  }
 
+  /** Creates a [[BSONBinary]] with given `value` and [[Subtype]]. */
+  def apply(value: Array[Byte], subtype: Subtype): BSONBinary =
+    new BSONBinary(ReadableBuffer(value), subtype)
+
+  /**
+   * Creates a [[BSONBinary]] from the given UUID
+   * (with [[Subtype.UuidSubtype]]).
+   */
   def apply(id: java.util.UUID): BSONBinary = {
-    val buf = java.nio.ByteBuffer.wrap(Array.ofDim[Byte](16))
+    val bytes = Array.ofDim[Byte](16)
+    val buf = ByteBuffer.wrap(bytes)
 
     buf putLong id.getMostSignificantBits
     buf putLong id.getLeastSignificantBits
 
-    BSONBinary(buf.array, Subtype.UuidSubtype)
+    BSONBinary(bytes, Subtype.UuidSubtype)
+  }
+
+  /** Returns a string representation of the given [[BSONBinary]]. */
+  def pretty(bin: BSONBinary): String = {
+    val b64 = java.util.Base64.getEncoder.encodeToString(bin.byteArray)
+
+    s"BinData(${bin.subtype.value}, '${b64}')"
   }
 }
 
 /** BSON Undefined value */
-case object BSONUndefined extends BSONValue {
+sealed trait BSONUndefined extends BSONValue {
   val code = 0x06: Byte
   override private[reactivemongo] val byteSize = 0
+
+  override def toString: String = "BSONUndefined"
+}
+
+object BSONUndefined extends BSONUndefined {
+  val pretty = "undefined"
 }
 
 /**
@@ -337,50 +500,49 @@ case object BSONUndefined extends BSONValue {
  * +        (4 bytes)       +        (3 bytes)       +        (2 bytes)       +        (3 bytes)       +
  * +------------------------+------------------------+------------------------+------------------------+
  */
-@SerialVersionUID(239421902L)
-class BSONObjectID private[bson] (private val raw: Array[Byte])
-  extends BSONValue with Serializable with Equals {
+sealed abstract class BSONObjectID extends BSONValue {
+  import java.util.Arrays
 
   val code = 0x07: Byte
 
-  import java.util.Arrays
-  import java.nio.ByteBuffer
+  protected val raw: Array[Byte]
+
+  /** The time of this BSONObjectId, in seconds */
+  def timeSecond: Int
+
+  /** The time of this BSONObjectId, in milliseconds */
+  @inline final def time: Long = timeSecond * 1000L
+
+  @inline override private[reactivemongo] val byteSize = 12
+
+  /** Returns the whole binary content as array. */
+  final def byteArray: Array[Byte] = Arrays.copyOf(raw, byteSize)
 
   /** ObjectId hexadecimal String representation */
-  lazy val stringify = Converters.hex2Str(raw)
+  lazy val stringify = Digest.hex2Str(raw)
 
-  override def toString = s"""BSONObjectID("${stringify}")"""
-
-  @SuppressWarnings(Array("IsInstanceOf"))
-  override def canEqual(that: Any): Boolean = that.isInstanceOf[BSONObjectID]
+  override def toString = s"BSONObjectID($stringify)"
 
   override def equals(that: Any): Boolean = that match {
-    case BSONObjectID(other) => Arrays.equals(raw, other)
+    case BSONObjectID(other) =>
+      Arrays.equals(raw, other)
+
     case _ => false
   }
 
   override lazy val hashCode: Int = Arrays.hashCode(raw)
-
-  /** The time of this BSONObjectId, in milliseconds */
-  def time: Long = this.timeSecond * 1000L
-
-  /** The time of this BSONObjectId, in seconds */
-  def timeSecond: Int = ByteBuffer.wrap(raw.take(4)).getInt
-
-  def valueAsArray = Arrays.copyOf(raw, 12)
-
-  @inline override private[reactivemongo] def byteSize = raw.size
 }
 
 object BSONObjectID {
   private val maxCounterValue = 16777216
-  private val increment = new java.util.concurrent.atomic.AtomicInteger(scala.util.Random.nextInt(maxCounterValue))
+  private val increment = new java.util.concurrent.atomic.AtomicInteger(
+    scala.util.Random nextInt maxCounterValue)
 
-  private def counter = (increment.getAndIncrement + maxCounterValue) % maxCounterValue
+  private def counter: Int = (increment.getAndIncrement + maxCounterValue) % maxCounterValue
 
   /**
-   * The following implemtation of machineId work around openjdk limitations in
-   * version 6 and 7
+   * The following implementation of machineId works around
+   * openjdk limitations in versions 6 and 7.
    *
    * Openjdk fails to parse /proc/net/if_inet6 correctly to determine macaddress
    * resulting in SocketException thrown.
@@ -395,50 +557,77 @@ object BSONObjectID {
    * and fix in openjdk8:
    * - http://hg.openjdk.java.net/jdk8/tl/jdk/rev/b1814b3ea6d3
    */
-  private val machineId = {
-    import java.net._
+  private val machineId: Array[Byte] = {
+    import java.net.{ InetAddress, NetworkInterface, NetPermission }
+
     def p(n: String) = System.getProperty(n)
-    val validPlatform = Try {
+
+    val validPlatform = try {
       val correctVersion = p("java.version").substring(0, 3).toFloat >= 1.8
       val noIpv6 = p("java.net.preferIPv4Stack").toBoolean == true
       val isLinux = p("os.name") == "Linux"
 
       !isLinux || correctVersion || noIpv6
-    }.getOrElse(false)
+    } catch {
+      case NonFatal(_) => false
+    }
 
     // Check java policies
-    val permitted = {
-      val sec = System.getSecurityManager();
-      Try { sec.checkPermission(new NetPermission("getNetworkInformation")) }.toOption.map(_ => true).getOrElse(false);
+    val permitted = try {
+      System.getSecurityManager().
+        checkPermission(new NetPermission("getNetworkInformation"))
+
+      true
+    } catch {
+      case NonFatal(_) => false
     }
 
     if (validPlatform && permitted) {
-      val networkInterfacesEnum = NetworkInterface.getNetworkInterfaces
-      val networkInterfaces = scala.collection.JavaConverters.enumerationAsScalaIteratorConverter(networkInterfacesEnum).asScala
-      val ha = networkInterfaces.find(ha => Try(ha.getHardwareAddress).isSuccess && ha.getHardwareAddress != null && ha.getHardwareAddress.length == 6)
-        .map(_.getHardwareAddress)
-        .getOrElse(InetAddress.getLocalHost.getHostName.getBytes("UTF-8"))
-      Converters.md5(ha).take(3)
+      @annotation.tailrec
+      def resolveAddr(ifaces: java.util.Enumeration[NetworkInterface]): Array[Byte] = {
+        if (ifaces.hasMoreElements) {
+          val hwAddr: Array[Byte] = try {
+            ifaces.nextElement().getHardwareAddress()
+          } catch {
+            case NonFatal(_) => null
+          }
+
+          if (hwAddr != null && hwAddr.length == 6) {
+            hwAddr
+          } else {
+            resolveAddr(ifaces)
+          }
+        } else {
+          // Fallback:
+          InetAddress.getLocalHost.getHostName.getBytes("UTF-8")
+        }
+      }
+
+      val ha = resolveAddr(NetworkInterface.getNetworkInterfaces())
+
+      Digest.md5(ha).take(3)
     } else {
       val threadId = Thread.currentThread.getId.toInt
-      val arr = new Array[Byte](3)
 
-      arr(0) = (threadId & 0xFF).toByte
-      arr(1) = (threadId >> 8 & 0xFF).toByte
-      arr(2) = (threadId >> 16 & 0xFF).toByte
+      Array[Byte](
+        (threadId & 0xFF).toByte,
+        (threadId >> 8 & 0xFF).toByte,
+        (threadId >> 16 & 0xFF).toByte)
 
-      arr
     }
   }
 
-  // Extractor
-  def unapply(id: BSONObjectID): Option[Array[Byte]] = Some(id.valueAsArray)
+  /** Extracts the bytes if `that`'s a [[BSONObjectID]]. */
+  def unapply(that: Any): Option[Array[Byte]] = that match {
+    case id: BSONObjectID => Some(id.byteArray)
+    case _ => None
+  }
 
   /** Tries to make a BSON ObjectId from a hexadecimal string representation. */
   def parse(id: String): Try[BSONObjectID] = {
     if (id.length != 24) Failure[BSONObjectID](
       new IllegalArgumentException(s"Wrong ObjectId (length != 24): '$id'"))
-    else Try(new BSONObjectID(Converters str2Hex id))
+    else parse(Digest str2Hex id)
   }
 
   /** Tries to make a BSON ObjectId from a binary representation. */
@@ -446,11 +635,21 @@ object BSONObjectID {
     if (bytes.length != 12) {
       Failure[BSONObjectID](new IllegalArgumentException(
         s"Wrong ObjectId: length(${bytes.length}) != 12"))
-    } else Try(new BSONObjectID(bytes))
+
+    } else Try {
+      bytes(0) << 24 | (bytes(1) << 0xFF) << 16 | (
+        bytes(2) & 0xFF) << 8 | (bytes(3) & 0xFF)
+
+    }.map { timeSec =>
+      new BSONObjectID {
+        val timeSecond = timeSec
+        val raw = bytes
+      }
+    }
   }
 
   /**
-   * Generates a new BSON ObjectID using the current time.
+   * Generates a new BSON ObjectID using the current time as seed.
    *
    * @see [[fromTime]]
    */
@@ -459,22 +658,26 @@ object BSONObjectID {
   /**
    * Generates a new BSON ObjectID from the given timestamp in milliseconds.
    *
-   * The included timestamp is the number of seconds since epoch, so a BSONObjectID time part has only
-   * a precision up to the second. To get a reasonably unique ID, you _must_ set `onlyTimestamp` to false.
+   * The included timestamp is the number of seconds since epoch,
+   * so a [[BSONObjectID]] time part has only a precision up to the second.
    *
-   * Crafting a BSONObjectID from a timestamp with `fillOnlyTimestamp` set to true is helpful for range queries,
-   * eg if you want of find documents an _id field which timestamp part is greater than or lesser than
-   * the one of another id.
+   * To get a reasonably unique ID, you _must_ set `onlyTimestamp` to false.
    *
-   * If you do not intend to use the produced BSONObjectID for range queries, then you'd rather use
-   * the `generate` method instead.
+   * Crafting an ID from a timestamp with `fillOnlyTimestamp` set to true
+   * is helpful for range queries; e.g if you want of find documents an `_id`
+   * field which timestamp part is greater than or lesser
+   * than the one of another id.
    *
-   * @param fillOnlyTimestamp if true, the returned BSONObjectID will only have the timestamp bytes set; the other will be set to zero.
+   * If you do not intend to use the produced [[BSONObjectID]]
+   * for range queries, then you'd rather use the `generate` method instead.
+   *
+   * @param fillOnlyTimestamp if true, the returned BSONObjectID
+   * will only have the timestamp bytes set; the other will be set to zero.
    */
-  def fromTime(timeMillis: Long, fillOnlyTimestamp: Boolean = true): BSONObjectID = {
+  def fromTime(timeMillis: Long, fillOnlyTimestamp: Boolean = false): BSONObjectID = {
     // n of seconds since epoch. Big endian
     val timestamp = (timeMillis / 1000).toInt
-    val id = new Array[Byte](12)
+    val id = Array.ofDim[Byte](12)
 
     id(0) = (timestamp >>> 24).toByte
     id(1) = (timestamp >> 16 & 0xFF).toByte
@@ -499,41 +702,142 @@ object BSONObjectID {
       id(11) = (c & 0xFF).toByte
     }
 
-    new BSONObjectID(id)
+    new BSONObjectID {
+      val raw = id
+      val timeSecond = timestamp
+    }
   }
+
+  /** Returns the string representation for the given [[BSONObjectID]]. */
+  @inline def pretty(oid: BSONObjectID): String =
+    s"ObjectId('${oid.stringify}')"
 }
 
 /** BSON boolean value */
-case class BSONBoolean(value: Boolean)
-  extends BSONValue {
+final class BSONBoolean private[bson] (val value: Boolean) extends BSONValue {
   val code = 0x08: Byte
   override private[reactivemongo] val byteSize = 1
+
+  override lazy val asBoolean: Try[Boolean] = Success(value)
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONBoolean => value == other.value
+    case _ => false
+  }
+
+  override def toString: String = s"BSONBoolean($value)"
+}
+
+object BSONBoolean {
+  /** Extracts the boolean value if `that`'s a [[BSONBoolean]]. */
+  def unapply(that: Any): Option[Boolean] = that match {
+    case bson: BSONBoolean => Some(bson.value)
+    case _ => None
+  }
+
+  /** Returns a [[BSONBoolean]] */
+  @inline def apply(value: Boolean): BSONBoolean = new BSONBoolean(value)
 }
 
 /** BSON date time value */
-case class BSONDateTime(value: Long)
-  extends BSONValue {
+final class BSONDateTime private[bson] (val value: Long) extends BSONValue {
   val code = 0x09: Byte
+
+  override private[bson] lazy val asDecimal: Try[BigDecimal] =
+    Success(BigDecimal(value))
+
+  override private[bson] lazy val asLong: Try[Long] = Success(value)
+
+  override private[bson] lazy val asDateTime: Try[Instant] =
+    Success(Instant ofEpochMilli value)
+
   override private[reactivemongo] val byteSize = 8
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONDateTime => value == other.value
+    case _ => false
+  }
+
+  override def toString: String = s"BSONDateTime($value)"
+}
+
+object BSONDateTime {
+  /** Extracts the dateTime value if `that`'s a [[BSONDateTime]]. */
+  def unapply(that: Any): Option[Long] = that match {
+    case bson: BSONDateTime => Some(bson.value)
+    case _ => None
+  }
+
+  /**
+   * Returns a [[BSONDateTime]].
+   *
+   * @param value the date/time value
+   */
+  @inline def apply(value: Long): BSONDateTime = new BSONDateTime(value)
+
+  /** Returns a string representation for the given [[BSONDateTime]]. */
+  @inline def pretty(time: BSONDateTime): String =
+    s"ISODate('${java.time.Instant ofEpochMilli time.value}')"
 }
 
 /** BSON null value */
-case object BSONNull extends BSONValue {
+sealed trait BSONNull extends BSONValue {
   val code = 0x0A: Byte
   override private[reactivemongo] val byteSize = 0
+
+  override def toString: String = "BSONNull"
+}
+
+object BSONNull extends BSONNull {
+  val pretty = "null"
 }
 
 /**
  * BSON Regex value.
  *
- * @param flags Regex flags.
+ * @param value the regex value (expression)
+ * @param flags the regex flags
  */
-case class BSONRegex(value: String, flags: String)
+final class BSONRegex private[bson] (
+  val value: String, val flags: String)
   extends BSONValue {
   val code = 0x0B: Byte
 
   override private[reactivemongo] lazy val byteSize =
     2 + value.getBytes.size + flags.getBytes.size
+
+  override lazy val hashCode: Int = {
+    import scala.util.hashing.MurmurHash3
+
+    val nh = MurmurHash3.mix(MurmurHash3.productSeed, value.##)
+
+    MurmurHash3.mixLast(nh, flags.hashCode)
+  }
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONRegex =>
+      (value == other.value && flags == other.flags)
+
+    case _ => false
+  }
+
+  override def toString: String = s"BSONRegex($value, $flags)"
+}
+
+object BSONRegex {
+  /** Extracts the regex value and flags if `that`'s a [[BSONRegex]]. */
+  def unapply(that: Any): Option[(String, String)] = that match {
+    case regex: BSONRegex => Some(regex.value -> regex.flags)
+    case _ => None
+  }
+
+  /** Returns a [[BSONRegex]] */
+  @inline def apply(value: String, flags: String): BSONRegex =
+    new BSONRegex(value, flags)
 }
 
 /**
@@ -541,39 +845,137 @@ case class BSONRegex(value: String, flags: String)
  *
  * @param value The JavaScript source code.
  */
-case class BSONJavaScript(value: String) extends BSONValue {
+final class BSONJavaScript private[bson] (val value: String) extends BSONValue {
   val code = 0x0D: Byte
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
+
+  override private[reactivemongo] lazy val asString: Try[String] =
+    Success(value)
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONJavaScript => value == other.value
+    case _ => false
+  }
+
+  override def toString: String = s"BSONJavaScript($value)"
 }
 
-/** BSON Symbol value. */
-case class BSONSymbol(value: String) extends BSONValue {
+object BSONJavaScript {
+  /** Extracts the javaScript value if `that`'s a [[BSONJavaScript]]. */
+  def unapply(that: Any): Option[String] = that match {
+    case bson: BSONJavaScript => Some(bson.value)
+    case _ => None
+  }
+
+  /** Returns a [[BSONJavaScript]] */
+  @inline def apply(value: String): BSONJavaScript = new BSONJavaScript(value)
+}
+
+/**
+ * BSON Symbol value.
+ *
+ * @param value the symbol value (name)
+ */
+final class BSONSymbol private[bson] (val value: String) extends BSONValue {
   val code = 0x0E: Byte
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
+
+  override private[reactivemongo] lazy val asString: Try[String] =
+    Success(value)
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONSymbol => value == other.value
+    case _ => false
+  }
+
+  override def toString: String = s"BSONSymbol($value)"
+}
+
+object BSONSymbol {
+  /** Extracts the symbol value if `that`'s a [[BSONSymbol]]. */
+  def unapply(that: Any): Option[String] = that match {
+    case sym: BSONSymbol => Some(sym.value)
+    case _ => None
+  }
+
+  /** Returns a [[BSONSymbol]] */
+  @inline def apply(value: String): BSONSymbol = new BSONSymbol(value)
 }
 
 /**
  * BSON JavaScript value with scope (WS).
  *
- * @param value The JavaScript source code. TODO
+ * @param value The JavaScript source code.
  */
-case class BSONJavaScriptWS(value: String)
+final class BSONJavaScriptWS private[bson] (val value: String)
   extends BSONValue {
   val code = 0x0F: Byte
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
+
+  override private[reactivemongo] lazy val asString: Try[String] =
+    Success(value)
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONJavaScriptWS => value == other.value
+    case _ => false
+  }
+
+  override def toString: String = s"BSONJavaScriptWS($value)"
+}
+
+object BSONJavaScriptWS {
+  /** Extracts the javaScriptWS value if `that`'s a [[BSONJavaScriptWS]]. */
+  def unapply(that: Any): Option[String] = that match {
+    case js: BSONJavaScriptWS => Some(js.value)
+    case _ => None
+  }
+
+  /** Returns a [[BSONJavaScriptWS]] */
+  @inline def apply(value: String): BSONJavaScriptWS =
+    new BSONJavaScriptWS(value)
 }
 
 /** BSON Integer value */
-case class BSONInteger(value: Int) extends BSONValue {
+final class BSONInteger private[bson] (val value: Int) extends BSONValue {
   val code = 0x10: Byte
   override private[reactivemongo] val byteSize = 4
+
+  override lazy val asInt: Try[Int] = Success(value)
+
+  override lazy val asDecimal: Try[BigDecimal] = Success(BigDecimal(value))
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONInteger => value == other.value
+    case _ => false
+  }
+
+  override def toString: String = s"BSONInteger($value)"
+}
+
+object BSONInteger {
+  /** Extracts the integer value if `that`'s a [[BSONInteger]]. */
+  def unapply(that: Any): Option[Int] = that match {
+    case i: BSONInteger => Some(i.value)
+    case _ => None
+  }
+
+  /** Returns a [[BSONInteger]] */
+  @inline def apply(value: Int): BSONInteger = new BSONInteger(value)
 }
 
 /** BSON Timestamp value */
-case class BSONTimestamp(value: Long) extends BSONValue {
+final class BSONTimestamp private[bson] (val value: Long) extends BSONValue {
   val code = 0x11: Byte
 
   /** Seconds since the Unix epoch */
@@ -582,11 +984,34 @@ case class BSONTimestamp(value: Long) extends BSONValue {
   /** Ordinal (with the second) */
   val ordinal = value.toInt
 
+  override private[bson] lazy val asLong: Try[Long] = Success(value)
+
+  override private[bson] lazy val asDateTime: Try[Instant] =
+    Success(Instant ofEpochMilli value)
+
   override private[reactivemongo] val byteSize = 8
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONTimestamp => value == other.value
+    case _ => false
+  }
+
+  override def toString: String = s"BSONTimestamp($value)"
 }
 
 /** Timestamp companion */
 object BSONTimestamp {
+  /** Extracts the timestamp value if `that`'s a [[BSONTimestamp]]. */
+  def unapply(that: Any): Option[Long] = that match {
+    case ts: BSONTimestamp => Some(ts.value)
+    case _ => None
+  }
+
+  /** Returns a [[BSONTimestamp]] */
+  @inline def apply(value: Long): BSONTimestamp = new BSONTimestamp(value)
+
   /**
    * Returns the timestamp corresponding to the given `time` and `ordinal`.
    *
@@ -595,12 +1020,45 @@ object BSONTimestamp {
    */
   def apply(time: Long, ordinal: Int): BSONTimestamp =
     BSONTimestamp((time << 32) ^ ordinal)
+
+  /** Returns the string representation for the given [[BSONTimestamp]]. */
+  @inline def pretty(ts: BSONTimestamp): String =
+    s"Timestamp(${ts.time}, ${ts.ordinal})"
 }
 
 /** BSON Long value */
-case class BSONLong(value: Long) extends BSONValue {
+final class BSONLong private[bson] (val value: Long) extends BSONValue {
   val code = 0x12: Byte
+
+  override private[bson] lazy val asLong: Try[Long] = Success(value)
+
+  override private[bson] lazy val asDecimal: Try[BigDecimal] =
+    Success(BigDecimal(value))
+
   override private[reactivemongo] val byteSize = 8
+
+  override def hashCode: Int = value.hashCode
+
+  override def equals(that: Any): Boolean = that match {
+    case other: BSONLong => value == other.value
+    case _ => false
+  }
+
+  override def toString: String = s"BSONLong($value)"
+}
+
+object BSONLong {
+  /** Extracts the value if `that`'s a [[BSONLong]]. */
+  def unapply(that: Any): Option[Long] = that match {
+    case bson: BSONLong => Some(bson.value)
+    case _ => None
+  }
+
+  /** Returns a [[BSONLong]] */
+  @inline def apply(value: Long): BSONLong = new BSONLong(value)
+
+  /** Returns the string representation for the given [[BSONLong]]. */
+  @inline def pretty(long: BSONLong): String = s"NumberLong(${long.value})"
 }
 
 /**
@@ -609,11 +1067,14 @@ case class BSONLong(value: Long) extends BSONValue {
  * @param high the high-order 64 bits
  * @param low the low-order 64 bits
  */
-@SerialVersionUID(1667418254L)
-final class BSONDecimal(val high: Long, val low: Long)
-  extends BSONValue with Product2[Long, Long] {
+final class BSONDecimal private[bson] (
+  val high: Long,
+  val low: Long) extends BSONValue {
 
   val code = 0x13: Byte
+
+  override private[bson] lazy val asDecimal: Try[BigDecimal] =
+    BSONDecimal.toBigDecimal(this)
 
   /** Returns true if is negative. */
   lazy val isNegative: Boolean =
@@ -635,14 +1096,6 @@ final class BSONDecimal(val high: Long, val low: Long)
    * Returns the [[https://github.com/mongodb/specifications/blob/master/source/bson-decimal128/decimal128.rst#to-string-representation string representation]].
    */
   override def toString: String = Decimal128.toString(this)
-
-  @inline def _1 = high
-  @inline def _2 = low
-
-  def canEqual(that: Any): Boolean = that match {
-    case BSONDecimal(_, _) => true
-    case _ => false
-  }
 
   override def equals(that: Any): Boolean = that match {
     case BSONDecimal(h, l) => (high == h) && (low == l)
@@ -705,10 +1158,16 @@ object BSONDecimal {
   def toBigDecimal(decimal: BSONDecimal): Try[BigDecimal] =
     Decimal128.toBigDecimal(decimal).map(BigDecimal(_))
 
-  /** Extracts the (high, low) representation. */
+  /** Extracts the (high, low) representation if `that`'s [[BSONDecimal]]. */
   def unapply(that: Any): Option[(Long, Long)] = that match {
     case decimal: BSONDecimal => Some(decimal.high -> decimal.low)
     case _ => None
+  }
+
+  /** Returns the string representation for the given [[BSONDecimal]]. */
+  def pretty(dec: BSONDecimal): String = dec.asDecimal match {
+    case Success(v) => s"NumberDecimal($v)"
+    case _ => "NumberDecimal(NaN)"
   }
 
   // ---
@@ -749,71 +1208,55 @@ object BSONDecimal {
 }
 
 /** BSON Min key value */
-object BSONMinKey extends BSONValue {
+sealed trait BSONMinKey extends BSONValue {
   val code = 0xFF.toByte
   override private[reactivemongo] val byteSize = 0
   override val toString = "BSONMinKey"
 }
 
+object BSONMinKey extends BSONMinKey {
+  val pretty = "MinKey"
+}
+
 /** BSON Max key value */
-object BSONMaxKey extends BSONValue {
+sealed trait BSONMaxKey extends BSONValue {
   val code = 0x7F: Byte
   override private[reactivemongo] val byteSize = 0
   override val toString = "BSONMaxKey"
 }
 
-/** Binary Subtype */
-sealed trait Subtype {
-  /** Subtype code */
-  val value: Byte
-}
-
-object Subtype {
-  case object GenericBinarySubtype extends Subtype { val value = 0x00: Byte }
-  case object FunctionSubtype extends Subtype { val value = 0x01: Byte }
-  case object OldBinarySubtype extends Subtype { val value = 0x02: Byte }
-  case object OldUuidSubtype extends Subtype { val value = 0x03: Byte }
-  case object UuidSubtype extends Subtype { val value = 0x04: Byte }
-  case object Md5Subtype extends Subtype { val value = 0x05: Byte }
-  case object UserDefinedSubtype extends Subtype { val value = 0x80.toByte }
-
-  def apply(code: Byte) = code match {
-    case 0 => GenericBinarySubtype
-    case 1 => FunctionSubtype
-    case 2 => OldBinarySubtype
-    case 3 => OldUuidSubtype
-    case 4 => UuidSubtype
-    case 5 => Md5Subtype
-    case -128 => UserDefinedSubtype
-    case _ => throw new NoSuchElementException(s"binary type = $code")
-  }
+object BSONMaxKey extends BSONMaxKey {
+  val pretty = "MaxKey"
 }
 
 /**
- * Operations for a [[BSONElement]] that can contain multiple nested elements.
+ * A `BSONDocument` structure (BSON type `0x03`).
+ *
+ * A `BSONDocument` is basically a set of fields `(String, BSONValue)`.
+ *
+ *
+ * '''Note:''' The insertion/initial order of the fields may not
+ * be maintained through the operations.
  *
  * @define keyParam the key to be found in the document
  */
-sealed trait BSONElementSet extends ElementProducer { self: BSONValue =>
-  type SetType <: BSONElementSet
+sealed abstract class BSONDocument
+  extends BSONValue with ElementProducer with BSONDocumentLowPriority { self =>
 
-  /** The first/mandatory nested element, if any */
-  def headOption: Option[BSONElement]
+  final val code = 0x03.toByte
 
-  /** Returns the values for the nested elements. */
-  def values: Traversable[BSONValue]
+  /** The document fields */
+  private[bson] def fields: Map[String, BSONValue]
 
   /**
-   * Returns a list for the values as [[BSONElement]]s,
-   * with their indexes as names (e.g. "0" for the first).
+   * The document fields as a sequence of [[BSONElement]]s.
    */
-  def elements: Traversable[BSONElement]
+  def elements: Seq[BSONElement]
 
-  /** Returns a `Map` representation for this element set. */
-  def toMap: Map[String, BSONValue] = elements.map {
-    case BSONElement(name, value) => name -> value
-  }(scala.collection.breakOut)
-  // TODO: Make it lazy and use it for `get`
+  /**
+   * Returns the map representation for this document.
+   */
+  @inline final def toMap: Map[String, BSONValue] = fields
 
   /**
    * Checks whether the given key is found in this element set.
@@ -821,7 +1264,7 @@ sealed trait BSONElementSet extends ElementProducer { self: BSONValue =>
    * @param key $keyParam
    * @return true if the key is found
    */
-  def contains(key: String): Boolean
+  def contains(key: String): Boolean = fields.contains(key)
 
   /**
    * Returns the [[BSONValue]] associated with the given `key`.
@@ -829,233 +1272,338 @@ sealed trait BSONElementSet extends ElementProducer { self: BSONValue =>
    *
    * @param key $keyParam
    */
-  def get(key: String): Option[BSONValue]
+  final def get(key: String): Option[BSONValue] = fields.get(key)
 
-  /** Merge the produced elements at the beginning of this set */
-  def ~:(elements: Producer[BSONElement]): SetType
+  /** The first/mandatory element, if any */
+  def headOption: Option[BSONElement]
 
-  /** Merge the produced elements with this set */
-  def :~(elements: Producer[BSONElement]*): SetType
-
-  /** The number of elements */
-  def size: Int
-
-  /** Indicates whether this element set is empty */
-  def isEmpty: Boolean
-
-  override private[reactivemongo] lazy val byteSize: Int =
-    elements.foldLeft(5) {
-      case (sz, BSONElement(n, v)) =>
-        sz + 2 + n.getBytes.size + v.byteSize
-    }
-}
-
-object BSONElementSet {
-  def unapplySeq(that: BSONElementSet): Option[Seq[BSONElement]] =
-    Some(that.elements.toSeq)
-
-  /** Automatic conversion from elements collections to [[BSONElementSet]]. */
-  implicit def apply(set: Traversable[BSONElement]): BSONElementSet = {
-    def elementMap: ListMap[String, BSONValue] = set.map({
-      case BSONElement(k, v) => k -> v
-    })(scala.collection.breakOut)
-
-    new BSONDocument(elementMap)
-  }
-}
-
-/**
- * A `BSONDocument` structure (BSON type `0x03`).
- *
- * A `BSONDocument` is basically a stream of tuples `(String, BSONValue)`.
- * It is completely lazy. The stream it wraps is a `Stream[Try[(String, BSONValue)]]` since
- * we cannot be sure that a not yet deserialized value will be processed without error.
- *
- * @define keyParam the key to be found in the document
- */
-final class BSONDocument(
-  // TODO: Remove override modifier
-  override val toMap: ListMap[String, BSONValue])
-  extends BSONValue with BSONElementSet {
-
-  val code = 0x03.toByte
-
-  type SetType = BSONDocument
-
-  def contains(key: String): Boolean = toMap.contains(key)
-
-  def get(key: String): Option[BSONValue] = toMap.get(key)
+  /** Returns the values of the document fields. */
+  final def values: Iterable[BSONValue] = fields.values
 
   /**
-   * Returns the [[BSONValue]] associated with the given `key`, and converts it with the given implicit [[BSONReader]].
-   *
-   * If there is no matching value, or the value could not be deserialized or converted, returns a `None`.
-   *
-   * @param key $keyParam
-   *
-   * @note When implementing a [[http://reactivemongo.org/releases/latest/documentation/bson/typeclasses.html custom reader]], [[getAsTry]] must be preferred.
+   * Returns the [[BSONDocument]] containing all the elements
+   * of this one and the elements of the given document.
    */
-  def getAs[T](key: String)(implicit reader: BSONReader[T]): Option[T] =
-    get(key).flatMap { element =>
-      reader match {
-        case r: BSONReader[T] @unchecked => r.readOpt(element)
-        case _ => None
+  final def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
+    lazy val fields: Map[String, BSONValue] = self.fields ++ doc.fields
+
+    val elements =
+      (toLazy(self.elements) ++ toLazy(doc.elements)).distinct
+
+    @inline def headOption = self.headOption
+    val isEmpty = self.isEmpty && doc.isEmpty
+  }
+
+  /**
+   * Creates a new [[BSONDocument]] containing all the elements
+   * of this one and the specified element sequence.
+   */
+  final def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
+    val elements = (toLazy(self.elements) ++ toLazy(seq)).distinct
+
+    lazy val fields = {
+      val m = MMap.empty[String, BSONValue]
+
+      m ++= self.fields
+
+      seq.foreach {
+        case BSONElement(name, value) => m.put(name, value)
       }
+
+      m.toMap
     }
+
+    @inline def headOption = self.headOption
+    val isEmpty = self.isEmpty && seq.isEmpty
+  }
+
+  /**
+   * Returns a set without the values corresponding to the specified keys.
+   */
+  final def --(keys: String*): BSONDocument = new BSONDocument {
+    val fields = self.fields -- keys
+    lazy val elements = self.elements.filterNot { e => keys.contains(e.name) }
+    @inline def headOption = elements.headOption
+    val isEmpty = fields.isEmpty
+    @inline override def contains(key: String): Boolean = false
+  }
+
+  /** The number of fields */
+  @inline def size: Int = fields.size
+
+  /** Indicates whether this document is empty */
+  def isEmpty: Boolean
 
   /**
    * Returns the [[BSONValue]] associated with the given `key`,
    * and converts it with the given implicit [[BSONReader]].
    *
-   * If there is no matching value, or the value could not be deserialized or converted, returns a `Failure`.
-   * The `Failure` holds a [[exceptions.DocumentKeyNotFoundException]] if the key could not be found.
+   * If there is no matching value, or the value could not be deserialized,
+   * or converted, returns a `None`.
+   *
+   * @param key $keyParam
+   *
+   * @note When implementing a [[http://reactivemongo.org/releases/latest/documentation/bson/typeclasses.html custom reader]], [[getAsTry]] must be preferred.
+   */
+  final def getAsOpt[T](key: String)(implicit reader: BSONReader[T]): Option[T] = get(key).flatMap {
+    case BSONNull => Option.empty[T]
+    case v => reader.readOpt(v)
+  }
+
+  /**
+   * Gets the [[BSONValue]] associated with the given `key`,
+   * and converts it with the given implicit [[BSONReader]].
+   *
+   * If there is no matching value, or the value could not be deserialized,
+   * or converted, returns a `Failure`.
+   *
+   * The `Failure` may hold a [[exceptions.BSONValueNotFoundException]],
+   * if the key could not be found.
    *
    * @param key $keyParam
    */
-  //@SuppressWarnings(Array("AsInstanceOf")) // TODO: Review
-  def getAsTry[T](key: String)(implicit reader: BSONReader[T]): Try[T] =
+  final def getAsTry[T](key: String)(implicit reader: BSONReader[T]): Try[T] =
     get(key) match {
+      case None | Some(BSONNull) =>
+        Failure(exceptions.BSONValueNotFoundException(key, this))
+
       case Some(v) => reader.readTry(v)
-      case _ => Failure(exceptions.DocumentKeyNotFoundException(key))
     }
 
-  /** Creates a new [[BSONDocument]] containing all the elements of this one and the elements of the given document. */
-  def merge(doc: BSONDocument): BSONDocument =
-    new BSONDocument(toMap ++ doc.toMap)
+  /**
+   * Gets the [[BSONValue]] at the given `key`,
+   * and converts it with the given implicit [[BSONReader]].
+   *
+   * If there is no matching value, `Success(None)` is returned.
+   * If there is a value, it must be valid or a `Failure` is returned.
+   *
+   * @param key $keyParam
+   */
+  final def getAsUnflattenedTry[T](key: String)(
+    implicit
+    reader: BSONReader[T]): Try[Option[T]] = get(key) match {
+    case None | Some(BSONNull) =>
+      Success(Option.empty[T])
 
-  /** Creates a new [[BSONDocument]] containing all the elements of this one and the given `elements`. */
-  def merge(elements: Producer[BSONElement]*): BSONDocument = {
-    val producedMap: Map[String, BSONValue] =
-      elements.flatMap(_.generate().map {
-        case BSONElement(name, value) => name -> value
-      })(scala.collection.breakOut)
-
-    new BSONDocument(toMap ++ producedMap)
+    case Some(v) => reader.readTry(v).map(Some(_))
   }
 
-  /** Creates a new [[BSONDocument]] without the elements corresponding the given `keys`. */
-  def remove(keys: String*): BSONDocument = new BSONDocument(toMap -- keys)
+  private[bson] final def copy(newFields: Map[String, BSONValue] = self.fields): BSONDocument = new BSONDocument {
+    val fields = newFields
 
-  /** Alias for `add(doc: BSONDocument): BSONDocument` */
-  def ++(doc: BSONDocument): BSONDocument = merge(doc)
+    val elements = toLazy(newFields).map {
+      case (k, v) => BSONElement(k, v)
+    }
 
-  /** Alias for `:~` or `merge` */
-  def ++(elements: Producer[BSONElement]*): BSONDocument = merge(elements: _*)
-
-  def :~(elements: Producer[BSONElement]*): BSONDocument = merge(elements: _*)
-
-  def ~:(elements: Producer[BSONElement]): BSONDocument =
-    new BSONDocument(elements.generate().map {
-      case BSONElement(k, v) => k -> v
-    } ++: toMap)
-
-  /** Alias for `remove(names: String*)` */
-  def --(keys: String*): BSONDocument = new BSONDocument(toMap -- keys)
-
-  def headOption: Option[BSONElement] = elements.headOption
-
-  /** Returns a `Stream` for all the elements of this `BSONDocument`. */
-  lazy val elements: Seq[BSONElement] = toMap.toSeq.map {
-    case (k, v) => BSONElement(k, v)
+    @inline def isEmpty = newFields.isEmpty
+    @inline def headOption = elements.headOption
   }
-
-  @inline private[bson] def generate() = elements
-
-  @inline def values: Iterable[BSONValue] = toMap.values
-
-  @inline def isEmpty = toMap.isEmpty
-
-  @inline def size = toMap.size
 
   override def equals(that: Any): Boolean = that match {
-    case other: BSONDocument => toMap == other.toMap
+    case other: BSONDocument => {
+      if (fields == other.fields) true
+      else fields.toSeq.sortBy(_._1) == other.fields.toSeq.sortBy(_._1)
+    }
+
     case _ => false
   }
 
-  override def hashCode: Int = toMap.hashCode
+  override def hashCode: Int = fields.toSeq.sortBy(_._1).hashCode
 
   override def toString: String = "BSONDocument(<" + (if (isEmpty) "empty" else "non-empty") + ">)"
+
+  @inline private[bson] final def generate() = elements
+
+  private[reactivemongo] lazy val byteSize: Int = fields.foldLeft(5) {
+    case (sz, (n, v)) => sz + 2 + n.getBytes.size + v.byteSize
+  }
+}
+
+private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
+  /**
+   * Creates a new [[BSONDocument]] containing all the elements
+   * of this one and the specified element producers.
+   */
+  def ++(producers: ElementProducer*): BSONDocument = new BSONDocument {
+    val elements = toLazy(producers).flatMap(_.generate()).distinct
+    lazy val fields = BSONDocument.toMap(producers)
+    val isEmpty = producers.isEmpty
+    @inline def headOption = elements.headOption
+  }
 }
 
 object BSONDocument {
-  // TODO: newBuilder as for Seq
-
-  def unapply(doc: BSONDocument): Option[Seq[BSONElement]] = Some(doc.elements)
-
-  /** Creates a [[BSONDocument]] from the given elements set. */
-  def apply(set: BSONElementSet): BSONDocument = set match {
-    case doc @ BSONDocument(_) => doc
-    case _ => BSONDocument.empty :~ set
+  /**
+   * Extracts the elements if `that`'s a [[BSONDocument]].
+   */
+  def unapply(that: Any): Option[Seq[BSONElement]] = that match {
+    case doc: BSONDocument => Some(doc.elements)
+    case _ => None
   }
 
-  /** Creates a new [[BSONDocument]] containing all the given `elements`. */
-  def apply(elements: Producer[BSONElement]*): BSONDocument = {
-    def elementMap: ListMap[String, BSONValue] =
-      elements.flatMap(_.generate().map {
-        case BSONElement(k, v) => k -> v
-      })(scala.collection.breakOut)
-
-    new BSONDocument(elementMap)
+  /** Creates a new [[BSONDocument]] containing all the given `seq`. */
+  def apply(seq: ElementProducer*): BSONDocument = new BSONDocument {
+    val elements = toLazy(seq).distinct.flatMap(_.generate())
+    lazy val fields = BSONDocument.toMap(seq)
+    val isEmpty = seq.isEmpty
+    @inline def headOption = elements.headOption
   }
 
   /**
-   * Creates a new [[BSONDocument]] containing all the `elements`
-   * in the given `Traversable`.
+   * Creates a new [[BSONDocument]] containing all the elements
+   * in the given sequence.
    */
-  def apply(elements: Traversable[(String, BSONValue)]): BSONDocument =
-    new BSONDocument(elements ++: ListMap.empty[String, BSONValue])
+  def apply(seq: Iterable[(String, BSONValue)]): BSONDocument =
+    new BSONDocument {
+      val pairs = toLazy(seq).distinct
+      val elements = pairs.map {
+        case (k, v) => BSONElement(k, v)
+      }
+
+      lazy val fields = {
+        val m = MMap.empty[String, BSONValue]
+
+        pairs.foreach {
+          case (k, v) => m.put(k, v)
+        }
+
+        m.toMap
+      }
+
+      val isEmpty = seq.isEmpty
+
+      @inline def headOption = elements.headOption
+    }
 
   /** Returns a String representing the given [[BSONDocument]]. */
-  def pretty(doc: BSONDocument) = BSONIterator._pretty(doc.elements)
+  def pretty(doc: BSONDocument): String = BSONIterator.pretty(doc.elements)
 
-  /** Writes the `document` into the `buffer`. */
-  def write(value: BSONDocument, buffer: WritableBuffer)(implicit bufferHandler: BufferHandler = DefaultBufferHandler): WritableBuffer =
-    bufferHandler.writeDocument(value, buffer)
+  private[bson] def toMap(seq: Iterable[ElementProducer]): Map[String, BSONValue] = {
+    val m = MMap.empty[String, BSONValue]
 
-  /**
-   * Reads a `document` from the `buffer`.
-   *
-   * Note that the buffer's readerIndex must be set on the start of a document, or it will fail.
-   */
-  def read(buffer: ReadableBuffer)(implicit bufferHandler: BufferHandler = DefaultBufferHandler): Try[BSONDocument] = bufferHandler.readDocument(buffer)
+    seq.foreach {
+      case BSONElement(k, v) => m.put(k, v)
+      case _: ElementProducer.Empty.type => ()
+
+      case p => p.generate().foreach {
+        case BSONElement(k, v) => m.put(k, v)
+      }
+    }
+
+    m.toMap
+  }
 
   /** An empty BSONDocument. */
-  val empty: BSONDocument = new BSONDocument(ListMap.empty)
+  val empty: BSONDocument = new BSONDocument {
+    val fields = HashMap.empty[String, BSONValue]
+    val elements = Seq.empty[BSONElement]
+    val isEmpty = true
+    override val size = 0
+    val headOption = Option.empty[BSONElement]
+  }
 }
 
-case class BSONElement(
-  name: String,
-  value: BSONValue) extends ElementProducer {
+sealed abstract class BSONElement extends ElementProducer {
+  /** Element (field) name */
+  def name: String
 
-  def generate() = List(this)
+  /** Element (BSON) value */
+  def value: BSONValue
+
+  final def generate() = Option(this)
+
+  override final lazy val hashCode: Int = {
+    import scala.util.hashing.MurmurHash3
+
+    val nh = MurmurHash3.mix(MurmurHash3.productSeed, name.##)
+
+    MurmurHash3.mixLast(nh, value.hashCode)
+  }
+
+  override final def equals(that: Any): Boolean = that match {
+    case other: BSONElement =>
+      (name == other.name && value == other.value)
+
+    case _ => false
+  }
+
+  override final def toString = s"BSONElement($name -> $value)"
 }
 
 object BSONElement extends BSONElementLowPriority {
-  implicit def provided(pair: (String, BSONValue)): BSONElement =
-    BSONElement(pair._1, pair._2)
+  type Aux[T <: BSONValue] = BSONElement { type ValueType = T }
 
+  /** Extracts the name and [[BSONValue]] if `that`'s a [[BSONElement]]. */
+  def unapply(that: Any): Option[(String, BSONValue)] = that match {
+    case elmt: BSONElement => Some(elmt.name -> elmt.value)
+    case _ => None
+  }
+
+  /** Create a new [[BSONElement]]. */
+  def apply[T <: BSONValue](name: String, value: T): BSONElement.Aux[T] =
+    new DefaultElement(name, value)
+
+  /** Returns an empty [[ElementProducer]] */
+  def apply: (String, None.type) => ElementProducer =
+    { (_, _) => ElementProducer.Empty }
+
+  private final class DefaultElement[T <: BSONValue](
+    val name: String,
+    val value: T) extends BSONElement {
+    type ValueType = T
+  }
 }
 
-sealed trait BSONElementLowPriority {
-  implicit def converted[T](pair: (String, T))(implicit w: BSONWriter[T, _ <: BSONValue]): BSONElement = BSONElement(pair._1, w.write(pair._2))
+private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
+  /**
+   * Returns a [[ElementProducer]] for the given name and value.
+   */
+  def apply[T](name: String, value: T)(implicit ev: T => Producer[BSONValue]): ElementProducer = {
+    val produced = ev(value).generate()
+
+    produced.headOption match {
+      case Some(v) if produced.tail.isEmpty =>
+        BSONElement(name, v)
+
+      case Some(_) =>
+        BSONDocument(produced.map { name -> _ })
+
+      case _ =>
+        ElementProducer.Empty
+    }
+  }
+
+  // Conversions
+  /**
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument(
+   *   "foo" -> BSONInteger(1) // tuple as BSONElement("foo", BSONInteger(1))
+   * )
+   * }}}
+   */
+  implicit def bsonTuple2BSONElement(pair: (String, BSONValue)): BSONElement =
+    BSONElement(pair._1, pair._2)
 
 }
 
 sealed trait ElementProducer extends Producer[BSONElement]
 
-object ElementProducer {
+object ElementProducer extends ElementProducerLowPriority {
   /**
    * An empty instance for the [[ElementProducer]] kind.
    * Can be used as `id` with the element [[Composition]] to form
    * an additive monoid.
    */
-  case object Empty extends ElementProducer {
-    def generate() = List.empty[BSONElement]
+  private[bson] object Empty extends ElementProducer {
+    private val underlying = Seq.empty[BSONElement]
+    def generate() = underlying
   }
 
   /**
    * A composition operation for [[ElementProducer]],
-   * so that it forms an additive monoid with the [[Empty]] instance as `id`.
+   * so that it forms an additive monoid with the `Empty` instance as `id`.
    */
   object Composition
     extends ((ElementProducer, ElementProducer) => ElementProducer) {
@@ -1065,10 +1613,81 @@ object ElementProducer {
         case (Empty, Empty) => Empty
         case (Empty, _) => y
         case (_, Empty) => x
-        case (a @ BSONElementSet(_), b @ BSONElementSet(_)) => a :~ b
-        case (a @ BSONElementSet(_), _) => a :~ y
-        case (_, b @ BSONElementSet(_)) => x ~: b
+
+        case (a: BSONDocument, b: BSONDocument) => a ++ b
+
+        case (doc: BSONDocument, e: BSONElement) =>
+          new BSONDocument {
+            val fields = doc.fields.updated(e.name, e.value)
+            val elements = (toLazy(doc.elements) :+ e).distinct
+            val isEmpty = false // at least `e`
+            @inline def headOption = doc.headOption
+          }
+
+        case (e: BSONElement, doc: BSONDocument) =>
+          new BSONDocument {
+            lazy val fields = {
+              val m = MMap.empty[String, BSONValue]
+
+              (e +: doc.elements).foreach { el =>
+                m.put(el.name, el.value)
+              }
+
+              m.toMap
+            }
+
+            val elements = (e +: doc.elements).distinct
+            val isEmpty = false // at least `e`
+            @inline def headOption = Some(e)
+          }
+
         case _ => BSONDocument(x, y)
       }
+  }
+
+  // Conversions
+
+  /**
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument(
+   *   "foo" -> None // tuple as empty ElementProducer (no field)
+   * )
+   * }}}
+   */
+  implicit val noneValue2ElementProducer: ((String, None.type)) => ElementProducer = _ => ElementProducer.Empty
+
+  /**
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument(
+   *   "foo" -> Some(1), // tuple as BSONElement("foo", BSONInteger(1))
+   *   "bar" -> Option.empty[Int] // tuple as empty ElementProducer (no field)
+   * )
+   * }}}
+   */
+  implicit def nameOptionValue2ElementProducer[T](element: (String, Option[T]))(implicit writer: BSONWriter[T]): ElementProducer = (for {
+    v <- element._2
+    b <- writer.writeOpt(v)
+  } yield BSONElement(element._1, b)).getOrElse(ElementProducer.Empty)
+}
+
+private[bson] sealed trait ElementProducerLowPriority {
+  _: ElementProducer.type =>
+
+  /**
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument(
+   *   "foo" -> 1 // tuple as BSONElement("foo", BSONInteger(1))
+   * )
+   * }}}
+   */
+  implicit def tuple2ElementProducer[T](pair: (String, T))(implicit writer: BSONWriter[T]): ElementProducer = writer.writeOpt(pair._2) match {
+    case Some(v) => BSONElement(pair._1, v)
+    case _ => ElementProducer.Empty
   }
 }
