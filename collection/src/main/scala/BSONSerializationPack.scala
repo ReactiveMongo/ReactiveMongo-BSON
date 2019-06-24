@@ -35,6 +35,7 @@ import reactivemongo.core.netty.{
 import reactivemongo.api.SerializationPack
 
 import reactivemongo.api.bson._
+import reactivemongo.api.bson.compat.ValueConverters
 
 /** The default serialization pack. */
 object BSONSerializationPack

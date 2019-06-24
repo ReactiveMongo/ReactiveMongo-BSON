@@ -352,7 +352,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
     }
 
     "be the expected one for any BSONJavaScriptWS" >> {
-      Fragments.foreach(bsonJSWsFixtures zip bsonJSByteSizes) {
+      Fragments.foreach(bsonJSWsFixtures zip bsonJSWSByteSizes) {
         case (bsonJsws, byteSize) =>
           s"as $byteSize for $bsonJsws" in {
             bsonJsws.byteSize must_=== byteSize and {

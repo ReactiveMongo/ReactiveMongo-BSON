@@ -57,8 +57,13 @@ object BSONValueFixtures {
   val bsonJSByteSizes = List(10, 10, 13)
 
   val bsonJSWsFixtures = List(
-    BSONJavaScriptWS("foo()"), BSONJavaScriptWS("bar()"),
-    BSONJavaScriptWS("lorem(0)"))
+    BSONJavaScriptWS("foo()", BSONDocument.empty),
+    BSONJavaScriptWS("bar", BSONDocument("bar" -> 1)),
+    BSONJavaScriptWS("lorem(0)", BSONDocument(
+      "bolo" -> "v",
+      "lorem" -> BSONJavaScript("i => i + 1"))))
+
+  val bsonJSWSByteSizes = List(15, 22, 52)
 
   val bsonTsFixtures = List(BSONTimestamp(0L), BSONTimestamp(1L),
     BSONTimestamp(123L), BSONTimestamp(45678L))

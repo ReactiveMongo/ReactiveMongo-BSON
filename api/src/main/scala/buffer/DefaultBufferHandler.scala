@@ -20,7 +20,12 @@ private[bson] object DefaultBufferHandler {
       case v: BSONRegex => writeRegex(v, buffer)
       case BSONJavaScript(v) => buffer writeBsonString v
       case BSONSymbol(name) => buffer writeBsonString name
-      case BSONJavaScriptWS(v) => buffer writeBsonString v
+
+      case BSONJavaScriptWS(v, s) => {
+        buffer writeBsonString v
+        writeDocument(s, buffer)
+      }
+
       case BSONInteger(v) => buffer writeInt v
       case BSONTimestamp(time) => buffer writeLong time
       case BSONLong(v) => buffer writeLong v
@@ -179,7 +184,7 @@ private[bson] object DefaultBufferHandler {
   }
 
   private def readJavaScriptWS(buffer: ReadableBuffer): BSONJavaScriptWS = {
-    BSONJavaScriptWS(buffer.readBsonString())
+    BSONJavaScriptWS(buffer.readBsonString(), readDocument(buffer))
   }
 
   private def readInteger(buffer: ReadableBuffer): BSONInteger = {

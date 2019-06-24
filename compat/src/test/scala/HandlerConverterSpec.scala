@@ -33,7 +33,7 @@ final class HandlerConverterSpec
 
   "Handler converters" title
 
-  import reactivemongo.api.bson.Converters._
+  import reactivemongo.api.bson.compat._
 
   "Converters" should {
     Fragment.foreach(fixtures) {

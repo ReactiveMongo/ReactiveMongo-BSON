@@ -53,6 +53,7 @@ libraryDependencies in ThisBuild ++= specsDeps.map(_ % Test)
 lazy val api = (project in file("api")).settings(
   commonSettings ++ Seq(
     name := s"${baseArtifact}-api",
+    description := "New BSON API",
     fork in Test := true,
     libraryDependencies ++= Seq(
       "org.specs2" %% "specs2-scalacheck" % specsVer,
@@ -65,6 +66,7 @@ lazy val api = (project in file("api")).settings(
 
 lazy val compat = (project in file("compat")).settings(
   name := s"${baseArtifact}-compat",
+  description := "Compatibility library between legacy & new BSON APIs",
   fork in Test := true,
   libraryDependencies ++= Seq(
     "org.slf4j" % "slf4j-simple" % "1.7.13" % Test,
@@ -74,6 +76,7 @@ lazy val compat = (project in file("compat")).settings(
 lazy val collection = (project in file("collection")).settings(
   commonSettings ++ Seq(
     name := s"${baseArtifact}-collection",
+    description := "Collection/query library using new BSON serialization",
     fork in Test := true,
     libraryDependencies ++= Seq(
       "org.slf4j" % "slf4j-simple" % "1.7.13" % Test,
@@ -86,6 +89,14 @@ lazy val benchmarks = (project in file("benchmarks")).
     publish := ({}),
     publishTo := None,
   ).dependsOn(api % "compile->test")
+
+lazy val msbCompat = (project in file("msb-compat")).settings(
+    name := s"${baseArtifact}-msb-compat",
+    description := "Compatibility library with mongo-scala-bson",
+    crossScalaVersions := Seq("2.11.12", scalaVersion.value),
+    libraryDependencies ++= Seq(
+      "org.mongodb.scala" %% "mongo-scala-bson" % "2.6.0" % Provided),
+  ).dependsOn(api)
 
 lazy val root = (project in file(".")).settings(
   publish := ({}),

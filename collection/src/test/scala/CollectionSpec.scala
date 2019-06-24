@@ -30,7 +30,6 @@ import reactivemongo.api.bson.{
   BSONInteger,
   BSONObjectID,
   BSONString,
-  Converters,
   Macros
 }
 
@@ -43,8 +42,7 @@ final class CollectionSpec(implicit ee: ExecutionEnv)
 
   sequential
 
-  // compat
-  import Converters._
+  import reactivemongo.api.bson.compat._
 
   import Common._
 

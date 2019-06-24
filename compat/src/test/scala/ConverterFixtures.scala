@@ -85,7 +85,8 @@ trait ConverterFixtures {
     LegacyDecimal.PositiveZero -> BSONDecimal.PositiveZero,
     lre -> bre,
     LegacyJavaScript("foo()") -> BSONJavaScript("foo()"),
-    LegacyJavaScriptWS("bar()") -> BSONJavaScriptWS("bar()"),
+    LegacyJavaScriptWS("bar()") -> BSONJavaScriptWS(
+      "bar()", BSONDocument.empty),
     LegacySymbol("sym") -> BSONSymbol("sym"),
     LegacyUndefined -> BSONUndefined,
     LegacyNull -> BSONNull,

@@ -1,4 +1,5 @@
 package reactivemongo.api.bson
+package compat
 
 import scala.language.implicitConversions
 
@@ -27,7 +28,7 @@ object HandlerConverters extends HandlerConverters
  * between `reactivemongo.bson` and `reactivemongo.api.bson` .
  *
  * {{{
- * import reactivemongo.api.bson.HandlerConverters._
+ * import reactivemongo.api.bson.compat.HandlerConverters._
  *
  * def foo[T](lw: reactivemongo.bson.BSONDocumentWriter[T]) = {
  *   val w: reactivemongo.api.bson.BSONDocumentWriter[T] = lw
