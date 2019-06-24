@@ -1531,8 +1531,6 @@ sealed abstract class BSONElement extends ElementProducer {
 }
 
 object BSONElement extends BSONElementLowPriority {
-  type Aux[T <: BSONValue] = BSONElement { type ValueType = T }
-
   /** Extracts the name and [[BSONValue]] if `that`'s a [[BSONElement]]. */
   def unapply(that: Any): Option[(String, BSONValue)] = that match {
     case elmt: BSONElement => Some(elmt.name -> elmt.value)
@@ -1540,7 +1538,7 @@ object BSONElement extends BSONElementLowPriority {
   }
 
   /** Create a new [[BSONElement]]. */
-  def apply[T <: BSONValue](name: String, value: T): BSONElement.Aux[T] =
+  def apply[T <: BSONValue](name: String, value: T): BSONElement =
     new DefaultElement(name, value)
 
   /** Returns an empty [[ElementProducer]] */

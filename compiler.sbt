@@ -12,7 +12,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-feature",
   "-Xlint",
   "-g:vars",
-  "-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated",
+  "-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used",
   "-Xfatal-warnings"
 )
 

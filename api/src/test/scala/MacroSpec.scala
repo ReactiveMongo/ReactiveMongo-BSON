@@ -14,7 +14,10 @@ import reactivemongo.api.bson.{
   BSONReader,
   BSONValue,
   BSONWriter,
-  Macros
+  FieldNaming,
+  Macros,
+  MacroConfiguration,
+  TypeNaming
 }
 import reactivemongo.api.bson.exceptions.TypeDoesNotMatchException
 
@@ -185,12 +188,14 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
     "respect compilation options" in {
       val format = Macros.handlerOpts[Person, Macros.Options.Verbose] //more stuff in compiler log
+
       roundtrip(Person("john", "doe"), format)
     }
 
     "not persist class name for case class" in {
       val person = Person("john", "doe")
-      val format = Macros.handlerOpts[Person, Macros.Options.SaveSimpleName]
+      val format = Macros.handler[Person]
+
       val doc = format writeTry person
 
       doc.flatMap(_.getAsUnflattenedTry[String]("className")).
@@ -199,20 +204,38 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         }
     }
 
+    "respect field naming" in {
+      val person = Person("Jane", "doe")
+      val format1 = Macros.configured(MacroConfiguration(
+        fieldNaming = FieldNaming.SnakeCase)).handler[Person]
+
+      val expectedBson = BSONDocument(
+        "first_name" -> "Jane",
+        "last_name" -> "doe")
+
+      format1.writeTry(person) must beSuccessfulTry(expectedBson) and {
+        format1.readTry(expectedBson) must beSuccessfulTry(person)
+      }
+    }
+
     "handle union types (ADT)" in {
       import Union._
       import Macros.Options._
+
       val a = UA(1)
       val b = UB("hai")
+
+      implicit val cfg = MacroConfiguration(discriminator = "_type")
 
       @silent // TODO: Remove
       val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD \/ UF.type] with AutomaticMaterialization]
 
-      format.writeTry(a).map(_.getAsOpt[String]("className")).
-        aka("class #1") must beSuccessfulTry(Some("MacroTest.Union.UA")) and {
-          format.writeTry(b).map(_.getAsOpt[String]("className")).
-            aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
-        } and roundtrip(a, format) and roundtrip(b, format)
+      format.writeTry(a).map(_.getAsOpt[String]("_type")).
+        aka("class #1") must beSuccessfulTry(
+          Some("MacroTest.Union.UA")) and {
+            format.writeTry(b).map(_.getAsOpt[String]("_type")).
+              aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
+          } and roundtrip(a, format) and roundtrip(b, format)
     }
 
     "handle union types (ADT) with simple names" in {
@@ -221,9 +244,9 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       val a = UA(1)
       val b = UB("hai")
 
-      val _ = Macros.writerOpts[UT, SimpleUnionType[UA \/ UB \/ UC \/ UD] with AutomaticMaterialization]
+      implicit def config = MacroConfiguration.simpleTypeName
 
-      val format = Macros.handlerOpts[UT, SimpleUnionType[UA \/ UB \/ UC \/ UD] with AutomaticMaterialization]
+      val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD] with AutomaticMaterialization]
 
       format.writeTry(a).map(
         _.getAsOpt[String]("className")) must beSuccessfulTry(Some("UA")) and {
@@ -306,8 +329,12 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       import Macros.Options._
       import Union._
 
-      @silent //TODO:("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
-      implicit val format = Macros.handlerOpts[UT, SaveSimpleName with AutomaticMaterialization]
+      val configuredMacros = Macros.configured(
+        MacroConfiguration[AutomaticMaterialization](
+          typeNaming = TypeNaming.SimpleName))
+
+      @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
+      implicit val format = configuredMacros.handler[UT]
 
       format.writeTry(UA(1)).flatMap(
         _.getAsTry[String]("className")) must beSuccessfulTry("UA") and {
@@ -321,10 +348,10 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "support automatic implementations search with nested traits with simple name" in {
-      import Macros.Options._
       import InheritanceModule._
 
-      implicit val format = Macros.handlerOpts[T, SaveSimpleName]
+      implicit val format = Macros.configured(
+        MacroConfiguration.simpleTypeName).handler[T]
 
       format.writeTry(A()).flatMap(
         _.getAsTry[String]("className")) must beSuccessfulTry("A") and {

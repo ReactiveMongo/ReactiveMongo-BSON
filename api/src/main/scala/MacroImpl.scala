@@ -4,71 +4,95 @@ import scala.util.{ Try => UTry }
 
 import scala.collection.immutable.Set
 
-import scala.reflect.macros.whitebox.Context
+import scala.reflect.macros.blackbox.Context
 
-private[bson] object MacroImpl {
-  import Macros.Annotations.{ Flatten, Ignore, Key, NoneAsNull }
-  import Macros.Options.SaveSimpleName
+private[bson] class MacroImpl(val c: Context) {
+  import c.universe._
 
-  def reader[A: c.WeakTypeTag, Opts: c.WeakTypeTag](c: Context): c.Expr[BSONDocumentReader[A]] = c.universe.reify(new BSONDocumentReader[A] {
-    private val r: BSONDocument => UTry[A] = { macroDoc =>
-      createHelper[A, Opts](c).readBody.splice
-    }
+  import Macros.Annotations, Annotations.{ Flatten, Ignore, Key, NoneAsNull }
 
-    lazy val forwardBSONReader: BSONDocumentReader[A] =
-      BSONDocumentReader.from[A](r)
+  import Macros.Options
 
-    def readDocument(document: BSONDocument): UTry[A] =
-      forwardBSONReader.readDocument(document)
-  })
+  def reader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] = readerWithConfig[A, Opts](implicitOptionsConfig)
 
-  def writer[A: c.WeakTypeTag, Opts: c.WeakTypeTag](c: Context): c.Expr[BSONDocumentWriter[A]] = c.universe.reify(new BSONDocumentWriter[A] {
-    private val w: A => UTry[BSONDocument] = { macroVal =>
-      createHelper[A, Opts](c).writeBody.splice
-    }
+  def configuredReader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] = readerWithConfig[A, Opts](withOptionsConfig)
 
-    lazy val forwardBSONWriter: BSONDocumentWriter[A] =
-      BSONDocumentWriter.from[A](w)
+  def writer[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentWriter[A]] = writerWithConfig[A, Opts](implicitOptionsConfig)
 
-    def writeTry(v: A) = forwardBSONWriter.writeTry(v)
-  })
+  def configuredWriter[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentWriter[A]] = writerWithConfig[A, Opts](withOptionsConfig)
 
-  def handler[A: c.WeakTypeTag, Opts: c.WeakTypeTag](c: Context): c.Expr[BSONDocumentHandler[A]] = c.universe.reify(new BSONDocumentReader[A] with BSONDocumentWriter[A] with BSONHandler[A] {
-    private val r: BSONDocument => UTry[A] = { macroDoc =>
-      createHelper[A, Opts](c).readBody.splice
-    }
+  def handler[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentHandler[A]] = handlerWithConfig[A, Opts](implicitOptionsConfig)
 
-    lazy val forwardBSONReader: BSONDocumentReader[A] =
-      BSONDocumentReader.from[A](r)
-
-    private val w: A => UTry[BSONDocument] = { macroVal =>
-      createHelper[A, Opts](c).writeBody.splice
-    }
-
-    lazy val forwardBSONWriter: BSONDocumentWriter[A] =
-      BSONDocumentWriter.from[A](w)
-
-    def readDocument(document: BSONDocument): UTry[A] =
-      forwardBSONReader.readDocument(document)
-
-    def writeTry(v: A) = forwardBSONWriter.writeTry(v)
-  })
+  def configuredHandler[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentHandler[A]] = handlerWithConfig[A, Opts](withOptionsConfig)
 
   // ---
 
-  private def createHelper[A: c.WeakTypeTag, Opts: c.WeakTypeTag](c: Context) = new Helper[c.type, A](c) {
+  private def readerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](config: c.Expr[MacroConfiguration]): c.Expr[BSONDocumentReader[A]] = reify(new BSONDocumentReader[A] {
+    private val r: BSONDocument => UTry[A] = { macroDoc =>
+      createHelper[A, Opts](config).readBody.splice
+    }
+
+    lazy val forwardBSONReader: BSONDocumentReader[A] =
+      BSONDocumentReader.from[A](r)
+
+    def readDocument(document: BSONDocument): UTry[A] =
+      forwardBSONReader.readDocument(document)
+  })
+
+  private def writerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](config: c.Expr[MacroConfiguration]): c.Expr[BSONDocumentWriter[A]] = reify(new BSONDocumentWriter[A] {
+    private val w: A => UTry[BSONDocument] = { macroVal =>
+      createHelper[A, Opts](config).writeBody.splice
+    }
+
+    lazy val forwardBSONWriter: BSONDocumentWriter[A] =
+      BSONDocumentWriter.from[A](w)
+
+    def writeTry(v: A) = forwardBSONWriter.writeTry(v)
+  })
+
+  private def handlerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](config: c.Expr[MacroConfiguration]): c.Expr[BSONDocumentHandler[A]] = reify(new BSONDocumentReader[A] with BSONDocumentWriter[A] with BSONHandler[A] {
+    private val r: BSONDocument => UTry[A] = { macroDoc =>
+      createHelper[A, Opts](config).readBody.splice
+    }
+
+    lazy val forwardBSONReader: BSONDocumentReader[A] =
+      BSONDocumentReader.from[A](r)
+
+    private val w: A => UTry[BSONDocument] = { macroVal =>
+      createHelper[A, Opts](config).writeBody.splice
+    }
+
+    lazy val forwardBSONWriter: BSONDocumentWriter[A] =
+      BSONDocumentWriter.from[A](w)
+
+    def readDocument(document: BSONDocument): UTry[A] =
+      forwardBSONReader.readDocument(document)
+
+    def writeTry(v: A) = forwardBSONWriter.writeTry(v)
+  })
+
+  private def withOptionsConfig: c.Expr[MacroConfiguration] = {
+    c.Expr[MacroConfiguration](c.typecheck(q"${c.prefix}.config"))
+  }
+
+  private def implicitOptionsConfig: c.Expr[MacroConfiguration] =
+    c.Expr[MacroConfiguration](c.inferImplicitValue(
+      c.typeOf[MacroConfiguration]))
+
+  private def createHelper[A: c.WeakTypeTag, Opts: c.WeakTypeTag](
+    config: c.Expr[MacroConfiguration]) = new Helper[c.type, A](config) {
     val aTpe = c.weakTypeOf[A]
     val optsTpe = c.weakTypeOf[Opts]
   }
 
   private abstract class Helper[C <: Context, A](
-    val c: C) extends ImplicitResolver[C] {
-    import c.universe._
+    config: c.Expr[MacroConfiguration]) extends ImplicitResolver[C] {
 
     private val bsonPkg = q"_root_.reactivemongo.api.bson"
     private val exceptionsPkg = q"${bsonPkg}.exceptions"
     private val colPkg = q"_root_.scala.collection.immutable"
     private val utilPkg = q"_root_.scala.util"
+    private val reflPkg = q"_root_.scala.reflect"
 
     protected def aTpe: Type
     protected def optsTpe: Type
@@ -84,34 +108,49 @@ private[bson] object MacroImpl {
     lazy val readBody: c.Expr[UTry[A]] = {
       val reader = unionTypes.map { types =>
         val resolve = resolver(Map.empty, "BSONReader")(readerType)
-        val cases: List[CaseDef] = types.map { typ =>
-          val pattern = if (hasOption[SaveSimpleName]) {
-            Literal(Constant(typ.typeSymbol.name.decodedName.toString))
-          } else {
-            Literal(Constant(typ.typeSymbol.fullName)) //todo
-          }
 
-          val body = readBodyFromImplicit(typ)(resolve).getOrElse {
-            // No existing implicit, but can fallback to automatic mat
-            readBodyConstruct(typ)
-          }
+        val preparedTypes = types.map { typ =>
+          val cls = q"implicitly[$reflPkg.ClassTag[$typ]].runtimeClass"
 
-          cq"$pattern => $body"
+          Tuple3(
+            typ,
+            TermName(c.freshName("Type")),
+            q"${config}.typeNaming($cls)")
         }
 
-        // TODO: Discriminator
+        val cases: List[CaseDef] = preparedTypes.map {
+          case (typ, pattern, _) =>
+
+            val body = readBodyFromImplicit(typ)(resolve).getOrElse {
+              // No existing implicit, but can fallback to automatic mat
+              readBodyConstruct(typ)
+            }
+
+            cq"${Ident(pattern)} => $body"
+        }
+
         val dt = TermName(c.freshName("discriminator"))
         val da = q"val $dt: _root_.java.lang.String"
 
-        q"""macroDoc.getAsTry[String]("className").flatMap { ${da} =>
-          ${Match(Ident(dt), cases)}
+        val typePats = preparedTypes.map {
+          case (_, nme, pat) =>
+            q"val ${nme} = ${pat}"
+        }
+
+        q"""{
+          ..$typePats
+
+          macroDoc.getAsTry[String](
+            ${config}.discriminator).flatMap { ${da} =>
+            ${Match(Ident(dt), cases)}
+          }
         }"""
       } getOrElse readBodyConstruct(aTpe)
 
       val result = c.Expr[UTry[A]](reader)
 
-      if (hasOption[Macros.Options.Verbose]) {
-        c.echo(c.enclosingPosition, show(result))
+      if (hasOption[Options.Verbose]) {
+        c.echo(c.enclosingPosition, show(reader))
       }
 
       result
@@ -144,8 +183,8 @@ private[bson] object MacroImpl {
 
       val result = c.Expr[UTry[BSONDocument]](writer)
 
-      if (hasOption[Macros.Options.Verbose]) {
-        c.echo(c.enclosingPosition, show(result))
+      if (hasOption[Options.Verbose]) {
+        c.echo(c.enclosingPosition, show(writer))
       }
 
       result
@@ -157,7 +196,7 @@ private[bson] object MacroImpl {
 
       if (!reader.isEmpty) {
         Some(q"$reader.readTry(macroDoc)")
-      } else if (!hasOption[Macros.Options.AutomaticMaterialization]) {
+      } else if (!hasOption[Options.AutomaticMaterialization]) {
         c.abort(c.enclosingPosition, s"Implicit not found for '${tpe.typeSymbol.name}': ${classOf[BSONReader[_]].getName}[_, ${tpe.typeSymbol.fullName}]")
       } else None
     }
@@ -184,7 +223,7 @@ private[bson] object MacroImpl {
         case TypeRef(_, _, args) => args
         case i @ ClassInfoType(_, _, _) => i.typeArgs
       }
-      val boundTypes: Map[String, Type] = { // TODO: MMap
+      val boundTypes: Map[String, Type] = {
         val bt = Map.newBuilder[String, Type]
 
         lazyZip(constructor.typeParams, tpeArgs).foreach {
@@ -201,11 +240,9 @@ private[bson] object MacroImpl {
       val params: Seq[(Symbol, String, TermName, Type)] =
         constructor.paramLists.headOption.toSeq.flatten.map { param =>
           val pname = paramName(param)
-          val sig /*t*/ = param.typeSignature.map { st =>
+          val sig = param.typeSignature.map { st =>
             boundTypes.getOrElse(st.typeSymbol.fullName, st)
           }
-
-          //val sig = boundTypes.getOrElse(t.typeSymbol.fullName, t)
 
           Tuple4(param, pname, TermName(c.freshName(pname)), sig)
         }
@@ -251,12 +288,14 @@ private[bson] object MacroImpl {
 
               q"${reader}.readTry(macroDoc)"
             } else {
+              val field = q"${config}.fieldNaming($pname)"
+
               OptionTypeParameter.unapply(sig) match {
                 case Some(_) =>
-                  q"macroDoc.getAsUnflattenedTry($pname)($reader)"
+                  q"macroDoc.getAsUnflattenedTry($field)($reader)"
 
                 case _ =>
-                  q"macroDoc.getAsTry($pname)($reader)"
+                  q"macroDoc.getAsTry($field)($reader)"
               }
             }
           }
@@ -300,10 +339,9 @@ private[bson] object MacroImpl {
         @inline def doc = q"$writer.writeTry($id)"
 
         Some(classNameTree(tpe).fold(doc) { de =>
-          // TODO: Discriminator
           q"""${doc}.map { _ ++ $de }"""
         })
-      } else if (!hasOption[Macros.Options.AutomaticMaterialization]) {
+      } else if (!hasOption[Options.AutomaticMaterialization]) {
         c.abort(c.enclosingPosition, s"Implicit not found for '${tpe.typeSymbol.name}': ${classOf[BSONWriter[_]].getName}[_, ${tpe.typeSymbol.fullName}]")
 
       } else None
@@ -399,7 +437,8 @@ private[bson] object MacroImpl {
 
           val vt = TermName(c.freshName(pname))
 
-          val appendCall = q"${bufOk} += ${bsonPkg}.BSONElement($pname, $vt)"
+          val field = q"${config}.fieldNaming(${pname})"
+          val appendCall = q"${bufOk} += ${bsonPkg}.BSONElement($field, $vt)"
           val appendDocCall = if (mustFlatten(param, pname, sig, writer)) {
             q"${bufOk} ++= $vt.elements"
           } else {
@@ -428,21 +467,21 @@ private[bson] object MacroImpl {
 
             case _ => resolveWriter(pname, sig)
           }
-          val name = c.Expr[String](q"$pname")
+          val field = q"${config}.fieldNaming($pname)"
 
           val vt = TermName(c.freshName(pname))
           val vp = ValDef(
-            Modifiers(c.universe.Flag.PARAM),
+            Modifiers(Flag.PARAM),
             vt, TypeTree(sig), EmptyTree) // ${vt} =>
 
           val bt = TermName(c.freshName("bson"))
 
           def empty =
-            q"${bufOk} += ${bsonPkg}.BSONElement($name, ${bsonPkg}.BSONNull)"
+            q"${bufOk} += ${bsonPkg}.BSONElement($field, ${bsonPkg}.BSONNull)"
 
           val writeCall = q"""($writer.writeTry($vt): ${utilPkg}.Try[${bsonPkg}.BSONValue]) match {
             case ${utilPkg}.Success(${bt}) =>
-              ${bufOk} += ${bsonPkg}.BSONElement($pname, $bt)
+              ${bufOk} += ${bsonPkg}.BSONElement($field, $bt)
               ()
 
             case ${utilPkg}.Failure(${errName}) =>
@@ -498,19 +537,16 @@ private[bson] object MacroImpl {
       }
     }
 
-    private def classNameTree(tpe: c.Type): Option[c.Expr[BSONElement.Aux[BSONString]]] = {
+    private def classNameTree(tpe: c.Type): Option[Tree] = {
       val tpeSym = aTpe.typeSymbol.asClass
 
       if (tpeSym.isSealed && tpeSym.isAbstract) Some {
-        val name = if (hasOption[Macros.Options.SaveSimpleName]) {
-          c.Expr[String](q"${tpe.typeSymbol.name.decodedName.toString}")
-        } else c.Expr[String](q"${tpe.typeSymbol.fullName}")
+        val cls = q"implicitly[$reflPkg.ClassTag[$tpe]].runtimeClass"
 
-        reify {
-          val n: BSONString = BSONStringHandler.safeWrite(name.splice)
+        q"""${bsonPkg}.BSONElement(
+          ${config}.discriminator, 
+          ${bsonPkg}.BSONString($config.typeNaming($cls)))"""
 
-          BSONElement("className", n)
-        }
       }
       else None
     }
@@ -519,8 +555,8 @@ private[bson] object MacroImpl {
       parseUnionTypes orElse directKnownSubclasses
 
     private def parseUnionTypes: Option[List[c.Type]] = {
-      val unionOption = c.typeOf[Macros.Options.UnionType[_]]
-      val union = c.typeOf[Macros.Options.\/[_, _]]
+      val unionOption = c.typeOf[Options.UnionType[_]]
+      val union = c.typeOf[Options.\/[_, _]]
 
       @annotation.tailrec
       def parseUnionTree(trees: List[Type], found: List[Type]): List[Type] =
@@ -604,7 +640,7 @@ private[bson] object MacroImpl {
 
     private def hasOption[O: c.TypeTag]: Boolean = optsTpe <:< typeOf[O]
 
-    private def unapplyReturnTypes(deconstructor: c.universe.MethodSymbol): List[c.Type] = {
+    private def unapplyReturnTypes(deconstructor: MethodSymbol): List[c.Type] = {
       val opt = deconstructor.returnType match {
         case TypeRef(_, _, Nil) => Some(Nil)
 
@@ -654,7 +690,7 @@ private[bson] object MacroImpl {
     private def applyMethod(implicit tpe: Type): Option[Symbol] =
       companion(tpe).typeSignature.decl(TermName("apply")) match {
         case NoSymbol => {
-          if (hasOption[Macros.Options.Verbose]) {
+          if (hasOption[Options.Verbose]) {
             c.echo(c.enclosingPosition, s"No apply function found for $tpe")
           }
 
@@ -667,7 +703,7 @@ private[bson] object MacroImpl {
     private def unapplyMethod(implicit tpe: Type): Option[MethodSymbol] =
       companion(tpe).typeSignature.decl(TermName("unapply")) match {
         case NoSymbol => {
-          if (hasOption[Macros.Options.Verbose]) {
+          if (hasOption[Options.Verbose]) {
             c.echo(c.enclosingPosition, s"No unapply function found for $tpe")
           }
 
@@ -756,10 +792,6 @@ private[bson] object MacroImpl {
   }
 
   sealed trait ImplicitResolver[C <: Context] {
-    val c: C
-
-    import c.universe._
-
     protected def aTpe: Type
 
     import Macros.Placeholder
@@ -843,16 +875,7 @@ private[bson] object MacroImpl {
     }
 
     private def createImplicit(boundTypes: Map[String, Type])(tc: Type, ptype: Type, tx: Transformer): Implicit = {
-      val tpe = ptype /*match {
-        case TypeRef(_, _, targ :: _) => {
-          // Option[_] needs special treatment because we need to use XXXOpt
-          if (ptype.typeConstructor <:< typeOf[Option[_]].typeConstructor) targ
-          else ptype
-        }
-
-        case SingleType(_, _) | TypeRef(_, _, _) => ptype
-      }*/
-
+      val tpe = ptype
       val (ntpe, selfRef) = normalized(boundTypes)(tpe)
       val ptpe = boundTypes.getOrElse(ntpe.typeSymbol.fullName, ntpe)
 
