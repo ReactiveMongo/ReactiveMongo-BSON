@@ -102,3 +102,4 @@ lazy val root = (project in file(".")).settings(
   publish := ({}),
   publishTo := None,
 ).aggregate(api, compat, collection, benchmarks)
+// !! Do not aggregate msbCompat as not 2.13

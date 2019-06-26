@@ -32,6 +32,8 @@ import org.bson.{
 }
 import org.bson.types.{ Decimal128, ObjectId }
 
+object ValueConverters extends ValueConverters
+
 /**
  * Implicit conversions for value types between
  * `org.bson` and `reactivemongo.api.bson`.
@@ -81,7 +83,7 @@ trait ValueConverters extends LowPriorityConverters {
   implicit final def fromElement(element: BSONElement): BsonElement =
     new BsonElement(element.name, fromValue(element.value))
 
-  private val codeToBinSubtype: Byte => Subtype = {
+  val codeToBinSubtype: Byte => Subtype = {
     val BinaryCode: Byte = BsonBinarySubType.BINARY.getValue
     val FunctionCode: Byte = BsonBinarySubType.FUNCTION.getValue
     val OldBinaryCode: Byte = BsonBinarySubType.OLD_BINARY.getValue
@@ -216,8 +218,11 @@ trait ValueConverters extends LowPriorityConverters {
   implicit final def fromSymbol(symbol: BSONSymbol): BsonSymbol =
     new BsonSymbol(symbol.value)
 
-  implicit final def toObjectID(boid: BsonObjectId): BSONObjectID =
-    BSONObjectID.parse(boid.getValue.toByteArray) match {
+  @inline implicit final def toObjectID(boid: BsonObjectId): BSONObjectID =
+    toObjectID(boid.getValue)
+
+  final def toObjectID(boid: ObjectId): BSONObjectID =
+    BSONObjectID.parse(boid.toByteArray) match {
       case Success(oid) => oid
       case Failure(err) => throw err
     }
@@ -237,10 +242,11 @@ trait ValueConverters extends LowPriorityConverters {
   implicit final def fromTimestamp(timestamp: BSONTimestamp): BsonTimestamp =
     new BsonTimestamp(timestamp.value)
 
-  implicit final def toDecimal(bson: BsonDecimal128): BSONDecimal = {
-    val dec = bson.getValue
+  @inline implicit final def toDecimal(bson: BsonDecimal128): BSONDecimal =
+    toDecimal(bson.getValue)
+
+  final def toDecimal(dec: Decimal128): BSONDecimal =
     BSONDecimal(dec.getHigh, dec.getLow)
-  }
 
   implicit final def fromDecimal(decimal: BSONDecimal): BsonDecimal128 =
     new BsonDecimal128(Decimal128.

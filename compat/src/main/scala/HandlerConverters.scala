@@ -35,7 +35,7 @@ object HandlerConverters extends HandlerConverters
  *   w
  * }
  *
- * import reactivemongo.bson.{ BSONReader, BSONValue }
+ * import reactivemongo.bson.BSONValue
  *
  * def bar[T](lr: reactivemongo.api.bson.BSONReader[T]) = {
  *   val r: reactivemongo.bson.BSONWriter[BSONValue, T] = lr
