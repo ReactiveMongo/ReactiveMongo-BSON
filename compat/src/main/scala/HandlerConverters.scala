@@ -19,7 +19,7 @@ import reactivemongo.bson.{
 }
 
 /**
- * See [[Converters]]
+ * See [[compat$]] and [[HandlerConverters]]
  */
 object HandlerConverters extends HandlerConverters
 

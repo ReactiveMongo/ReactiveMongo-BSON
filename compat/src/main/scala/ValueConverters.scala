@@ -31,6 +31,9 @@ import reactivemongo.bson.{
   Subtype => LegacySubtype
 }
 
+/**
+ * See [[compat$]] and [[ValueConverters]]
+ */
 object ValueConverters extends ValueConverters
 
 /**
