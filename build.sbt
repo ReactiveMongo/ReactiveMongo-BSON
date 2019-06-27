@@ -2,6 +2,8 @@ import Dependencies._
 
 ThisBuild / organization := "org.reactivemongo"
 
+ThisBuild / autoAPIMappings := true
+
 val baseArtifact = "reactivemongo-bson"
 
 name := s"reactivemongo-biːsən"
@@ -11,6 +13,10 @@ resolvers in ThisBuild ++= Seq(
   "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/")
 
 val commonSettings = Seq(
+  scalacOptions in (Compile, doc) := (scalacOptions in Test).value ++ Seq(
+    "-unchecked", "-deprecation", 
+    /*"-diagrams", */"-implicits", "-skip-packages", "highlightextractor") ++
+    Opts.doc.title(name.value),
   unmanagedSourceDirectories in Compile += {
     val base = (sourceDirectory in Compile).value
 
@@ -65,12 +71,14 @@ lazy val api = (project in file("api")).settings(
   ))
 
 lazy val compat = (project in file("compat")).settings(
-  name := s"${baseArtifact}-compat",
-  description := "Compatibility library between legacy & new BSON APIs",
-  fork in Test := true,
-  libraryDependencies ++= Seq(
-    "org.slf4j" % "slf4j-simple" % "1.7.13" % Test,
-    "org.reactivemongo" %% "reactivemongo-bson" % version.value % Provided)
+  commonSettings ++ Seq(
+    name := s"${baseArtifact}-compat",
+    description := "Compatibility library between legacy & new BSON APIs",
+    fork in Test := true,
+    libraryDependencies ++= Seq(
+      "org.slf4j" % "slf4j-simple" % "1.7.13" % Test,
+      "org.reactivemongo" %% "reactivemongo-bson" % version.value % Provided)
+  )
 ).dependsOn(api)
 
 lazy val collection = (project in file("collection")).settings(
@@ -91,15 +99,17 @@ lazy val benchmarks = (project in file("benchmarks")).
   ).dependsOn(api % "compile->test")
 
 lazy val msbCompat = (project in file("msb-compat")).settings(
+  commonSettings ++ Seq(
     name := s"${baseArtifact}-msb-compat",
     description := "Compatibility library with mongo-scala-bson",
     crossScalaVersions := Seq("2.11.12", scalaVersion.value),
     libraryDependencies ++= Seq(
       "org.mongodb.scala" %% "mongo-scala-bson" % "2.6.0" % Provided),
-  ).dependsOn(api)
+  )
+).dependsOn(api)
 
 lazy val root = (project in file(".")).settings(
   publish := ({}),
-  publishTo := None,
+  publishTo := None
 ).aggregate(api, compat, collection, benchmarks)
 // !! Do not aggregate msbCompat as not 2.13

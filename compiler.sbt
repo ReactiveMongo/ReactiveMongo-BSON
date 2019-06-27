@@ -50,8 +50,6 @@ scalacOptions in Test ~= {
   _.filterNot(_ == "-Xfatal-warnings")
 }
 
-ThisBuild / scalacOptions in (Compile, doc) := (scalacOptions in Test).value
-
 scalacOptions in (Compile, console) ~= {
   _.filterNot { opt => opt.startsWith("-X") || opt.startsWith("-Y") }
 }
@@ -59,8 +57,3 @@ scalacOptions in (Compile, console) ~= {
 scalacOptions in (Test, console) ~= {
   _.filterNot { opt => opt.startsWith("-X") || opt.startsWith("-Y") }
 }
-
-scalacOptions in (Compile, doc) ++= Seq(
-  "-unchecked", "-deprecation",
-  /*"-diagrams", */"-implicits", "-skip-packages", "samples") ++
-  Opts.doc.title("ReactiveMongo BSON API")

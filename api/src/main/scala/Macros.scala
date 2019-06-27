@@ -3,7 +3,7 @@ package reactivemongo.api.bson
 import scala.util.Success
 
 /**
- * @define macroBrief Macros for generating `BSONReader` and `BSONWriter` at compile time.
+ * Macros for generating `BSONReader` and `BSONWriter` at compile time.
  *
  * {{{
  * case class Person(name: String, surname: String)
@@ -116,9 +116,15 @@ object Macros {
   // ---
 
   /**
-   * $macroBrief
+   * Macros for generating `BSONReader` and `BSONWriter` at compile time,
+   * with given options.
    *
-   * $tparamOpts
+   * @define readerMacro Creates a [[BSONDocumentReader]] for type `A`
+   * @define writerMacro Creates a [[BSONDocumentWriter]] for type `A`
+   * @define handlerMacro Creates a [[BSONDocumentHandler]] for type `A`
+   * @define tparam @tparam A the type of the value represented as BSON
+   *
+   * @tparam Opts the compile-time options
    */
   final class WithOptions[Opts <: Options](
     val config: MacroConfiguration.Aux[Opts]) {

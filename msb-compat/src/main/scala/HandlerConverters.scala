@@ -13,7 +13,7 @@ import org.bson.codecs._
 import org.bson.codecs.configuration.CodecRegistry
 
 /**
- * See [[Converters]]
+ * See [[msb$]] and [[HandlerConverters]]
  */
 object HandlerConverters extends HandlerConverters {
   private[reactivemongo] def encode[T](value: T, enc: Encoder[T]): Try[BsonValue] = {

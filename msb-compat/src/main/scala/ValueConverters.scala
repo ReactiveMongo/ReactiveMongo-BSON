@@ -32,6 +32,9 @@ import org.bson.{
 }
 import org.bson.types.{ Decimal128, ObjectId }
 
+/**
+ * See [[msb$]] and [[ValueConverters]]
+ */
 object ValueConverters extends ValueConverters
 
 /**
