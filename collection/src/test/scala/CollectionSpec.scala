@@ -189,7 +189,7 @@ final class CollectionSpec(implicit ee: ExecutionEnv)
     "for MongoDB 2.6" >> {
       "write an BSONDocument with mongo query only if there are not options defined" in {
         val builder = tests.queryBuilder(collection).
-          query(BSONDocument("username" -> "John Doe"))
+          filter(BSONDocument("username" -> "John Doe"))
 
         val expected = BSONDocument(
           f"$$query" -> BSONDocument("username" -> "John Doe"),
@@ -200,7 +200,7 @@ final class CollectionSpec(implicit ee: ExecutionEnv)
 
       "write an BSONDocument with only defined options" >> {
         val builder1 = tests.queryBuilder(collection).
-          query(BSONDocument("username" -> "John Doe")).
+          filter(BSONDocument("username" -> "John Doe")).
           sort(BSONDocument("age" -> 1))
 
         "with query builder #1" in {
@@ -231,7 +231,7 @@ final class CollectionSpec(implicit ee: ExecutionEnv)
     "for MongoDB >3.2" >> {
       "write an BSONDocument with mongo query only if there are not options defined" in {
         val builder = tests.queryBuilder(collection).
-          query(BSONDocument("username" -> "John Doe"))
+          filter(BSONDocument("username" -> "John Doe"))
 
         val expected = BSONDocument(
           "find" -> collection.name,
@@ -248,7 +248,7 @@ final class CollectionSpec(implicit ee: ExecutionEnv)
 
       "write an BSONDocument with only defined options" >> {
         val builder1 = tests.queryBuilder(collection).
-          query(BSONDocument("username" -> "John Doe")).
+          filter(BSONDocument("username" -> "John Doe")).
           sort(BSONDocument("age" -> 1))
 
         "with query builder #1" in {
