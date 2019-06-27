@@ -57,7 +57,7 @@ final class ValueConverterSpec
 
   "Value converters" title
 
-  import reactivemongo.api.bson.Converters._
+  import reactivemongo.api.bson.compat._
 
   "Scalar value converters" should {
     "support binary subtype" >> {
@@ -171,12 +171,13 @@ final class ValueConverterSpec
 
       "from legacy" in {
         implicitly[BSONJavaScriptWS](
-          LegacyJavaScriptWS(raw)) must_=== BSONJavaScriptWS(raw)
+          LegacyJavaScriptWS(raw)) must_=== BSONJavaScriptWS(
+            raw, BSONDocument.empty)
       }
 
       "to legacy" in {
-        implicitly[LegacyJavaScriptWS](
-          BSONJavaScriptWS(raw)) must_=== LegacyJavaScriptWS(raw)
+        implicitly[LegacyJavaScriptWS](BSONJavaScriptWS(
+          raw, BSONDocument.empty)) must_=== LegacyJavaScriptWS(raw)
       }
     }
 

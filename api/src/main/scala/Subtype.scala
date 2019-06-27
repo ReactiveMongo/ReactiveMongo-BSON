@@ -9,13 +9,26 @@ sealed trait Subtype {
 }
 
 object Subtype {
-  object GenericBinarySubtype extends Subtype { val value = 0x00: Byte }
-  object FunctionSubtype extends Subtype { val value = 0x01: Byte }
-  object OldBinarySubtype extends Subtype { val value = 0x02: Byte }
-  object OldUuidSubtype extends Subtype { val value = 0x03: Byte }
-  object UuidSubtype extends Subtype { val value = 0x04: Byte }
-  object Md5Subtype extends Subtype { val value = 0x05: Byte }
-  object UserDefinedSubtype extends Subtype { val value = 0x80.toByte }
+  sealed trait GenericBinarySubtype extends Subtype { val value = 0x00: Byte }
+  object GenericBinarySubtype extends GenericBinarySubtype
+
+  sealed trait FunctionSubtype extends Subtype { val value = 0x01: Byte }
+  object FunctionSubtype extends FunctionSubtype
+
+  sealed trait OldBinarySubtype extends Subtype { val value = 0x02: Byte }
+  object OldBinarySubtype extends OldBinarySubtype
+
+  sealed trait OldUuidSubtype extends Subtype { val value = 0x03: Byte }
+  object OldUuidSubtype extends OldUuidSubtype
+
+  sealed trait UuidSubtype extends Subtype { val value = 0x04: Byte }
+  object UuidSubtype extends UuidSubtype
+
+  sealed trait Md5Subtype extends Subtype { val value = 0x05: Byte }
+  object Md5Subtype extends Md5Subtype
+
+  sealed trait UserDefinedSubtype extends Subtype { val value = 0x80.toByte }
+  object UserDefinedSubtype extends UserDefinedSubtype
 
   def apply(code: Byte) = code match {
     case 0 => GenericBinarySubtype

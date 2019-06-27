@@ -48,6 +48,10 @@ else
   TEST_ARGS="$TEST_ARGS ;testOnly -- exclude mongo2"
 fi
 
+if [ ! "v$TRAVIS_SCALA_VERSION" = "v2.13.0" ]; then
+  TEST_ARGS="$TEST_ARGS ;msbCompat/testOnly"
+fi
+
 cat > /dev/stdout <<EOF
 - JVM options: $JVM_OPTS
 - SBT options: $SBT_OPTS

@@ -5,10 +5,10 @@ package reactivemongo.api.bson
  * between `reactivemongo.bson` and `reactivemongo.api.bson` .
  *
  * {{{
- * import reactivemongo.api.bson.Converters._
+ * import reactivemongo.api.bson.compat._
  * }}}
  *
  * For more specific imports, see [[ValueConverters]]
  * and [[HandlerConverters]] .
  */
-object Converters extends ValueConverters with HandlerConverters
+package object compat extends ValueConverters with HandlerConverters

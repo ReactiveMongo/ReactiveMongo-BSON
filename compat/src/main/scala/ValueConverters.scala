@@ -1,4 +1,5 @@
 package reactivemongo.api.bson
+package compat
 
 import scala.language.implicitConversions
 
@@ -38,7 +39,7 @@ object ValueConverters extends ValueConverters
  *
  * {{{
  * // Required import
- * import reactivemongo.api.bson.ValueConverters._
+ * import reactivemongo.api.bson.compat.ValueConverters._
  *
  * // From legacy reactivemongo.bson
  * import reactivemongo.api.bson.{ BSONDouble, BSONString, BSONValue }
@@ -102,22 +103,22 @@ trait ValueConverters extends LowPriorityConverters {
 
   implicit final def fromBinarySubtype(subtype: Subtype): LegacySubtype =
     subtype match {
-      case _: Subtype.GenericBinarySubtype.type =>
+      case Subtype.GenericBinarySubtype =>
         LegacySubtype.GenericBinarySubtype
 
-      case _: Subtype.FunctionSubtype.type =>
+      case Subtype.FunctionSubtype =>
         LegacySubtype.FunctionSubtype
 
-      case _: Subtype.OldBinarySubtype.type =>
+      case Subtype.OldBinarySubtype =>
         LegacySubtype.OldBinarySubtype
 
-      case _: Subtype.OldUuidSubtype.type =>
+      case Subtype.OldUuidSubtype =>
         LegacySubtype.OldUuidSubtype
 
-      case _: Subtype.UuidSubtype.type =>
+      case Subtype.UuidSubtype =>
         LegacySubtype.UuidSubtype
 
-      case _: Subtype.Md5Subtype.type =>
+      case Subtype.Md5Subtype =>
         LegacySubtype.Md5Subtype
 
       case _ => LegacySubtype.UserDefinedSubtype
@@ -158,7 +159,7 @@ trait ValueConverters extends LowPriorityConverters {
 
   implicit final def fromJavaScript(javaScript: BSONJavaScript): LegacyJavaScript = LegacyJavaScript(javaScript.value)
 
-  implicit final def toJavaScriptWS(legacy: LegacyJavaScriptWS): BSONJavaScriptWS = BSONJavaScriptWS(legacy.value)
+  implicit final def toJavaScriptWS(legacy: LegacyJavaScriptWS): BSONJavaScriptWS = BSONJavaScriptWS(legacy.value, BSONDocument.empty)
 
   implicit final def fromJavaScriptWS(javaScript: BSONJavaScriptWS): LegacyJavaScriptWS = LegacyJavaScriptWS(javaScript.value)
 
@@ -201,24 +202,24 @@ trait ValueConverters extends LowPriorityConverters {
   implicit final def fromDecimal(decimal: BSONDecimal): LegacyDecimal =
     LegacyDecimal(decimal.high, decimal.low)
 
-  implicit val toUndefined: LegacyUndefined.type => BSONUndefined.type =
+  implicit val toUndefined: LegacyUndefined.type => BSONUndefined =
     _ => BSONUndefined
 
-  implicit val fromUndefined: BSONUndefined.type => LegacyUndefined.type =
+  implicit val fromUndefined: BSONUndefined => LegacyUndefined.type =
     _ => LegacyUndefined
 
-  implicit val toNull: LegacyNull.type => BSONNull.type = _ => BSONNull
+  implicit val toNull: LegacyNull.type => BSONNull = _ => BSONNull
 
-  implicit val fromNull: BSONNull.type => LegacyNull.type = _ => LegacyNull
+  implicit val fromNull: BSONNull => LegacyNull.type = _ => LegacyNull
 
-  implicit val toMinKey: LegacyMinKey.type => BSONMinKey.type = _ => BSONMinKey
+  implicit val toMinKey: LegacyMinKey.type => BSONMinKey = _ => BSONMinKey
 
-  implicit val fromMinKey: BSONMinKey.type => LegacyMinKey.type =
+  implicit val fromMinKey: BSONMinKey => LegacyMinKey.type =
     _ => LegacyMinKey
 
-  implicit val toMaxKey: LegacyMaxKey.type => BSONMaxKey.type = _ => BSONMaxKey
+  implicit val toMaxKey: LegacyMaxKey.type => BSONMaxKey = _ => BSONMaxKey
 
-  implicit val fromMaxKey: BSONMaxKey.type => LegacyMaxKey.type =
+  implicit val fromMaxKey: BSONMaxKey => LegacyMaxKey.type =
     _ => LegacyMaxKey
 }
 
@@ -266,9 +267,9 @@ private[bson] sealed trait LowPriorityConverters { _: ValueConverters =>
     case oid: BSONObjectID => fromObjectID(oid)
     case dec: BSONDecimal => fromDecimal(dec)
 
-    case _: BSONNull.type => LegacyNull
-    case _: BSONMaxKey.type => LegacyMaxKey
-    case _: BSONMinKey.type => LegacyMinKey
+    case BSONNull => LegacyNull
+    case BSONMaxKey => LegacyMaxKey
+    case BSONMinKey => LegacyMinKey
 
     case _ => LegacyUndefined
   }

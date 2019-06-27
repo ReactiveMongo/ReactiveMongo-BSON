@@ -913,19 +913,29 @@ object BSONSymbol {
  *
  * @param value The JavaScript source code.
  */
-final class BSONJavaScriptWS private[bson] (val value: String)
-  extends BSONValue {
+final class BSONJavaScriptWS private[bson] (
+  val value: String,
+  val scope: BSONDocument) extends BSONValue {
   val code = 0x0F: Byte
 
-  override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
+  override private[reactivemongo] lazy val byteSize =
+    5 + value.getBytes.size + scope.byteSize
 
   override private[reactivemongo] lazy val asString: Try[String] =
     Success(value)
 
-  override def hashCode: Int = value.hashCode
+  override def hashCode: Int = {
+    import scala.util.hashing.MurmurHash3
+
+    val nh = MurmurHash3.mix(MurmurHash3.productSeed, value.hashCode)
+
+    MurmurHash3.mixLast(nh, scope.hashCode)
+  }
 
   override def equals(that: Any): Boolean = that match {
-    case other: BSONJavaScriptWS => value == other.value
+    case other: BSONJavaScriptWS =>
+      (value == other.value) && (scope == other.scope)
+
     case _ => false
   }
 
@@ -934,14 +944,14 @@ final class BSONJavaScriptWS private[bson] (val value: String)
 
 object BSONJavaScriptWS {
   /** Extracts the javaScriptWS value if `that`'s a [[BSONJavaScriptWS]]. */
-  def unapply(that: Any): Option[String] = that match {
-    case js: BSONJavaScriptWS => Some(js.value)
+  def unapply(that: Any): Option[(String, BSONDocument)] = that match {
+    case js: BSONJavaScriptWS => Some(js.value -> js.scope)
     case _ => None
   }
 
-  /** Returns a [[BSONJavaScriptWS]] */
-  @inline def apply(value: String): BSONJavaScriptWS =
-    new BSONJavaScriptWS(value)
+  /** Returns a [[BSONJavaScriptWS]] with given `scope` */
+  @inline def apply(value: String, scope: BSONDocument): BSONJavaScriptWS =
+    new BSONJavaScriptWS(value, scope)
 }
 
 /** BSON Integer value */

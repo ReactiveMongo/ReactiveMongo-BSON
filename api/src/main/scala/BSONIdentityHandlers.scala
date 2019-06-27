@@ -36,6 +36,15 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
+  implicit object BSONSymbolIdentity extends IdentityBSONHandler[BSONSymbol] {
+    protected val valueType = "BSONSymbol"
+
+    protected def unapply(bson: BSONValue): Option[BSONSymbol] = bson match {
+      case s: BSONSymbol => Some(s)
+      case _ => None
+    }
+  }
+
   implicit object BSONIntegerIdentity extends IdentityBSONHandler[BSONInteger] {
     protected val valueType = "BSONInteger"
 
@@ -129,6 +138,41 @@ private[bson] trait BSONIdentityHandlers
       case d: BSONDateTime => Some(d)
       case _ => None
     }
+  }
+
+  implicit object BSONTimestampIdentity
+    extends IdentityBSONHandler[BSONTimestamp] {
+
+    protected val valueType = "BSONTimestamp"
+
+    protected def unapply(bson: BSONValue): Option[BSONTimestamp] = bson match {
+      case d: BSONTimestamp => Some(d)
+      case _ => None
+    }
+  }
+
+  implicit object BSONMaxKeyIdentity
+    extends IdentityBSONHandler[BSONMaxKey] {
+
+    protected val valueType = "BSONMaxKey"
+
+    protected def unapply(bson: BSONValue): Option[BSONMaxKey] =
+      bson match {
+        case _: BSONMaxKey => Some(BSONMaxKey)
+        case _ => None
+      }
+  }
+
+  implicit object BSONMinKeyIdentity
+    extends IdentityBSONHandler[BSONMinKey] {
+
+    protected val valueType = "BSONMinKey"
+
+    protected def unapply(bson: BSONValue): Option[BSONMinKey] =
+      bson match {
+        case _: BSONMinKey => Some(BSONMinKey)
+        case _ => None
+      }
   }
 
   implicit object BSONNullIdentity extends IdentityBSONHandler[BSONNull] {
