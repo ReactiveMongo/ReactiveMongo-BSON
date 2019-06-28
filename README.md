@@ -28,6 +28,9 @@ libraryDependencies += "org.reactivemongo" %% "reactivemongo-bson-api" % VERSION
 import reactivemongo.api.bson._
 ```
 
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-api_2.12/0.18.0/reactivemongo-bson-api_2.12-0.18.0-javadoc.jar/!/reactivemongo/api/bson/index.html)
+- [Examples](api/src/test/scala/BSONValueFixtures.scala)
+
 This refactoring also includes the following optional libraries.
 
 **compat:**
@@ -44,13 +47,14 @@ Then the conversions can be imported:
 import reactivemongo.api.bson.compat._
 ```
 
-> See [examples](compat/src/test/scala/ValueConverterSpec.scala)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-compat_2.12/0.18.0/reactivemongo-bson-compat_2.12-0.18.0-javadoc.jar/!/reactivemongo/api/bson/compat/index.html)
+- [Examples](compat/src/test/scala/ValueConverterSpec.scala)
 
 **collection:**
 
 The library providing collection references, with operations using the BSON values from the new API.
 
-> See [examples](collection/src/test/scala/CollectionSpec.scala)
+- [Examples](collection/src/test/scala/CollectionSpec.scala)
 
 **msb-compat:**
 
@@ -66,7 +70,8 @@ Then the conversions can be imported:
 import reactivemongo.api.bson.msb._
 ```
 
-> See [examples](msb-compat/src/test/scala/ValueConverterSpec.scala)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-msb_2.12/0.18.0/reactivemongo-bson-msb_2.12-0.18.0-javadoc.jar/!/reactivemongo/api/bson/msb/index.html)
+- [Examples](msb-compat/src/test/scala/ValueConverterSpec.scala)
 
 ## Build manually
 
