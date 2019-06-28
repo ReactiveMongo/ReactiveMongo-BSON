@@ -1,0 +1,120 @@
+version: 2.1
+jobs:
+  jdk8_scala212_mongodb4:
+    docker:
+      # specify the version you desire here
+      - image: circleci/openjdk:8-jdk
+
+    working_directory: ~/repo
+
+    environment:
+      MONGO_VER: 4
+      SCALA_VERSION: 2.12.8
+    
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "build.sbt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run:
+          name: Setup MongoDB $MONGO_VER env
+          command: ./.ci_scripts/beforeInstall.sh $SCALA_VERSION
+
+      - run:
+          name: Run Build and Tests (Scala $SCALA_VERSION)
+          command: ./.ci_scripts/retry.sh 3 ./.ci_scripts/validate.sh
+
+      - save_cache:
+          paths:
+            - ~/.ivy2
+          key: v1-dependencies--{{ checksum "build.sbt" }}
+
+      - store_test_results:
+          path: .
+
+  jdk9_scala213_mongodb4:
+    docker:
+      # specify the version you desire here
+      - image: circleci/openjdk:9-jdk
+
+    working_directory: ~/repo
+
+    environment:
+      MONGO_VER: 4
+      SCALA_VERSION: 2.13.0
+    
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "build.sbt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run:
+          name: Setup MongoDB $MONGO_VER env
+          command: ./.ci_scripts/beforeInstall.sh $SCALA_VERSION
+
+      - run:
+          name: Run Build and Tests (Scala $SCALA_VERSION)
+          command: ./.ci_scripts/retry.sh 3 ./.ci_scripts/validate.sh
+
+      - save_cache:
+          paths:
+            - ~/.ivy2
+          key: v1-dependencies--{{ checksum "build.sbt" }}
+
+      - store_test_results:
+          path: .
+
+  jdk10_scala213_mongodb26:
+    docker:
+      # specify the version you desire here
+      - image: circleci/openjdk:10-jdk
+
+    working_directory: ~/repo
+
+    environment:
+      MONGO_VER: 2_6
+      SCALA_VERSION: 2.11.12
+    
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "build.sbt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run:
+          name: Setup MongoDB $MONGO_VER env
+          command: ./.ci_scripts/beforeInstall.sh $SCALA_VERSION
+
+      - run:
+          name: Run Build and Tests (Scala $SCALA_VERSION)
+          command: ./.ci_scripts/retry.sh 3 ./.ci_scripts/validate.sh
+
+      - save_cache:
+          paths:
+            - ~/.ivy2
+          key: v1-dependencies--{{ checksum "build.sbt" }}
+
+      - store_test_results:
+          path: .
+
+workflows:
+  version: 2.1
+  build_and_test:
+    jobs:
+      - jdk8_scala212_mongodb4
+      - jdk9_scala213_mongodb4
+      - jdk10_scala213_mongodb26

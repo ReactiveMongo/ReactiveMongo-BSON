@@ -20,4 +20,4 @@ matrix:
     scala: 2.13.0
 
 before_install: ./.ci_scripts/beforeInstall.sh $TRAVIS_SCALA_VERSION
-script: ./.ci_scripts/validate.sh
+script: SCALA_VERSION="$TRAVIS_SCALA_VERSION" ./.ci_scripts/validate.sh

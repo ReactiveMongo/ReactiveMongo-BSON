@@ -80,4 +80,6 @@ To run the tests, use:
 
 > Integration tests in the `collection` module requires a local MongoDB instance on port 27017 .
 
+[![CircleCI](https://circleci.com/gh/ReactiveMongo/ReactiveMongo-BSON.svg?style=svg)](https://circleci.com/gh/ReactiveMongo/ReactiveMongo-BSON)
+
 [Travis](https://travis-ci.org/ReactiveMongo/ReactiveMongo-BSON): ![Travis build status](https://travis-ci.org/ReactiveMongo/ReactiveMongo-BSON.png?branch=master)
