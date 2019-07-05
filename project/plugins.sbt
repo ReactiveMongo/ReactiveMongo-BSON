@@ -3,7 +3,7 @@ resolvers ++= Seq(
 
 addSbtPlugin("org.scalariform" % "sbt-scalariform" % "1.8.3")
 
-addSbtPlugin("cchantep" % "sbt-hl-compiler" % "0.5")
+addSbtPlugin("cchantep" % "sbt-hl-compiler" % "0.6")
 
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.0")
 
