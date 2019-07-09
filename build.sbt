@@ -6,11 +6,13 @@ ThisBuild / autoAPIMappings := true
 
 val baseArtifact = "reactivemongo-bson"
 
-name := s"reactivemongo-biːsən"
+name := "reactivemongo-biːsən"
 
 resolvers in ThisBuild ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/")
+
+ThisBuild / mimaFailOnNoPrevious := false
 
 val commonSettings = Seq(
   scalacOptions in (Compile, doc) := (scalacOptions in Test).value ++ Seq(
