@@ -37,7 +37,7 @@ val discipline = Def.setting[ModuleID] {
   if (scalaVersion.value startsWith "2.10.") {
     "org.typelevel" %% "discipline" % "0.9.0"
   } else {
-    "org.typelevel" %% "discipline-specs2" % "0.12.0-M3"
+    "org.typelevel" %% "discipline-specs2" % "1.0.0-RC1"
   }
 }
 
