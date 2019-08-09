@@ -1,6 +1,13 @@
 package reactivemongo.api.bson
 
-import java.time.Instant
+import java.time.{
+  Instant,
+  LocalDate,
+  LocalDateTime,
+  OffsetDateTime,
+  ZonedDateTime,
+  ZoneId
+}
 
 import java.net.{ URL, URI }
 
@@ -187,15 +194,77 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
   "BSONDateTime" should {
     val time = System.currentTimeMillis()
     val bson = BSONDateTime(time)
-    val date = Instant.ofEpochMilli(time)
-    val handler = implicitly[BSONHandler[Instant]]
+    val instant = Instant.ofEpochMilli(time)
+    val defaultZone = ZoneId.systemDefault
+    val offset = defaultZone.getRules.getOffset(instant)
+    val localDateTime = LocalDateTime.ofEpochSecond(
+      time / 1000, instant.getNano, offset)
 
-    "be read as date" in {
-      handler.readTry(bson) must beSuccessfulTry(date)
+    "as Instant" >> {
+      val handler = implicitly[BSONHandler[Instant]]
+
+      "be read" in {
+        handler.readTry(bson) must beSuccessfulTry(instant)
+      }
+
+      "be written" in {
+        handler.writeTry(instant) must beSuccessfulTry(bson)
+      }
     }
 
-    "be written from a date" in {
-      handler.writeTry(date) must beSuccessfulTry(bson)
+    "as LocalDateTime" >> {
+      val handler = implicitly[BSONHandler[LocalDateTime]]
+
+      "be read" in {
+        handler.readTry(bson) must beSuccessfulTry(localDateTime)
+      }
+
+      "be written" in {
+        handler.writeTry(localDateTime) must beSuccessfulTry(bson)
+      }
+    }
+
+    "as LocalDate" >> {
+      val handler = implicitly[BSONHandler[LocalDate]]
+      val localDate = localDateTime.toLocalDate
+      val dateBson = BSONDateTime(
+        localDate.atStartOfDay.toEpochSecond(offset) * 1000)
+
+      "be read" in {
+        handler.readTry(bson) must beSuccessfulTry(localDate) and {
+          handler.readTry(dateBson) must beSuccessfulTry(localDate)
+        }
+      }
+
+      "be written" in {
+        handler.writeTry(localDate) must beSuccessfulTry(dateBson)
+      }
+    }
+
+    "as OffsetDateTime" >> {
+      val handler = implicitly[BSONHandler[OffsetDateTime]]
+      val offsetDateTime = localDateTime.atOffset(offset)
+
+      "be read" in {
+        handler.readTry(bson) must beSuccessfulTry(offsetDateTime)
+      }
+
+      "be written" in {
+        handler.writeTry(offsetDateTime) must beSuccessfulTry(bson)
+      }
+    }
+
+    "as ZonedDateTime" >> {
+      val handler = implicitly[BSONHandler[ZonedDateTime]]
+      val zonedDateTime = localDateTime.atZone(defaultZone)
+
+      "be read" in {
+        handler.readTry(bson) must beSuccessfulTry(zonedDateTime)
+      }
+
+      "be written" in {
+        handler.writeTry(zonedDateTime) must beSuccessfulTry(bson)
+      }
     }
   }
 
