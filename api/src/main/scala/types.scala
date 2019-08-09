@@ -189,6 +189,9 @@ final class BSONDouble private[bson] (val value: Double) extends BSONValue {
 
   override private[bson] lazy val asDouble: Try[Double] = Success(value)
 
+  override private[bson] lazy val asLong: Try[Long] =
+    if (value.isWhole) Try(value.toLong) else super.asLong
+
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Try(BigDecimal exact value)
 
@@ -961,6 +964,8 @@ final class BSONInteger private[bson] (val value: Int) extends BSONValue {
 
   override lazy val asInt: Try[Int] = Success(value)
 
+  override lazy val asLong: Try[Long] = Success(value.toLong)
+
   override lazy val asDecimal: Try[BigDecimal] = Success(BigDecimal(value))
 
   override def hashCode: Int = value.hashCode
@@ -1060,7 +1065,15 @@ final class BSONLong private[bson] (val value: Long) extends BSONValue {
 object BSONLong {
   /** Extracts the value if `that`'s a [[BSONLong]]. */
   def unapply(that: Any): Option[Long] = that match {
-    case bson: BSONLong => Some(bson.value)
+    case bson: BSONLong =>
+      Some(bson.value)
+
+    case bson: BSONInteger =>
+      Some(bson.value.toLong)
+
+    case bson: BSONDouble if bson.value.isWhole =>
+      Some(bson.value.toLong)
+
     case _ => None
   }
 
