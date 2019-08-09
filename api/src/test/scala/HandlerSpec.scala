@@ -280,6 +280,28 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
   }
 
+  "Long" should {
+    val handler = implicitly[BSONHandler[Long]]
+
+    "be read from BSONDouble" >> {
+      "successfully if whole" in {
+        handler.readTry(BSONDouble(123D)) must beSuccessfulTry(123L)
+      }
+
+      "with error if not whole" in {
+        handler.readTry(BSONDouble(123.45D)) must beFailedTry[Long]
+      }
+    }
+
+    "be read from BSONInteger" in {
+      handler.readTry(BSONInteger(123)) must beSuccessfulTry(123L)
+    }
+
+    "be read from BSONLong" in {
+      handler.readTry(BSONLong(123L)) must beSuccessfulTry(123L)
+    }
+  }
+
   "BSONString" should {
     val reader = BSONReader.collect[String] { case BSONString(str) => str }
 
