@@ -2,7 +2,14 @@ package reactivemongo.api.bson
 
 import java.net.{ URI, URL }
 
-import java.time.Instant
+import java.time.{
+  Instant,
+  LocalDate,
+  LocalDateTime,
+  OffsetDateTime,
+  ZonedDateTime,
+  ZoneId
+}
 
 import scala.collection.mutable.Builder
 import scala.collection.immutable.{ IndexedSeq, HashMap }
@@ -86,6 +93,52 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(date: Instant) = BSONDateTime(date.toEpochMilli)
   }
 
+  private final class BSONLocalDateTimeHandler(zone: ZoneId)
+    extends BSONHandler[LocalDateTime] with SafeBSONWriter[LocalDateTime] {
+
+    @inline def readTry(bson: BSONValue): Try[LocalDateTime] =
+      bson.asDateTime.map(LocalDateTime.ofInstant(_, zone))
+
+    @inline def safeWrite(date: LocalDateTime) = {
+      val offset = zone.getRules.getOffset(date)
+
+      BSONDateTime(
+        (date.toEpochSecond(offset) * 1000) + (date.getNano / 1000000))
+    }
+  }
+
+  /**
+   * Returns a BSON handler for `java.time.LocalDateTime`,
+   * considering the specified time `zone`.
+   */
+  @inline def bsonLocalDateTimeHandler(zone: ZoneId): BSONHandler[LocalDateTime] = new BSONLocalDateTimeHandler(zone)
+
+  implicit val bsonLocalDateTimeHandler: BSONHandler[LocalDateTime] =
+    new BSONLocalDateTimeHandler(ZoneId.systemDefault)
+
+  private final class BSONLocalDateHandler(zone: ZoneId)
+    extends BSONHandler[LocalDate] with SafeBSONWriter[LocalDate] {
+
+    @inline def readTry(bson: BSONValue): Try[LocalDate] =
+      bson.asDateTime.map(LocalDateTime.ofInstant(_, zone).toLocalDate)
+
+    @inline def safeWrite(date: LocalDate) = {
+      val time = date.atStartOfDay
+      val offset = zone.getRules.getOffset(time)
+
+      BSONDateTime(time.toEpochSecond(offset) * 1000)
+    }
+  }
+
+  /**
+   * Returns a BSON handler for `java.time.LocalDate`,
+   * considering the specified time `zone`.
+   */
+  @inline def bsonLocalDateHandler(zone: ZoneId): BSONHandler[LocalDate] = new BSONLocalDateHandler(zone)
+
+  implicit val bsonLocalDateHandler: BSONHandler[LocalDate] =
+    new BSONLocalDateHandler(ZoneId.systemDefault)
+
   implicit object BSONURLHandler
     extends BSONHandler[URL] with SafeBSONWriter[URL] {
 
@@ -98,6 +151,44 @@ private[bson] trait DefaultBSONHandlers
 
     def safeWrite(url: URL) = BSONString(url.toString)
   }
+
+  private final class BSONOffsetDateTimeHandler(zone: ZoneId)
+    extends BSONHandler[OffsetDateTime] with SafeBSONWriter[OffsetDateTime] {
+
+    @inline def readTry(bson: BSONValue): Try[OffsetDateTime] =
+      bson.asDateTime.map(OffsetDateTime.ofInstant(_, zone))
+
+    @inline def safeWrite(date: OffsetDateTime) =
+      BSONDateTime((date.toEpochSecond * 1000) + (date.getNano / 1000000))
+  }
+
+  /**
+   * Returns a BSON handler for `java.time.OffsetDateTime`,
+   * considering the specified time `zone`.
+   */
+  @inline def bsonOffsetDateTimeHandler(zone: ZoneId): BSONHandler[OffsetDateTime] = new BSONOffsetDateTimeHandler(zone)
+
+  implicit val bsonOffsetDateTimeHandler: BSONHandler[OffsetDateTime] =
+    new BSONOffsetDateTimeHandler(ZoneId.systemDefault)
+
+  private final class BSONZonedDateTimeHandler(zone: ZoneId)
+    extends BSONHandler[ZonedDateTime] with SafeBSONWriter[ZonedDateTime] {
+
+    @inline def readTry(bson: BSONValue): Try[ZonedDateTime] =
+      bson.asDateTime.map(ZonedDateTime.ofInstant(_, zone))
+
+    @inline def safeWrite(date: ZonedDateTime) =
+      BSONDateTime((date.toEpochSecond * 1000) + (date.getNano / 1000000))
+  }
+
+  /**
+   * Returns a BSON handler for `java.time.ZonedDateTime`,
+   * considering the specified time `zone`.
+   */
+  @inline def bsonZonedDateTimeHandler(zone: ZoneId): BSONHandler[ZonedDateTime] = new BSONZonedDateTimeHandler(zone)
+
+  implicit val bsonZonedDateTimeHandler: BSONHandler[ZonedDateTime] =
+    new BSONZonedDateTimeHandler(ZoneId.systemDefault)
 
   implicit object BSONURIHandler
     extends BSONHandler[URI] with SafeBSONWriter[URI] {
