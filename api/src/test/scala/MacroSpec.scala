@@ -456,15 +456,13 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         like { case e => e.getMessage must contain("lastName") }
     }
 
-    "throw meaningful exception if field has another type" in {
+    "be generated to supported similar numeric BSON types" in {
       val primitivesDoc = BSONDocument(
         "dbl" -> 2D, "str" -> "str", "bl" -> true, "int" -> 2D, "long" -> 2L)
 
       Macros.reader[Primitives].readTry(primitivesDoc).
-        aka("read") must beFailedTry[Primitives].like {
-          case e =>
-            e.getMessage must contain("int: BSONDouble != BSONInteger")
-        }
+        aka("read") must beSuccessfulTry(Primitives(
+          dbl = 2D, str = "str", bl = true, int = 2, long = 2L))
     }
 
     "be generated for a generic case class" in {
