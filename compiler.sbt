@@ -39,7 +39,7 @@ ThisBuild / scalacOptions in (Compile, console) ~= {
     o.startsWith("-X") || o.startsWith("-Y") || o.startsWith("-P:silencer"))
 }
 
-val silencerVersion = "1.4.1"
+val silencerVersion = "1.4.2"
 
 libraryDependencies in ThisBuild ++= Seq(
   compilerPlugin("com.github.ghik" %% "silencer-plugin" % silencerVersion),
