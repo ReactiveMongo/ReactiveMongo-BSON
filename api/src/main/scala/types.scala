@@ -192,6 +192,14 @@ final class BSONDouble private[bson] (val value: Double) extends BSONValue {
   override private[bson] lazy val asLong: Try[Long] =
     if (value.isWhole) Try(value.toLong) else super.asLong
 
+  override private[bson] lazy val asInt: Try[Int] = {
+    if (value.isWhole && value >= Int.MinValue && value <= Int.MaxValue) {
+      Try(value.toInt)
+    } else {
+      super.asInt
+    }
+  }
+
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Try(BigDecimal exact value)
 
@@ -962,11 +970,13 @@ final class BSONInteger private[bson] (val value: Int) extends BSONValue {
   val code = 0x10: Byte
   override private[reactivemongo] val byteSize = 4
 
-  override lazy val asInt: Try[Int] = Success(value)
+  override private[bson] lazy val asDouble: Try[Double] = Success(value.toDouble)
 
-  override lazy val asLong: Try[Long] = Success(value.toLong)
+  override private[bson] lazy val asInt: Try[Int] = Success(value)
 
-  override lazy val asDecimal: Try[BigDecimal] = Success(BigDecimal(value))
+  override private[bson] lazy val asLong: Try[Long] = Success(value.toLong)
+
+  override private[bson] lazy val asDecimal: Try[BigDecimal] = Success(BigDecimal(value))
 
   override def hashCode: Int = value.hashCode
 
@@ -1045,6 +1055,17 @@ object BSONTimestamp {
 final class BSONLong private[bson] (val value: Long) extends BSONValue {
   val code = 0x12: Byte
 
+  override private[bson] lazy val asDouble: Try[Double] = {
+    if (value >= Double.MinValue && value <= Double.MaxValue) {
+      Try(value.toDouble)
+    } else super.asDouble
+  }
+
+  override private[bson] lazy val asInt: Try[Int] = {
+    if (value >= Int.MinValue && value <= Int.MaxValue) Try(value.toInt)
+    else super.asInt
+  }
+
   override private[bson] lazy val asLong: Try[Long] = Success(value)
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
@@ -1067,12 +1088,6 @@ object BSONLong {
   def unapply(that: Any): Option[Long] = that match {
     case bson: BSONLong =>
       Some(bson.value)
-
-    case bson: BSONInteger =>
-      Some(bson.value.toLong)
-
-    case bson: BSONDouble if bson.value.isWhole =>
-      Some(bson.value.toLong)
 
     case _ => None
   }
@@ -1098,6 +1113,15 @@ final class BSONDecimal private[bson] (
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     BSONDecimal.toBigDecimal(this)
+
+  override private[bson] lazy val asDouble: Try[Double] =
+    asDecimal.filter(_.isDecimalDouble).map(_.toDouble)
+
+  override private[bson] lazy val asInt: Try[Int] =
+    asDecimal.filter(_.isValidInt).map(_.toInt)
+
+  override private[bson] lazy val asLong: Try[Long] =
+    asDecimal.filter(_.isValidLong).map(_.toLong)
 
   /** Returns true if is negative. */
   lazy val isNegative: Boolean =

@@ -280,8 +280,95 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
   }
 
+  "Double" should {
+    val handler = implicitly[BSONHandler[Double]]
+
+    "be read from BSONDecimal" >> {
+      val dec = BSONDecimal.fromBigDecimal(BigDecimal(123.45D))
+
+      "successfully if <= Double.MaxValue" in {
+        dec.flatMap(handler.readTry) must beSuccessfulTry(123.45D)
+      }
+
+      "with error if > Double.MaxValue" in {
+        val maxDouble = BigDecimal(Double.MaxValue)
+        val d = BSONDecimal.fromBigDecimal(maxDouble + maxDouble)
+
+        d.flatMap(handler.readTry) must beFailedTry[Double]
+      }
+    }
+
+    "be read from BSONDouble" in {
+      handler.readTry(BSONDouble(123.45D)) must beSuccessfulTry(123.45D)
+    }
+
+    "be read from BSONInteger" in {
+      handler.readTry(BSONInteger(123)) must beSuccessfulTry(123D)
+    }
+
+    "be read from BSONLong" in {
+      handler.readTry(BSONLong(123L)) must beSuccessfulTry(123)
+    }
+  }
+
+  "Integer" should {
+    val handler = implicitly[BSONHandler[Int]]
+
+    "be read from BSONDecimal" >> {
+      "successfully if whole < Int.MaxValue" in {
+        BSONDecimal.fromLong(123L).
+          flatMap(handler.readTry) must beSuccessfulTry(123)
+      }
+
+      "with error if not whole" in {
+        BSONDecimal.fromBigDecimal(
+          BigDecimal(123.45D)).flatMap(handler.readTry) must beFailedTry[Int]
+      }
+    }
+
+    "be read from BSONDouble" >> {
+      "successfully if whole < Int.MaxValue" in {
+        handler.readTry(BSONDouble(123D)) must beSuccessfulTry(123)
+      }
+
+      "with error if not whole" in {
+        handler.readTry(BSONDouble(123.45D)) must beFailedTry[Int]
+      }
+    }
+
+    "be read from BSONInteger" in {
+      handler.readTry(BSONInteger(123)) must beSuccessfulTry(123)
+    }
+
+    "be read from BSONLong" >> {
+      "successfully if < Int.MaxValue" in {
+        handler.readTry(BSONLong(123L)) must beSuccessfulTry(123)
+      }
+
+      "with error if >= Int.MaxValue" in {
+        handler.readTry(BSONLong(
+          Int.MaxValue.toLong + 1L)) must beFailedTry[Int]
+
+      }
+    }
+  }
+
   "Long" should {
     val handler = implicitly[BSONHandler[Long]]
+
+    "be read from BSONDecimal" >> {
+      val dec = BSONDecimal.fromLong(123L)
+
+      "successfully if whole < Long.MaxValue" in {
+        dec.flatMap(handler.readTry) must beSuccessfulTry(123)
+      }
+
+      "with error if not whole" in {
+        val d = BSONDecimal.fromBigDecimal(BigDecimal(s"${Long.MaxValue}0"))
+
+        d.flatMap(handler.readTry) must beFailedTry[Long]
+      }
+    }
 
     "be read from BSONDouble" >> {
       "successfully if whole" in {
