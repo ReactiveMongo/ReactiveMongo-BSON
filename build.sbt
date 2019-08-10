@@ -68,7 +68,7 @@ lazy val api = (project in file("api")).settings(
       discipline.value,
       spireLaws.value,
       "com.chuusai" %% "shapeless" % "2.3.3",
-      "org.slf4j" % "slf4j-simple" % "1.7.27").map(_ % Test),
+      "org.slf4j" % "slf4j-simple" % "1.7.28").map(_ % Test),
     libraryDependencies ++= Seq(reactivemongoShaded.value % Provided)
   ))
 
@@ -78,7 +78,7 @@ lazy val compat = (project in file("compat")).settings(
     description := "Compatibility library between legacy & new BSON APIs",
     fork in Test := true,
     libraryDependencies ++= Seq(
-      "org.slf4j" % "slf4j-simple" % "1.7.27" % Test,
+      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test,
       "org.reactivemongo" %% "reactivemongo-bson" % version.value % Provided)
   )
 ).dependsOn(api)
@@ -89,7 +89,7 @@ lazy val collection = (project in file("collection")).settings(
     description := "Collection/query library using new BSON serialization",
     fork in Test := true,
     libraryDependencies ++= Seq(
-      "org.slf4j" % "slf4j-simple" % "1.7.27" % Test,
+      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test,
       "org.reactivemongo" %% "reactivemongo" % version.value % Provided)
   )).dependsOn(api, compat)
 
