@@ -28,7 +28,7 @@ libraryDependencies += "org.reactivemongo" %% "reactivemongo-bson-api" % VERSION
 import reactivemongo.api.bson._
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-api_2.12/0.18.0/reactivemongo-bson-api_2.12-0.18.0-javadoc.jar/!/reactivemongo/api/bson/index.html)
+- [Documentation](http://reactivemongo.org/releases/0.1x/documentation/tutorial/bison.html)
 - [Examples](api/src/test/scala/BSONValueFixtures.scala)
 
 This refactoring also includes the following optional libraries.
