@@ -136,6 +136,8 @@ object BSONSerializationPack
   private[reactivemongo] def reader[A](f: Document => A): Reader[A] =
     BSONDocumentReader(f)
 
+  private[reactivemongo] def afterReader[A, B](r: Reader[A])(f: A => B): Reader[B] = r.afterRead(f)
+
   override private[reactivemongo] def bsonSize(value: Value): Int =
     value.byteSize
 
