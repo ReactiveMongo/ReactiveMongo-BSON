@@ -48,9 +48,16 @@ trait BSONWriter[T] {
 }
 
 object BSONWriter {
-  /** Creates a [[BSONWriter]] based on the given `write` function. */
+  /**
+   * Creates a [[BSONWriter]] based on the given `write` function.
+   * This function is called within a [[scala.util.Try]].
+   */
   def apply[T](write: T => BSONValue): BSONWriter[T] =
     new FunctionalWriter[T](write)
+
+  private[bson] def safe[T](write: T => BSONValue): BSONWriter[T] with SafeBSONWriter[T] = new BSONWriter[T] with SafeBSONWriter[T] {
+    def safeWrite(value: T) = write(value)
+  }
 
   /** Creates a [[BSONWriter]] based on the given `write` function. */
   def from[T](write: T => Try[BSONValue]): BSONWriter[T] =
@@ -69,7 +76,7 @@ object BSONWriter {
   }
 }
 
-/** A write that is safe, as `writeTry` can always return a `Success`. */
+/** A writer that is safe, as `writeTry` can always return a `Success`. */
 private[bson] trait SafeBSONWriter[T] { writer: BSONWriter[T] =>
   def safeWrite(value: T): BSONValue
 

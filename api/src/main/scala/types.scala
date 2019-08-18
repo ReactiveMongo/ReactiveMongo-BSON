@@ -390,8 +390,34 @@ final class BSONArray private[bson] (
     }
 }
 
+/** See [[BSONArray]] */
 object BSONArray {
-  /** Extracts the values sequence if `that`'s a [[BSONArray]]. */
+  /**
+   * Extracts the values sequence if `that`'s a [[BSONArray]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSON, BSONArray, BSONValue }
+   *
+   * def foo(input: BSONValue): Unit = input match {
+   *   case BSONArray(vs) => pretty(vs)
+   *   case _ => println("Not a BSON array")
+   * }
+   *
+   * def bar(arr: BSONArray): Unit = arr match {
+   *   // with splat pattern
+   *   case BSONArray(Seq(requiredFirst, other @ _*)) =>
+   *     println(s"first = \$requiredFirst")
+   *     pretty(other)
+   *
+   *   case _ =>
+   *     println("BSON array doesn't match")
+   * }
+   *
+   * def pretty(values: Seq[BSONValue]): Unit =
+   *   println(values.map(BSON.pretty).mkString(", "))
+   *
+   * }}}
+   */
   @inline def unapply(that: Any): Option[IndexedSeq[BSONValue]] = that match {
     case array: BSONArray => Some(array.values)
     case _ => None

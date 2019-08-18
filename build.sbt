@@ -80,6 +80,16 @@ lazy val monocle = (project in file("monocle")).settings(
       "org.slf4j" % "slf4j-simple" % "1.7.28" % Test)
   )).dependsOn(api)
 
+lazy val geo = (project in file("geo")).settings(
+  commonSettings ++ Seq(
+    name := s"${baseArtifact}-geo",
+    description := "GeoJSON support for the BSON API",
+    fork in Test := true,
+    libraryDependencies ++= Seq(
+      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test)
+  )
+).dependsOn(api, monocle % Test)
+
 lazy val compat = (project in file("compat")).settings(
   commonSettings ++ Seq(
     name := s"${baseArtifact}-compat",

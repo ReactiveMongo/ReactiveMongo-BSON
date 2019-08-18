@@ -10,7 +10,7 @@ trait TypeNaming extends (Class[_] => String) {
   def apply(tpe: Class[_]): String
 
   /**
-   * Composes the naming with the given function $f,
+   * Composes the naming with the given function `f`,
    * applied on the first result.
    *
    * {{{

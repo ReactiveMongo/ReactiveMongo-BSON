@@ -11,4 +11,4 @@ package reactivemongo.api.bson
  * For more specific imports, see [[ValueConverters]]
  * and [[HandlerConverters]] .
  */
-package object msb extends ValueConverters //TODO:with HandlerConverters
+package object msb extends ValueConverters with HandlerConverters
