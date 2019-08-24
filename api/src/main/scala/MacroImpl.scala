@@ -11,8 +11,6 @@ private[bson] class MacroImpl(val c: Context) {
 
   import Macros.Annotations, Annotations.{ Flatten, Ignore, Key, NoneAsNull }
 
-  import Macros.Options
-
   def reader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] = readerWithConfig[A, Opts](implicitOptionsConfig)
 
   def configuredReader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] = readerWithConfig[A, Opts](withOptionsConfig)
@@ -71,9 +69,8 @@ private[bson] class MacroImpl(val c: Context) {
     def writeTry(v: A) = forwardBSONWriter.writeTry(v)
   })
 
-  private def withOptionsConfig: c.Expr[MacroConfiguration] = {
+  private def withOptionsConfig: c.Expr[MacroConfiguration] =
     c.Expr[MacroConfiguration](c.typecheck(q"${c.prefix}.config"))
-  }
 
   private def implicitOptionsConfig: c.Expr[MacroConfiguration] =
     c.Expr[MacroConfiguration](c.inferImplicitValue(
@@ -105,6 +102,13 @@ private[bson] class MacroImpl(val c: Context) {
     private val docReaderType: Type =
       typeOf[BSONDocumentReader[_]].typeConstructor
 
+    // Init MacroConfiguration (possibility lazy) in a local val,
+    // to avoid evaluating the configuration each time required
+    // in the generated handler.
+    lazy val macroCfg = TermName(c.freshName("macroCfg"))
+    lazy val macroCfgInit =
+      q"val $macroCfg: ${bsonPkg}.MacroConfiguration = ${config}"
+
     lazy val readBody: c.Expr[UTry[A]] = {
       val reader = unionTypes.map { types =>
         val resolve = resolver(Map.empty, "BSONReader")(readerType)
@@ -115,15 +119,18 @@ private[bson] class MacroImpl(val c: Context) {
           Tuple3(
             typ,
             TermName(c.freshName("Type")),
-            q"${config}.typeNaming($cls)")
+            q"$macroCfg.typeNaming($cls)")
         }
 
         val cases: List[CaseDef] = preparedTypes.map {
           case (typ, pattern, _) =>
-
             val body = readBodyFromImplicit(typ)(resolve).getOrElse {
-              // No existing implicit, but can fallback to automatic mat
-              readBodyConstruct(typ)
+              if (hasOption[MacroOptions.AutomaticMaterialization]) {
+                // No existing implicit, but can fallback to automatic mat
+                readBodyConstruct(typ)
+              } else {
+                c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONReader[_]].getName}[_, ${typ.typeSymbol.fullName}]")
+              }
             }
 
             cq"${Ident(pattern)} => $body"
@@ -138,10 +145,12 @@ private[bson] class MacroImpl(val c: Context) {
         }
 
         q"""{
+          $macroCfgInit
+
           ..$typePats
 
           macroDoc.getAsTry[String](
-            ${config}.discriminator).flatMap { ${da} =>
+            $macroCfg.discriminator).flatMap { ${da} =>
             ${Match(Ident(dt), cases)}
           }
         }"""
@@ -149,8 +158,8 @@ private[bson] class MacroImpl(val c: Context) {
 
       val result = c.Expr[UTry[A]](reader)
 
-      if (hasOption[Options.Verbose]) {
-        c.echo(c.enclosingPosition, show(reader))
+      if (hasOption[MacroOptions.Verbose]) {
+        c.echo(c.enclosingPosition, s"// Reader\n${show(reader)}")
       }
 
       result
@@ -159,13 +168,17 @@ private[bson] class MacroImpl(val c: Context) {
     lazy val writeBody: c.Expr[UTry[BSONDocument]] = {
       val valNme = TermName("macroVal")
       val writer = unionTypes.map { types =>
-        val resolve = resolver(Map.empty, "BSONWriter")(writerType)
+        val resolve = resolver(Map.empty, "BSONDocumentWriter")(writerType)
         val cases = types.map { typ =>
           val nme = TermName(c.freshName("macroVal"))
           val id = Ident(nme)
           val body = writeBodyFromImplicit(id, typ)(resolve).getOrElse {
-            // No existing implicit, but can fallback to automatic mat
-            writeBodyConstruct(id, typ)
+            if (hasOption[MacroOptions.AutomaticMaterialization]) {
+              // No existing implicit, but can fallback to automatic mat
+              writeBodyConstruct(id, typ)
+            } else {
+              c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONWriter[_]].getName}[_, ${typ.typeSymbol.fullName}]")
+            }
           }
 
           cq"$nme: $typ => $body"
@@ -178,13 +191,13 @@ private[bson] class MacroImpl(val c: Context) {
               ${valNme}.toString))
         """
 
-        Match(Ident(valNme), matchBody)
+        q"{ $macroCfgInit; ${Match(Ident(valNme), matchBody)} }"
       } getOrElse writeBodyConstruct(Ident(valNme), aTpe)
 
       val result = c.Expr[UTry[BSONDocument]](writer)
 
-      if (hasOption[Options.Verbose]) {
-        c.echo(c.enclosingPosition, show(writer))
+      if (hasOption[MacroOptions.Verbose]) {
+        c.echo(c.enclosingPosition, s"// Writer\n${show(writer)}")
       }
 
       result
@@ -196,8 +209,6 @@ private[bson] class MacroImpl(val c: Context) {
 
       if (!reader.isEmpty) {
         Some(q"$reader.readTry(macroDoc)")
-      } else if (!hasOption[Options.AutomaticMaterialization]) {
-        c.abort(c.enclosingPosition, s"Implicit not found for '${tpe.typeSymbol.name}': ${classOf[BSONReader[_]].getName}[_, ${tpe.typeSymbol.fullName}]")
       } else None
     }
 
@@ -288,7 +299,7 @@ private[bson] class MacroImpl(val c: Context) {
 
               q"${reader}.readTry(macroDoc)"
             } else {
-              val field = q"${config}.fieldNaming($pname)"
+              val field = q"$macroCfg.fieldNaming($pname)"
 
               OptionTypeParameter.unapply(sig) match {
                 case Some(_) =>
@@ -314,7 +325,11 @@ private[bson] class MacroImpl(val c: Context) {
 
       val accName = TermName(c.freshName("acc"))
 
+      val rcfg = if (params.nonEmpty) macroCfgInit else EmptyTree
+
       q"""{
+        $rcfg
+
         ..$decls 
         ..$values
 
@@ -341,9 +356,6 @@ private[bson] class MacroImpl(val c: Context) {
         Some(classNameTree(tpe).fold(doc) { de =>
           q"""${doc}.map { _ ++ $de }"""
         })
-      } else if (!hasOption[Options.AutomaticMaterialization]) {
-        c.abort(c.enclosingPosition, s"Implicit not found for '${tpe.typeSymbol.name}': ${classOf[BSONWriter[_]].getName}[_, ${tpe.typeSymbol.fullName}]")
-
       } else None
     }
 
@@ -437,7 +449,7 @@ private[bson] class MacroImpl(val c: Context) {
 
           val vt = TermName(c.freshName(pname))
 
-          val field = q"${config}.fieldNaming(${pname})"
+          val field = q"$macroCfg.fieldNaming(${pname})"
           val appendCall = q"${bufOk} += ${bsonPkg}.BSONElement($field, $vt)"
           val appendDocCall = if (mustFlatten(param, pname, sig, writer)) {
             q"${bufOk} ++= $vt.elements"
@@ -467,7 +479,7 @@ private[bson] class MacroImpl(val c: Context) {
 
             case _ => resolveWriter(pname, sig)
           }
-          val field = q"${config}.fieldNaming($pname)"
+          val field = q"$macroCfg.fieldNaming($pname)"
 
           val vt = TermName(c.freshName(pname))
           val vp = ValDef(
@@ -503,8 +515,12 @@ private[bson] class MacroImpl(val c: Context) {
 
       val accName = TermName(c.freshName("acc"))
 
+      val wcfg = if (constructorParams.nonEmpty) macroCfgInit else EmptyTree
+
       def writer =
-        q"""val ${bufOk} = ${colPkg}.Seq.newBuilder[${bsonPkg}.BSONElement]
+        q"""$wcfg
+
+        val ${bufOk} = ${colPkg}.Seq.newBuilder[${bsonPkg}.BSONElement]
         val ${bufErr} = 
           ${colPkg}.Seq.newBuilder[${exceptionsPkg}.HandlerException]
 
@@ -544,8 +560,8 @@ private[bson] class MacroImpl(val c: Context) {
         val cls = q"implicitly[$reflPkg.ClassTag[$tpe]].runtimeClass"
 
         q"""${bsonPkg}.BSONElement(
-          ${config}.discriminator, 
-          ${bsonPkg}.BSONString($config.typeNaming($cls)))"""
+          $macroCfg.discriminator, 
+          ${bsonPkg}.BSONString($macroCfg.typeNaming($cls)))"""
 
       }
       else None
@@ -555,8 +571,8 @@ private[bson] class MacroImpl(val c: Context) {
       parseUnionTypes orElse directKnownSubclasses
 
     private def parseUnionTypes: Option[List[c.Type]] = {
-      val unionOption = c.typeOf[Options.UnionType[_]]
-      val union = c.typeOf[Options.\/[_, _]]
+      val unionOption = c.typeOf[MacroOptions.UnionType[_]]
+      val union = c.typeOf[MacroOptions.\/[_, _]]
 
       @annotation.tailrec
       def parseUnionTree(trees: List[Type], found: List[Type]): List[Type] =
@@ -603,6 +619,7 @@ private[bson] class MacroImpl(val c: Context) {
             val tpe = cls.typeSignature
             !applyMethod(tpe).isDefined || !unapplyMethod(tpe).isDefined
           }) {
+            // TODO: Option to disable such warning
             c.warning(c.enclosingPosition, s"Cannot handle class ${cls.fullName}: no case accessor")
             Set.empty
           } else if (cls.typeParams.nonEmpty) {
@@ -690,7 +707,7 @@ private[bson] class MacroImpl(val c: Context) {
     private def applyMethod(implicit tpe: Type): Option[Symbol] =
       companion(tpe).typeSignature.decl(TermName("apply")) match {
         case NoSymbol => {
-          if (hasOption[Options.Verbose]) {
+          if (hasOption[MacroOptions.Verbose]) {
             c.echo(c.enclosingPosition, s"No apply function found for $tpe")
           }
 
@@ -703,7 +720,7 @@ private[bson] class MacroImpl(val c: Context) {
     private def unapplyMethod(implicit tpe: Type): Option[MethodSymbol] =
       companion(tpe).typeSignature.decl(TermName("unapply")) match {
         case NoSymbol => {
-          if (hasOption[Options.Verbose]) {
+          if (hasOption[MacroOptions.Verbose]) {
             c.echo(c.enclosingPosition, s"No unapply function found for $tpe")
           }
 
