@@ -307,7 +307,38 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
 
     "be read from BSONLong" in {
-      handler.readTry(BSONLong(123L)) must beSuccessfulTry(123)
+      handler.readTry(BSONLong(123L)) must beSuccessfulTry(123D)
+    }
+  }
+
+  "Float" should {
+    val handler = implicitly[BSONHandler[Float]]
+
+    "be read from BSONDecimal" >> {
+      val dec = BSONDecimal.fromBigDecimal(BigDecimal("123.45"))
+
+      "successfully if <= Float.MaxValue" in {
+        dec.flatMap(handler.readTry) must beSuccessfulTry(123.45F)
+      }
+
+      "with error if > Float.MaxValue" in {
+        val maxDouble = BigDecimal(Float.MaxValue.toDouble)
+        val d = BSONDecimal.fromBigDecimal(maxDouble + maxDouble)
+
+        d.flatMap(handler.readTry) must beFailedTry[Float]
+      }
+    }
+
+    "be read from BSONDouble" in {
+      handler.readTry(BSONDouble(123.45D)) must beSuccessfulTry(123.45F)
+    }
+
+    "be read from BSONInteger" in {
+      handler.readTry(BSONInteger(123)) must beSuccessfulTry(123F)
+    }
+
+    "be read from BSONLong" in {
+      handler.readTry(BSONLong(123L)) must beSuccessfulTry(123F)
     }
   }
 

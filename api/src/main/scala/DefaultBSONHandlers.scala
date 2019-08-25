@@ -54,6 +54,14 @@ private[bson] trait DefaultBSONHandlers
       BSONDecimal.fromBigDecimal(value)
   }
 
+  implicit object BSONFloatHandler
+    extends BSONHandler[Float] with SafeBSONWriter[Float] {
+
+    @inline def readTry(bson: BSONValue): Try[Float] = bson.asFloat
+
+    @inline def safeWrite(float: Float) = BSONDouble(float.toDouble)
+  }
+
   implicit object BSONStringHandler
     extends BSONHandler[String] with SafeBSONWriter[String] {
 
