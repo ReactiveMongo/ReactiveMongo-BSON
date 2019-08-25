@@ -204,30 +204,57 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         }
     }
 
-    "respect field naming" in {
+    "respect field naming" >> {
       val person = Person("Jane", "doe")
-      val format1 = Macros.configured(MacroConfiguration(
-        fieldNaming = FieldNaming.SnakeCase)).handler[Person]
 
-      val expectedBson = BSONDocument(
-        "first_name" -> "Jane",
-        "last_name" -> "doe")
+      def spec(
+        handler: BSONDocumentHandler[Person],
+        expectedBson: BSONDocument) = {
+        handler.writeTry(person) must beSuccessfulTry(expectedBson) and {
+          handler.readTry(expectedBson) must beSuccessfulTry(person)
+        }
+      }
 
-      format1.writeTry(person) must beSuccessfulTry(expectedBson) and {
-        format1.readTry(expectedBson) must beSuccessfulTry(person)
+      "with default configuration" in {
+        spec(
+          handler = Macros.handler[Person],
+          expectedBson = BSONDocument(
+            "firstName" -> "Jane",
+            "lastName" -> "doe"))
+
+      }
+
+      "with implicit configuration (PascalCase)" in {
+        implicit def cfg: MacroConfiguration = MacroConfiguration(
+          fieldNaming = FieldNaming.PascalCase)
+
+        spec(
+          handler = Macros.handler[Person],
+          expectedBson = BSONDocument(
+            "FirstName" -> "Jane",
+            "LastName" -> "doe"))
+
+      }
+
+      "with macro-configured handler (SnakeCase)" in {
+        spec(
+          handler = Macros.configured(MacroConfiguration(
+            fieldNaming = FieldNaming.SnakeCase)).handler[Person],
+          expectedBson = BSONDocument(
+            "first_name" -> "Jane",
+            "last_name" -> "doe"))
       }
     }
 
     "handle union types (ADT)" in {
       import Union._
-      import Macros.Options._
+      import MacroOptions._
 
       val a = UA(1)
       val b = UB("hai")
 
       implicit val cfg = MacroConfiguration(discriminator = "_type")
 
-      @silent // TODO: Remove
       val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD \/ UF.type] with AutomaticMaterialization]
 
       format.writeTry(a).map(_.getAsOpt[String]("_type")).
@@ -291,8 +318,8 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       }
     }
 
-    "automate Union on sealed traits" in {
-      import MacrosOptions._
+    "automate Union on sealed traits" >> {
+      import MacroOptions._
       import Union._
 
       // when no implicit for sub-type (w/o auto-materialization)
@@ -345,7 +372,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "support automatic implementations search with nested traits" in {
-      import MacrosOptions._
+      import MacroOptions._
       import InheritanceModule._
       implicit val format = Macros.handlerOpts[T, AutomaticMaterialization]
 
@@ -417,13 +444,18 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       }
 
       "along with Key annotation" in {
-        // TODO: Macros.reader or handler (manage Ignore with reader?)
+        // TODO: Macros reader (manage Ignore with reader?)
+
         implicit val handler: BSONDocumentWriter[IgnoredAndKey] =
           Macros.writer[IgnoredAndKey]
+        //TODO:Macros.handler[IgnoredAndKey]
 
-        val doc = handler.writeTry(IgnoredAndKey(Person("john", "doe"), "foo"))
+        val expected = BSONDocument("second" -> "foo")
+        val v = IgnoredAndKey(Person("john", "doe"), "foo")
 
-        doc must beSuccessfulTry(BSONDocument("second" -> "foo"))
+        handler.writeTry(v) must beSuccessfulTry(expected) and {
+          todo //TODO: handler.readTry(expected) must beSuccessfulTry(v)
+        }
       }
     }
 

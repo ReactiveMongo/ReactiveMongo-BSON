@@ -6,7 +6,8 @@ import reactivemongo.api.bson.{
   BSONDocumentWriter,
   BSONHandler,
   BSONObjectID,
-  Macros
+  Macros,
+  MacroOptions
 }
 import reactivemongo.api.bson.Macros.Annotations.{
   Flatten,
@@ -118,7 +119,7 @@ object MacroTest {
     implicit val leafHandler: Handler[Leaf] = Macros.handler[Leaf]
 
     object Tree {
-      import Macros.Options._
+      import MacroOptions._
 
       implicit val bson: Handler[Tree] =
         Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
@@ -144,7 +145,7 @@ object MacroTest {
     }
 
     object Tree {
-      import Macros.Options._
+      import MacroOptions._
 
       implicit val bson: Handler[Tree] =
         Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
@@ -162,7 +163,7 @@ object MacroTest {
     implicit val tailHandler: Handler[Tail.type] = Macros.handler[Tail.type]
 
     object IntList {
-      import Macros.Options.{ UnionType, \/ }
+      import MacroOptions.{ UnionType, \/ }
 
       implicit val bson: Handler[IntList] =
         Macros.handlerOpts[IntList, UnionType[Cons \/ Tail.type]]
@@ -173,7 +174,7 @@ object MacroTest {
     sealed trait T
 
     case class A() extends T
-    implicit val ah: Handler[A] = Macros.handler[A]
+    implicit val ah: Handler[A] = Macros.handlerOpts[A, MacroOptions.Verbose]
 
     case object B extends T
     implicit val bh: Handler[B.type] = Macros.handler[B.type]
