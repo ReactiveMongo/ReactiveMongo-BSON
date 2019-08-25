@@ -17,6 +17,7 @@ import reactivemongo.api.bson.{
   FieldNaming,
   Macros,
   MacroConfiguration,
+  MacroOptions,
   TypeNaming
 }
 import reactivemongo.api.bson.exceptions.TypeDoesNotMatchException
@@ -149,8 +150,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       val doc1 = OverloadedApply("hello")
       val doc2 = OverloadedApply(List("hello", "world"))
 
-      @silent // TODO: Remove
-      val f = Macros.handler[OverloadedApply]
+      val f = Macros.handlerOpts[OverloadedApply, MacroOptions.DisableWarnings]
 
       roundtrip(doc1, f)
       roundtrip(doc2, f)
@@ -187,7 +187,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "respect compilation options" in {
-      val format = Macros.handlerOpts[Person, Macros.Options.Verbose] //more stuff in compiler log
+      val format = Macros.handlerOpts[Person, MacroOptions.Verbose] //more stuff in compiler log
 
       roundtrip(Person("john", "doe"), format)
     }
@@ -240,7 +240,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
     "handle union types (ADT) with simple names" in {
       import Union._
-      import Macros.Options._
+      import MacroOptions._
       val a = UA(1)
       val b = UB("hai")
 
@@ -292,25 +292,60 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "automate Union on sealed traits" in {
-      import Macros.Options._
+      import MacrosOptions._
       import Union._
 
-      @silent //TODO:("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
-      implicit val format = Macros.handlerOpts[UT, AutomaticMaterialization]
+      // when no implicit for sub-type (w/o auto-materialization)
+      shapeless.test.illTyped("Macros.handler[UT]")
 
-      format.writeTry(UA(1)).flatMap(_.getAsTry[String]("className")).
-        aka("class #1") must beSuccessfulTry("MacroTest.Union.UA") and {
-          format.writeTry(UB("buzz")).flatMap(
-            _.getAsUnflattenedTry[String]("className")).
-            aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
+      "with auto-materialization & default configuration" in {
+        implicit val format = Macros.handlerOpts[UT, AutomaticMaterialization with DisableWarnings /* disabled: Cannot handle object MacroTest\\.Union\\.UE */ ]
 
-        } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
-          roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
-        } and roundtripImp[UT](UF)
+        format.writeTry(UA(1)).flatMap(_.getAsTry[String]("className")).
+          aka("class #1") must beSuccessfulTry("MacroTest.Union.UA") and {
+            format.writeTry(UB("buzz")).flatMap(
+              _.getAsUnflattenedTry[String]("className")).
+              aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
+
+          } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
+            roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
+          } and roundtripImp[UT](UF)
+      }
+
+      "with custom configuration" in {
+        // For sub-type UA
+        implicit def aReader = Macros.reader[UA]
+        implicit def aWriter = Macros.writer[UA]
+
+        // Sub-type UC, UD, UF
+        implicit def cHandler = Macros.handler[UC]
+        implicit def dHandler = Macros.handler[UD]
+        implicit def fHandler = Macros.handler[UF.type]
+
+        @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
+        implicit val format: BSONDocumentHandler[UT] = {
+          implicit val cfg: MacroConfiguration = MacroConfiguration(
+            discriminator = "_type",
+            typeNaming = TypeNaming.SimpleName.andThen(_.toLowerCase))
+
+          Macros.handler[UT]
+        }
+
+        format.writeTry(UA(1)).flatMap(_.getAsTry[String]("_type")).
+          aka("custom discriminator") must beSuccessfulTry("ua") and {
+            format.writeTry(UB("fuzz")).flatMap(
+              _.getAsUnflattenedTry[String]("_type")).
+              aka("class #2") must beSuccessfulTry(Some("ub"))
+
+          } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
+            roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
+          } and roundtripImp[UT](UF)
+
+      }
     }
 
     "support automatic implementations search with nested traits" in {
-      import Macros.Options._
+      import MacrosOptions._
       import InheritanceModule._
       implicit val format = Macros.handlerOpts[T, AutomaticMaterialization]
 
@@ -326,7 +361,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "automate Union on sealed traits with simple name" in {
-      import Macros.Options._
+      import MacroOptions._
       import Union._
 
       val configuredMacros = Macros.configured(

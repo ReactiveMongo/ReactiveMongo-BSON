@@ -619,11 +619,10 @@ private[bson] class MacroImpl(val c: Context) {
             val tpe = cls.typeSignature
             !applyMethod(tpe).isDefined || !unapplyMethod(tpe).isDefined
           }) {
-            // TODO: Option to disable such warning
-            c.warning(c.enclosingPosition, s"Cannot handle class ${cls.fullName}: no case accessor")
+            warn(s"Cannot handle class ${cls.fullName}: no case accessor")
             Set.empty
           } else if (cls.typeParams.nonEmpty) {
-            c.warning(c.enclosingPosition, s"Cannot handle class ${cls.fullName}: type parameter not supported")
+            warn(s"Cannot handle class ${cls.fullName}: type parameter not supported")
             Set.empty
           } else Set(cls.selfType)
 
@@ -634,7 +633,7 @@ private[bson] class MacroImpl(val c: Context) {
           o.companion == NoSymbol && // not a companion object
           o.typeSignature.baseClasses.contains(tpeSym)) => {
           val newSub: Set[Type] = if (!o.moduleClass.asClass.isCaseClass) {
-            c.warning(c.enclosingPosition, s"Cannot handle object ${o.fullName}: no case accessor")
+            warn(s"Cannot handle object ${o.fullName}: no case accessor")
             Set.empty
           } else Set(o.typeSignature)
 
@@ -747,26 +746,20 @@ private[bson] class MacroImpl(val c: Context) {
         }
 
         case Some((a, b)) if (a.typeArgs.size != b.typeArgs.size) => {
-          c.warning(
-            c.enclosingPosition,
-            s"Type parameters are not matching: $a != $b")
+          warn(s"Type parameters are not matching: $a != $b")
 
           false
         }
 
         case Some((a, b)) if a.typeArgs.isEmpty =>
           if (a =:= b) conforms(types.tail) else {
-            c.warning(
-              c.enclosingPosition,
-              s"Types are not compatible: $a != $b")
+            warn(s"Types are not compatible: $a != $b")
 
             false
           }
 
         case Some((a, b)) if (a.baseClasses != b.baseClasses) => {
-          c.warning(
-            c.enclosingPosition,
-            s"Generic types are not compatible: $a != $b")
+          warn(s"Generic types are not compatible: $a != $b")
 
           false
         }
@@ -795,7 +788,7 @@ private[bson] class MacroImpl(val c: Context) {
           }
 
           case _ => {
-            c.warning(c.enclosingPosition, s"Constructor with multiple parameter lists is not supported: ${tpe.typeSymbol.name}${alt.typeSignature}")
+            warn(s"Constructor with multiple parameter lists is not supported: ${tpe.typeSymbol.name}${alt.typeSignature}")
 
             false
           }
@@ -806,6 +799,14 @@ private[bson] class MacroImpl(val c: Context) {
     private def isSingleton(tpe: Type): Boolean = tpe <:< typeOf[Singleton]
 
     @inline private def companion(implicit tpe: Type): Symbol = tpe.typeSymbol.companion
+
+    private lazy val warn: String => Unit = {
+      if (hasOption[MacroOptions.DisableWarnings]) {
+        (_: String) => ()
+      } else { msg: String =>
+        c.warning(c.enclosingPosition, msg)
+      }
+    }
   }
 
   sealed trait ImplicitResolver[C <: Context] {

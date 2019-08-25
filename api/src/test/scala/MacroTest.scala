@@ -1,7 +1,5 @@
 import scala.util.Try
 
-import com.github.ghik.silencer.silent
-
 import reactivemongo.api.bson.{
   BSONDocument,
   BSONDocumentReader,
@@ -141,7 +139,6 @@ object MacroTest {
       implicit val bson: Handler[Leaf] = new BSONDocumentReader[Leaf] with BSONDocumentWriter[Leaf] with BSONHandler[Leaf] {
         def writeTry(t: Leaf): Try[BSONDocument] = helper.writeTry(Leaf("hai"))
 
-        @silent
         def readDocument(bson: BSONDocument): Try[Leaf] = helper readTry bson
       }
     }

@@ -17,6 +17,9 @@ object MacroOptions {
   /** Print out generated code during compilation. */
   trait Verbose extends Default
 
+  /** Disable compilation warnings. */
+  trait DisableWarnings extends Default
+
   /**
    * Use type parameter `A` as static type but use pattern matching to handle
    * different possible subtypes. This makes it easy to persist algebraic
