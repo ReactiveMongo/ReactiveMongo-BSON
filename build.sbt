@@ -62,7 +62,6 @@ lazy val api = (project in file("api")).settings(
   commonSettings ++ Seq(
     name := s"${baseArtifact}-api",
     description := "New BSON API",
-    fork in Test := true,
     libraryDependencies ++= Seq(
       "org.specs2" %% "specs2-scalacheck" % specsVer,
       discipline.value,
@@ -71,6 +70,15 @@ lazy val api = (project in file("api")).settings(
       "org.slf4j" % "slf4j-simple" % "1.7.28").map(_ % Test),
     libraryDependencies ++= Seq(reactivemongoShaded.value % Provided)
   ))
+
+lazy val monocle = (project in file("monocle")).settings(
+  commonSettings ++ Seq(
+    name := s"${baseArtifact}-monocle",
+    description := "Monocle utilities for BSON values",
+    libraryDependencies ++= Seq(
+      "com.github.julien-truffaut" %% "monocle-core" % "1.6.0",
+      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test)
+  )).dependsOn(api)
 
 lazy val compat = (project in file("compat")).settings(
   commonSettings ++ Seq(
