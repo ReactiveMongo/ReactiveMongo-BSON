@@ -10,12 +10,13 @@ import scala.util.Success
  * implicit val personHandler = Macros.handler[Person]
  * }}}
  *
- * @see [[Macros.Options]] for specific options
+ * @see [[MacroOptions]] for specific options
  * @see [[MacroConfiguration]] for extended configuration
  *
  * @define readerMacro Creates a [[BSONDocumentReader]] for type `A`
  * @define writerMacro Creates a [[BSONDocumentWriter]] for type `A`
  * @define handlerMacro Creates a [[BSONDocumentHandler]] for type `A`
+ * @define defaultCfg The default [[MacroConfiguration]] is used (see [[Macros.configured]])
  * @define tparam @tparam A the type of the value represented as BSON
  * @define tparamOpts @tparam Opts the compile-time options
  */
@@ -24,54 +25,60 @@ object Macros {
 
   /**
    * $readerMacro.
+   * $defaultCfg.
    *
    * $tparam
    */
   @SuppressWarnings(Array("NullParameter"))
-  def reader[A]: BSONDocumentReader[A] = macro MacroImpl.reader[A, Options.Default]
+  def reader[A]: BSONDocumentReader[A] = macro MacroImpl.reader[A, MacroOptions.Default]
 
   /**
-   * $readerMacro and takes additional options.
+   * $readerMacro.
+   * $defaultCfg, with given additional options.
    *
    * $tparam
    * $tparamOpts
    */
   @SuppressWarnings(Array("NullParameter"))
-  def readerOpts[A, Opts <: Options.Default]: BSONDocumentReader[A] = macro MacroImpl.reader[A, Opts]
+  def readerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentReader[A] = macro MacroImpl.reader[A, Opts]
 
   /**
    * $writerMacro.
+   * $defaultCfg.
    *
    * $tparam
    */
   @SuppressWarnings(Array("NullParameter"))
-  def writer[A]: BSONDocumentWriter[A] = macro MacroImpl.writer[A, Options.Default]
+  def writer[A]: BSONDocumentWriter[A] = macro MacroImpl.writer[A, MacroOptions.Default]
 
   /**
-   * $writerMacro and takes additional options.
+   * $writerMacro.
+   * $defaultCfg, with given additional options.
    *
    * $tparam
    * $tparamOpts
    */
   @SuppressWarnings(Array("NullParameter"))
-  def writerOpts[A, Opts <: Options.Default]: BSONDocumentWriter[A] = macro MacroImpl.writer[A, Opts]
+  def writerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentWriter[A] = macro MacroImpl.writer[A, Opts]
 
   /**
    * $handlerMacro.
+   * $defaultCfg.
    *
    * $tparam
    */
   @SuppressWarnings(Array("NullParameter"))
-  def handler[A]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, Options.Default]
+  def handler[A]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, MacroOptions.Default]
 
   /**
-   * $handlerMacro and takes additional options.
+   * $handlerMacro.
+   * $defaultCfg, with given additional options.
    *
    * $tparam
    * $tparamOpts
    */
   @SuppressWarnings(Array("NullParameter"))
-  def handlerOpts[A, Opts <: Options.Default]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, Opts]
+  def handlerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, Opts]
 
   // ---
 
@@ -94,7 +101,7 @@ object Macros {
    *
    * }}}
    */
-  def configured[Opts <: Options](implicit config: MacroConfiguration.Aux[Opts]) = new WithOptions[Opts](config)
+  def configured[Opts <: MacroOptions](implicit config: MacroConfiguration.Aux[Opts]) = new WithOptions[Opts](config)
 
   /**
    * Returns an inference context to call the BSON macros,
@@ -108,10 +115,11 @@ object Macros {
    * }
    *
    * val w: BSONDocumentWriter[Bar] =
-   *   Macros.using[Options.Default].writer[Bar]
+   *   Macros.using[MacroOptions.Default].writer[Bar]
    * }}}
    */
-  def using[Opts <: Options] = new WithOptions[Opts](MacroConfiguration[Opts]())
+  def using[Opts <: MacroOptions] =
+    new WithOptions[Opts](MacroConfiguration[Opts]())
 
   // ---
 
@@ -126,7 +134,7 @@ object Macros {
    *
    * @tparam Opts the compile-time options
    */
-  final class WithOptions[Opts <: Options](
+  final class WithOptions[Opts <: MacroOptions](
     val config: MacroConfiguration.Aux[Opts]) {
 
     def this() = this(MacroConfiguration.default)
@@ -159,78 +167,6 @@ object Macros {
   }
 
   // ---
-
-  /**
-   * Macros with 'Opts' suffix will take additional options in the form of
-   * type parameters that will customize behaviour of
-   * the macros during compilation.
-   */
-  sealed trait Options
-
-  object Options {
-    /**
-     * The default options that are implied if invoking "non-Opts" method.
-     * All other options extend this.
-     */
-    trait Default extends Options
-
-    /** Print out generated code during compilation. */
-    trait Verbose extends Default
-
-    /**
-     * Use type parameter `A` as static type but use pattern matching to handle
-     * different possible subtypes. This makes it easy to persist algebraic
-     * data types(pattern where you have a sealed trait and several implementing
-     * case classes). When writing a case class into BSON its dynamic type
-     * will be pattern matched, when reading from BSON the pattern matching
-     * will be done on the `className` string.
-     *
-     * @tparam Types to use in pattern matching. Listed in a "type list" \/
-     */
-    trait UnionType[Types <: \/[_, _]] extends Default
-
-    /**
-     * Type for making type-level lists for UnionType.
-     * If second parameter is another \/ it will be flattend out into a list
-     * and so on. Using infix notation makes much more sense since it then
-     * looks like a logical disjunction.
-     *
-     * `Foo \/ Bar \/ Baz` is interpreted as type Foo or type Bar or type Baz
-     */
-    @SuppressWarnings(Array("ClassNames"))
-    trait \/[A, B]
-
-    /**
-     * For a sealed family (all implementations of a sealed trait
-     * or defined explicit union types), this option enables the automatic
-     * materialization of handlers for the member types.
-     *
-     * If used, make sure it cannot lead to type recursion issue
-     * (disabled by default).
-     */
-    trait AutomaticMaterialization extends Default
-
-    // ---
-
-    trait ValueOf[O <: Options]
-
-    trait LowPriorityValueOfImplicits {
-      /**
-       * Low priority implicit used when some explicit Options
-       * instance is passed.
-       */
-      implicit def lowPriorityDefault[O <: Options]: ValueOf[O] =
-        new ValueOf[O] {}
-    }
-
-    object ValueOf extends LowPriorityValueOfImplicits {
-
-      /**
-       * This will be the default that's passed when no Options is specified.
-       */
-      implicit object optionsDefault extends ValueOf[Options]
-    }
-  }
 
   /** Annotations to use on case classes that are being processed by macros. */
   object Annotations {
