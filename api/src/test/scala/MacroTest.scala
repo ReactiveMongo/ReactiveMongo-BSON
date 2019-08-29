@@ -1,14 +1,13 @@
 import scala.util.Try
 
-import com.github.ghik.silencer.silent
-
 import reactivemongo.api.bson.{
   BSONDocument,
   BSONDocumentReader,
   BSONDocumentWriter,
   BSONHandler,
   BSONObjectID,
-  Macros
+  Macros,
+  MacroOptions
 }
 import reactivemongo.api.bson.Macros.Annotations.{
   Flatten,
@@ -120,7 +119,7 @@ object MacroTest {
     implicit val leafHandler: Handler[Leaf] = Macros.handler[Leaf]
 
     object Tree {
-      import Macros.Options._
+      import MacroOptions._
 
       implicit val bson: Handler[Tree] =
         Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
@@ -141,13 +140,12 @@ object MacroTest {
       implicit val bson: Handler[Leaf] = new BSONDocumentReader[Leaf] with BSONDocumentWriter[Leaf] with BSONHandler[Leaf] {
         def writeTry(t: Leaf): Try[BSONDocument] = helper.writeTry(Leaf("hai"))
 
-        @silent
         def readDocument(bson: BSONDocument): Try[Leaf] = helper readTry bson
       }
     }
 
     object Tree {
-      import Macros.Options._
+      import MacroOptions._
 
       implicit val bson: Handler[Tree] =
         Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
@@ -165,7 +163,7 @@ object MacroTest {
     implicit val tailHandler: Handler[Tail.type] = Macros.handler[Tail.type]
 
     object IntList {
-      import Macros.Options.{ UnionType, \/ }
+      import MacroOptions.{ UnionType, \/ }
 
       implicit val bson: Handler[IntList] =
         Macros.handlerOpts[IntList, UnionType[Cons \/ Tail.type]]
@@ -176,7 +174,7 @@ object MacroTest {
     sealed trait T
 
     case class A() extends T
-    implicit val ah: Handler[A] = Macros.handler[A]
+    implicit val ah: Handler[A] = Macros.handlerOpts[A, MacroOptions.Verbose]
 
     case object B extends T
     implicit val bh: Handler[B.type] = Macros.handler[B.type]

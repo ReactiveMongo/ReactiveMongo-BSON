@@ -17,6 +17,7 @@ import reactivemongo.api.bson.{
   FieldNaming,
   Macros,
   MacroConfiguration,
+  MacroOptions,
   TypeNaming
 }
 import reactivemongo.api.bson.exceptions.TypeDoesNotMatchException
@@ -149,8 +150,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       val doc1 = OverloadedApply("hello")
       val doc2 = OverloadedApply(List("hello", "world"))
 
-      @silent // TODO: Remove
-      val f = Macros.handler[OverloadedApply]
+      val f = Macros.handlerOpts[OverloadedApply, MacroOptions.DisableWarnings]
 
       roundtrip(doc1, f)
       roundtrip(doc2, f)
@@ -187,7 +187,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "respect compilation options" in {
-      val format = Macros.handlerOpts[Person, Macros.Options.Verbose] //more stuff in compiler log
+      val format = Macros.handlerOpts[Person, MacroOptions.Verbose] //more stuff in compiler log
 
       roundtrip(Person("john", "doe"), format)
     }
@@ -204,30 +204,57 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         }
     }
 
-    "respect field naming" in {
+    "respect field naming" >> {
       val person = Person("Jane", "doe")
-      val format1 = Macros.configured(MacroConfiguration(
-        fieldNaming = FieldNaming.SnakeCase)).handler[Person]
 
-      val expectedBson = BSONDocument(
-        "first_name" -> "Jane",
-        "last_name" -> "doe")
+      def spec(
+        handler: BSONDocumentHandler[Person],
+        expectedBson: BSONDocument) = {
+        handler.writeTry(person) must beSuccessfulTry(expectedBson) and {
+          handler.readTry(expectedBson) must beSuccessfulTry(person)
+        }
+      }
 
-      format1.writeTry(person) must beSuccessfulTry(expectedBson) and {
-        format1.readTry(expectedBson) must beSuccessfulTry(person)
+      "with default configuration" in {
+        spec(
+          handler = Macros.handler[Person],
+          expectedBson = BSONDocument(
+            "firstName" -> "Jane",
+            "lastName" -> "doe"))
+
+      }
+
+      "with implicit configuration (PascalCase)" in {
+        implicit def cfg: MacroConfiguration = MacroConfiguration(
+          fieldNaming = FieldNaming.PascalCase)
+
+        spec(
+          handler = Macros.handler[Person],
+          expectedBson = BSONDocument(
+            "FirstName" -> "Jane",
+            "LastName" -> "doe"))
+
+      }
+
+      "with macro-configured handler (SnakeCase)" in {
+        spec(
+          handler = Macros.configured(MacroConfiguration(
+            fieldNaming = FieldNaming.SnakeCase)).handler[Person],
+          expectedBson = BSONDocument(
+            "first_name" -> "Jane",
+            "last_name" -> "doe"))
       }
     }
 
     "handle union types (ADT)" in {
       import Union._
-      import Macros.Options._
+      import MacroOptions._
 
       val a = UA(1)
       val b = UB("hai")
 
       implicit val cfg = MacroConfiguration(discriminator = "_type")
 
-      @silent // TODO: Remove
       val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD \/ UF.type] with AutomaticMaterialization]
 
       format.writeTry(a).map(_.getAsOpt[String]("_type")).
@@ -240,7 +267,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
     "handle union types (ADT) with simple names" in {
       import Union._
-      import Macros.Options._
+      import MacroOptions._
       val a = UA(1)
       val b = UB("hai")
 
@@ -291,26 +318,61 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       }
     }
 
-    "automate Union on sealed traits" in {
-      import Macros.Options._
+    "automate Union on sealed traits" >> {
+      import MacroOptions._
       import Union._
 
-      @silent //TODO:("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
-      implicit val format = Macros.handlerOpts[UT, AutomaticMaterialization]
+      // when no implicit for sub-type (w/o auto-materialization)
+      shapeless.test.illTyped("Macros.handler[UT]")
 
-      format.writeTry(UA(1)).flatMap(_.getAsTry[String]("className")).
-        aka("class #1") must beSuccessfulTry("MacroTest.Union.UA") and {
-          format.writeTry(UB("buzz")).flatMap(
-            _.getAsUnflattenedTry[String]("className")).
-            aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
+      "with auto-materialization & default configuration" in {
+        implicit val format = Macros.handlerOpts[UT, AutomaticMaterialization with DisableWarnings /* disabled: Cannot handle object MacroTest\\.Union\\.UE */ ]
 
-        } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
-          roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
-        } and roundtripImp[UT](UF)
+        format.writeTry(UA(1)).flatMap(_.getAsTry[String]("className")).
+          aka("class #1") must beSuccessfulTry("MacroTest.Union.UA") and {
+            format.writeTry(UB("buzz")).flatMap(
+              _.getAsUnflattenedTry[String]("className")).
+              aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
+
+          } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
+            roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
+          } and roundtripImp[UT](UF)
+      }
+
+      "with custom configuration" in {
+        // For sub-type UA
+        implicit def aReader = Macros.reader[UA]
+        implicit def aWriter = Macros.writer[UA]
+
+        // Sub-type UC, UD, UF
+        implicit def cHandler = Macros.handler[UC]
+        implicit def dHandler = Macros.handler[UD]
+        implicit def fHandler = Macros.handler[UF.type]
+
+        @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
+        implicit val format: BSONDocumentHandler[UT] = {
+          implicit val cfg: MacroConfiguration = MacroConfiguration(
+            discriminator = "_type",
+            typeNaming = TypeNaming.SimpleName.andThen(_.toLowerCase))
+
+          Macros.handler[UT]
+        }
+
+        format.writeTry(UA(1)).flatMap(_.getAsTry[String]("_type")).
+          aka("custom discriminator") must beSuccessfulTry("ua") and {
+            format.writeTry(UB("fuzz")).flatMap(
+              _.getAsUnflattenedTry[String]("_type")).
+              aka("class #2") must beSuccessfulTry(Some("ub"))
+
+          } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
+            roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
+          } and roundtripImp[UT](UF)
+
+      }
     }
 
     "support automatic implementations search with nested traits" in {
-      import Macros.Options._
+      import MacroOptions._
       import InheritanceModule._
       implicit val format = Macros.handlerOpts[T, AutomaticMaterialization]
 
@@ -326,7 +388,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "automate Union on sealed traits with simple name" in {
-      import Macros.Options._
+      import MacroOptions._
       import Union._
 
       val configuredMacros = Macros.configured(
@@ -382,13 +444,18 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       }
 
       "along with Key annotation" in {
-        // TODO: Macros.reader or handler (manage Ignore with reader?)
+        // TODO: Macros reader (manage Ignore with reader?)
+
         implicit val handler: BSONDocumentWriter[IgnoredAndKey] =
           Macros.writer[IgnoredAndKey]
+        //TODO:Macros.handler[IgnoredAndKey]
 
-        val doc = handler.writeTry(IgnoredAndKey(Person("john", "doe"), "foo"))
+        val expected = BSONDocument("second" -> "foo")
+        val v = IgnoredAndKey(Person("john", "doe"), "foo")
 
-        doc must beSuccessfulTry(BSONDocument("second" -> "foo"))
+        handler.writeTry(v) must beSuccessfulTry(expected) and {
+          todo //TODO: handler.readTry(expected) must beSuccessfulTry(v)
+        }
       }
     }
 

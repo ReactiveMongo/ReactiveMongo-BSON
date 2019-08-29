@@ -8,6 +8,20 @@ trait TypeNaming extends (Class[_] => String) {
    * Returns the name for the given type.
    */
   def apply(tpe: Class[_]): String
+
+  /**
+   * Composes the naming with the given function `f`,
+   * applied on the first result.
+   *
+   * {{{
+   * import reactivemongo.api.bson.TypeNaming
+   *
+   * val tpeNaming: TypeNaming =
+   *   TypeNaming.SimpleName.andThen(_.toLowerCase)
+   * }}}
+   */
+  def andThen(f: String => String): TypeNaming =
+    TypeNaming(super.andThen[String](f))
 }
 
 object TypeNaming {

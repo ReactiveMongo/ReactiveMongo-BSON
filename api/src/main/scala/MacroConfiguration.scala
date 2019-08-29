@@ -3,7 +3,7 @@ package reactivemongo.api.bson
 /** Macro configuration */
 sealed trait MacroConfiguration {
   /** Compile-time options for the JSON macros */
-  type Opts <: Macros.Options
+  type Opts <: MacroOptions
 
   /** Naming strategy for fields */
   def fieldNaming: FieldNaming
@@ -19,7 +19,7 @@ sealed trait MacroConfiguration {
 }
 
 object MacroConfiguration {
-  type Aux[O <: Macros.Options] = MacroConfiguration { type Opts = O }
+  type Aux[O <: MacroOptions] = MacroConfiguration { type Opts = O }
 
   val defaultDiscriminator = "className"
 
@@ -28,24 +28,24 @@ object MacroConfiguration {
    * @param discriminator See [[MacroConfiguration.discriminator]]
    * @param typeNaming See [[MacroConfiguration.typeNaming]]
    */
-  def apply[Opts <: Macros.Options](
+  def apply[Opts <: MacroOptions](
     fieldNaming: FieldNaming = FieldNaming.Identity,
     discriminator: String = defaultDiscriminator,
-    typeNaming: TypeNaming = TypeNaming.FullName)(implicit opts: Macros.Options.ValueOf[Opts]): MacroConfiguration.Aux[Opts] = new Impl(opts, fieldNaming, discriminator, typeNaming)
+    typeNaming: TypeNaming = TypeNaming.FullName)(implicit opts: MacroOptions.ValueOf[Opts]): MacroConfiguration.Aux[Opts] = new Impl(opts, fieldNaming, discriminator, typeNaming)
 
   /** Default configuration instance */
-  implicit def default[Opts <: Macros.Options: Macros.Options.ValueOf]: MacroConfiguration.Aux[Opts] = apply()
+  implicit def default[Opts <: MacroOptions: MacroOptions.ValueOf]: MacroConfiguration.Aux[Opts] = apply()
 
   /** Configuration using [[TypeNaming$.SimpleName]] */
-  @inline def simpleTypeName[Opts <: Macros.Options: Macros.Options.ValueOf]: MacroConfiguration.Aux[Opts] = apply(typeNaming = TypeNaming.SimpleName)
+  @inline def simpleTypeName[Opts <: MacroOptions: MacroOptions.ValueOf]: MacroConfiguration.Aux[Opts] = apply(typeNaming = TypeNaming.SimpleName)
 
-  private final class Impl[O <: Macros.Options](
-    val options: Macros.Options.ValueOf[O],
+  private final class Impl[O <: MacroOptions](
+    val options: MacroOptions.ValueOf[O],
     val fieldNaming: FieldNaming,
     val discriminator: String,
     val typeNaming: TypeNaming) extends MacroConfiguration {
     type Opts = O
   }
 
-  protected def default: MacroConfiguration.Aux[Macros.Options] = apply()
+  protected def default: MacroConfiguration.Aux[MacroOptions] = apply()
 }

@@ -80,6 +80,10 @@ sealed trait BSONValue { self =>
     Failure(TypeDoesNotMatchException(
       "BSONDouble", self.getClass.getSimpleName))
 
+  @inline private[bson] def asFloat: Try[Float] =
+    Failure(TypeDoesNotMatchException(
+      "<float>", self.getClass.getSimpleName))
+
   @inline private[bson] def asLong: Try[Long] =
     Failure(TypeDoesNotMatchException(
       "BSONLong", self.getClass.getSimpleName))
@@ -188,6 +192,14 @@ final class BSONDouble private[bson] (val value: Double) extends BSONValue {
   override private[reactivemongo] val byteSize = 8
 
   override private[bson] lazy val asDouble: Try[Double] = Success(value)
+
+  override private[bson] lazy val asFloat: Try[Float] = {
+    if (value >= Float.MinValue && value <= Float.MaxValue) {
+      Try(value.toFloat)
+    } else {
+      super.asFloat
+    }
+  }
 
   override private[bson] lazy val asLong: Try[Long] =
     if (value.isWhole) Try(value.toLong) else super.asLong
@@ -378,8 +390,34 @@ final class BSONArray private[bson] (
     }
 }
 
+/** See [[BSONArray]] */
 object BSONArray {
-  /** Extracts the values sequence if `that`'s a [[BSONArray]]. */
+  /**
+   * Extracts the values sequence if `that`'s a [[BSONArray]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSON, BSONArray, BSONValue }
+   *
+   * def foo(input: BSONValue): Unit = input match {
+   *   case BSONArray(vs) => pretty(vs)
+   *   case _ => println("Not a BSON array")
+   * }
+   *
+   * def bar(arr: BSONArray): Unit = arr match {
+   *   // with splat pattern
+   *   case BSONArray(Seq(requiredFirst, other @ _*)) =>
+   *     println(s"first = \$requiredFirst")
+   *     pretty(other)
+   *
+   *   case _ =>
+   *     println("BSON array doesn't match")
+   * }
+   *
+   * def pretty(values: Seq[BSONValue]): Unit =
+   *   println(values.map(BSON.pretty).mkString(", "))
+   *
+   * }}}
+   */
   @inline def unapply(that: Any): Option[IndexedSeq[BSONValue]] = that match {
     case array: BSONArray => Some(array.values)
     case _ => None
@@ -970,7 +1008,16 @@ final class BSONInteger private[bson] (val value: Int) extends BSONValue {
   val code = 0x10: Byte
   override private[reactivemongo] val byteSize = 4
 
-  override private[bson] lazy val asDouble: Try[Double] = Success(value.toDouble)
+  override private[bson] lazy val asDouble: Try[Double] =
+    Success(value.toDouble)
+
+  override private[bson] lazy val asFloat: Try[Float] = {
+    if (value >= Float.MinValue && value <= Float.MaxValue) {
+      Try(value.toFloat)
+    } else {
+      super.asFloat
+    }
+  }
 
   override private[bson] lazy val asInt: Try[Int] = Success(value)
 
@@ -1061,6 +1108,12 @@ final class BSONLong private[bson] (val value: Long) extends BSONValue {
     } else super.asDouble
   }
 
+  override private[bson] lazy val asFloat: Try[Float] = {
+    if (value >= Float.MinValue && value <= Float.MaxValue) {
+      Try(value.toFloat)
+    } else super.asFloat
+  }
+
   override private[bson] lazy val asInt: Try[Int] = {
     if (value >= Int.MinValue && value <= Int.MaxValue) Try(value.toInt)
     else super.asInt
@@ -1116,6 +1169,9 @@ final class BSONDecimal private[bson] (
 
   override private[bson] lazy val asDouble: Try[Double] =
     asDecimal.filter(_.isDecimalDouble).map(_.toDouble)
+
+  override private[bson] lazy val asFloat: Try[Float] =
+    asDecimal.filter(_.isDecimalDouble).map(_.toFloat)
 
   override private[bson] lazy val asInt: Try[Int] =
     asDecimal.filter(_.isValidInt).map(_.toInt)

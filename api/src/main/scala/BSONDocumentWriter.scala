@@ -32,6 +32,10 @@ object BSONDocumentWriter {
   def from[T](write: T => Try[BSONDocument]): BSONDocumentWriter[T] =
     new Default[T](write)
 
+  private[bson] def safe[T](write: T => BSONDocument): BSONDocumentWriter[T] with SafeBSONDocumentWriter[T] = new BSONDocumentWriter[T] with SafeBSONDocumentWriter[T] {
+    def safeWrite(value: T) = write(value)
+  }
+
   // ---
 
   private class Default[T](
@@ -45,4 +49,12 @@ object BSONDocumentWriter {
 
     def writeTry(value: T): Try[BSONDocument] = Try(write(value))
   }
+}
+
+/** A writer that is safe, as `writeTry` can always return a `Success`. */
+private[bson] trait SafeBSONDocumentWriter[T] { writer: BSONDocumentWriter[T] =>
+  def safeWrite(value: T): BSONDocument
+
+  final def writeTry(value: T): Success[BSONDocument] =
+    Success(safeWrite(value))
 }
