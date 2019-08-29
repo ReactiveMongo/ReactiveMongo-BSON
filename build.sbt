@@ -33,26 +33,13 @@ val reactivemongoShaded = Def.setting[ModuleID] {
   "org.reactivemongo" % "reactivemongo-shaded" % (version in ThisBuild).value
 }
 
-val discipline = Def.setting[ModuleID] {
-  if (scalaVersion.value startsWith "2.10.") {
-    "org.typelevel" %% "discipline" % "0.9.0"
-  } else {
-    "org.typelevel" %% "discipline-specs2" % "1.0.0-RC1"
-  }
-}
-
 val spireLaws = Def.setting[ModuleID] {
   val sm = CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((major, minor)) => s"${major}.${minor}"
     case _ => "x"
   }
 
-  val ver = {
-    if (scalaVersion.value startsWith "2.10.") "0.15.0"
-    else "0.17.0-M1"
-  }
-
-  ("org.typelevel" %% "spire-laws" % ver).
+  ("org.typelevel" %% "spire-laws" % "0.17.0-M1").
     exclude("org.typelevel", s"discipline-scalatest_${sm}"),
 }
 
@@ -64,7 +51,7 @@ lazy val api = (project in file("api")).settings(
     description := "New BSON API",
     libraryDependencies ++= Seq(
       "org.specs2" %% "specs2-scalacheck" % specsVer,
-      discipline.value,
+      "org.typelevel" %% "discipline-specs2" % "1.0.0-RC1",
       spireLaws.value,
       "com.chuusai" %% "shapeless" % "2.3.3",
       "org.slf4j" % "slf4j-simple" % "1.7.28").map(_ % Test),
@@ -76,7 +63,12 @@ lazy val monocle = (project in file("monocle")).settings(
     name := s"${baseArtifact}-monocle",
     description := "Monocle utilities for BSON values",
     libraryDependencies ++= Seq(
-      "com.github.julien-truffaut" %% "monocle-core" % "1.6.0",
+      "com.github.julien-truffaut" %% "monocle-core" % {
+        val ver = scalaBinaryVersion.value
+
+        if (ver == "2.11") "1.6.0-M1"
+        else "2.0.0-RC1"
+      },
       "org.slf4j" % "slf4j-simple" % "1.7.28" % Test)
   )).dependsOn(api)
 
@@ -131,5 +123,5 @@ lazy val msbCompat = (project in file("msb-compat")).settings(
 lazy val root = (project in file(".")).settings(
   publish := ({}),
   publishTo := None
-).aggregate(api, compat, collection, benchmarks)
+).aggregate(api, compat, collection, benchmarks, geo, monocle)
 // !! Do not aggregate msbCompat as not 2.13

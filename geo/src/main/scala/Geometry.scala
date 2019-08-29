@@ -24,7 +24,7 @@ object GeoGeometry {
     implicit val cfg: MacroConfiguration = MacroConfiguration(
       discriminator = "type",
       typeNaming = TypeNaming(
-        TypeNaming.SimpleName.andThen(_ stripPrefix "Geo")))
+        TypeNaming.SimpleName.andThen { (_: String).stripPrefix("Geo") }))
 
     Macros.handler[GeoGeometry]
   }
