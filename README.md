@@ -47,7 +47,7 @@ Then the conversions can be imported:
 import reactivemongo.api.bson.compat._
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-compat_2.12/0.18.4/reactivemongo-bson-compat_2.12-0.18.4-javadoc.jar/!/reactivemongo/api/bson/compat/index.html)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-compat_2.12/0.18.5/reactivemongo-bson-compat_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/compat/index.html)
 - [Examples](compat/src/test/scala/ValueConverterSpec.scala)
 
 **collection:**
@@ -70,7 +70,7 @@ Then the conversions can be imported:
 import reactivemongo.api.bson.msb._
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-msb_2.12/0.18.4/reactivemongo-bson-msb_2.12-0.18.4-javadoc.jar/!/reactivemongo/api/bson/msb/index.html)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-msb_2.12/0.18.5/reactivemongo-bson-msb_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/msb/index.html)
 - [Examples](msb-compat/src/test/scala/ValueConverterSpec.scala)
 
 **geo:**
@@ -83,7 +83,7 @@ It can be configured in the `build.sbt` as below.
 libraryDependencies += "org.reactivemongo" %% "reactivemongo-bson-geo" % VERSION
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-geo_2.12/0.18.4/reactivemongo-bson-geo_2.12-0.18.4-javadoc.jar/!/reactivemongo/api/bson/geo/index.html)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-geo_2.12/0.18.5/reactivemongo-bson-geo_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/geo/index.html)
 - [Examples](geo/src/test/scala/GeometrySpec.scala)
 
 **monocle:** EXPERIMENTAL
@@ -100,7 +100,7 @@ Then the utilities can be imported:
 import reactivemongo.api.bson.monocle._
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-monocle_2.12/0.18.4/reactivemongo-bson-monocle_2.12-0.18.4-javadoc.jar/!/reactivemongo/api/bson/monocle/index.html)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-monocle_2.12/0.18.5/reactivemongo-bson-monocle_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/monocle/index.html)
 - [Examples](monocle/src/test/scala/MonocleSpec.scala)
 
 ## Build manually
