@@ -94,6 +94,10 @@ object MacroTest {
     object UE extends UT
     case object UF extends UT
 
+    trait UT2
+    case class UA2(n: Int) extends UT2
+    case class UB2(s: String) extends UT2
+
     case object DoNotExtendsA
     object DoNotExtendsB
   }
