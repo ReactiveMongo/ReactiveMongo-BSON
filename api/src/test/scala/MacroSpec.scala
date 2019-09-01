@@ -246,39 +246,41 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       }
     }
 
-    "handle union types (ADT)" in {
+    "handle union types (ADT)" >> {
       import Union._
       import MacroOptions._
 
-      val a = UA(1)
-      val b = UB("hai")
+      "with custom discriminator" in {
+        val a = UA(1)
+        val b = UB("hai")
 
-      implicit val cfg = MacroConfiguration(discriminator = "_type")
+        implicit val cfg = MacroConfiguration(discriminator = "_type")
 
-      val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD \/ UF.type] with AutomaticMaterialization]
+        val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD \/ UF.type] with AutomaticMaterialization]
 
-      format.writeTry(a).map(_.getAsOpt[String]("_type")).
-        aka("class #1") must beSuccessfulTry(
-          Some("MacroTest.Union.UA")) and {
+        format.writeTry(a).map(_.getAsOpt[String]("_type")).
+          aka("class #1") must beSuccessfulTry(Some("MacroTest.Union.UA")) and {
             format.writeTry(b).map(_.getAsOpt[String]("_type")).
               aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
           } and roundtrip(a, format) and roundtrip(b, format)
-    }
+      }
 
-    "handle union types (ADT) with simple names" in {
-      import Union._
-      import MacroOptions._
-      val a = UA(1)
-      val b = UB("hai")
+      "with simple type names" in {
+        import Union._
+        import MacroOptions._
+        val a = UA(1)
+        val b = UB("hai")
 
-      implicit def config = MacroConfiguration.simpleTypeName
+        implicit def config = MacroConfiguration.simpleTypeName
 
-      val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD] with AutomaticMaterialization]
+        val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD] with AutomaticMaterialization]
 
-      format.writeTry(a).map(
-        _.getAsOpt[String]("className")) must beSuccessfulTry(Some("UA")) and {
-          format.writeTry(b).map(_.getAsOpt[String]("className")) must beSuccessfulTry(Some("UB"))
-        } and roundtrip(a, format) and roundtrip(b, format)
+        format.writeTry(a).flatMap(_.getAsTry[String]("className")).
+          aka("discriminator UA") must beSuccessfulTry("UA") and {
+            format.writeTry(b).flatMap(_.getAsTry[String]("className")).
+              aka("discriminator UB") must beSuccessfulTry("UB")
+          } and roundtrip(a, format) and roundtrip(b, format)
+      }
     }
 
     "handle recursive structure" in {

@@ -82,6 +82,9 @@ private[bson] class MacroImpl(val c: Context) {
     val optsTpe = c.weakTypeOf[Opts]
   }
 
+  /**
+   * @define topParam is it a top tree (or not in case of auto-mat of sub-type)
+   */
   private abstract class Helper[C <: Context, A](
     config: c.Expr[MacroConfiguration]) extends ImplicitResolver[C] {
 
@@ -127,7 +130,7 @@ private[bson] class MacroImpl(val c: Context) {
             val body = readBodyFromImplicit(typ)(resolve).getOrElse {
               if (hasOption[MacroOptions.AutomaticMaterialization]) {
                 // No existing implicit, but can fallback to automatic mat
-                readBodyConstruct(typ)
+                readBodyConstruct(typ, top = false)
               } else {
                 c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONReader[_]].getName}[_, ${typ.typeSymbol.fullName}]")
               }
@@ -154,7 +157,7 @@ private[bson] class MacroImpl(val c: Context) {
             ${Match(Ident(dt), cases)}
           }
         }"""
-      } getOrElse readBodyConstruct(aTpe)
+      } getOrElse readBodyConstruct(aTpe, top = true)
 
       val result = c.Expr[UTry[A]](reader)
 
@@ -175,7 +178,7 @@ private[bson] class MacroImpl(val c: Context) {
           val body = writeBodyFromImplicit(id, typ)(resolve).getOrElse {
             if (hasOption[MacroOptions.AutomaticMaterialization]) {
               // No existing implicit, but can fallback to automatic mat
-              writeBodyConstruct(id, typ)
+              writeBodyConstruct(id, typ, top = false)
             } else {
               c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONWriter[_]].getName}[_, ${typ.typeSymbol.fullName}]")
             }
@@ -192,7 +195,7 @@ private[bson] class MacroImpl(val c: Context) {
         """
 
         q"{ $macroCfgInit; ${Match(Ident(valNme), matchBody)} }"
-      } getOrElse writeBodyConstruct(Ident(valNme), aTpe)
+      } getOrElse writeBodyConstruct(Ident(valNme), aTpe, top = true)
 
       val result = c.Expr[UTry[BSONDocument]](writer)
 
@@ -212,11 +215,14 @@ private[bson] class MacroImpl(val c: Context) {
       } else None
     }
 
-    @inline private def readBodyConstruct(implicit tpe: Type): Tree =
-      if (isSingleton(tpe)) readBodyConstructSingleton
-      else readBodyConstructClass
+    /*
+     * @param top $topParam
+     */
+    @inline private def readBodyConstruct(tpe: Type, top: Boolean): Tree =
+      if (isSingleton(tpe)) readBodyConstructSingleton(tpe)
+      else readBodyConstructClass(tpe, top)
 
-    private def readBodyConstructSingleton(implicit tpe: Type): Tree = {
+    private def readBodyConstructSingleton(tpe: Type): Tree = {
       val sym = tpe match {
         case SingleType(_, sym) => sym
         case TypeRef(_, sym, _) => sym
@@ -226,7 +232,10 @@ private[bson] class MacroImpl(val c: Context) {
       q"${utilPkg}.Success(${Ident(TermName(sym.name.toString))})"
     }
 
-    private def readBodyConstructClass(implicit tpe: Type): Tree = {
+    /*
+     * @param top $topParam
+     */
+    private def readBodyConstructClass(tpe: Type, top: Boolean): Tree = {
       val (constructor, _) = matchingApplyUnapply(tpe).getOrElse(
         c.abort(c.enclosingPosition, s"No matching apply/unapply found: $tpe"))
 
@@ -325,7 +334,7 @@ private[bson] class MacroImpl(val c: Context) {
 
       val accName = TermName(c.freshName("acc"))
 
-      val rcfg = if (params.nonEmpty) macroCfgInit else EmptyTree
+      val rcfg = if (top && params.nonEmpty) macroCfgInit else EmptyTree
 
       q"""{
         $rcfg
@@ -341,7 +350,7 @@ private[bson] class MacroImpl(val c: Context) {
               ): ${utilPkg}.Try[${tpe}]
 
           case _ => 
-            ${utilPkg}.Success(${Ident(companion.name)}.
+            ${utilPkg}.Success(${Ident(companion(tpe).name)}.
               apply(..${applyArgs})): ${utilPkg}.Try[${tpe}]
         }
       }"""
@@ -359,16 +368,26 @@ private[bson] class MacroImpl(val c: Context) {
       } else None
     }
 
-    @inline private def writeBodyConstruct(id: Ident, tpe: Type): Tree =
+    /*
+     * @param top $topParam
+     */
+    @inline private def writeBodyConstruct(
+      id: Ident,
+      tpe: Type,
+      top: Boolean): Tree = {
       if (isSingleton(tpe)) writeBodyConstructSingleton(tpe)
-      else writeBodyConstructClass(id, tpe)
+      else writeBodyConstructClass(id, tpe, top)
+    }
 
     private def writeBodyConstructSingleton(tpe: Type): Tree =
       classNameTree(tpe).map { discriminator =>
         q"${utilPkg}.Success(${bsonPkg}.BSONDocument(${discriminator}))"
       } getOrElse q"${utilPkg}.Success(${bsonPkg}.BSONDocument.empty)"
 
-    private def writeBodyConstructClass(id: Ident, tpe: Type): Tree = {
+    private def writeBodyConstructClass(
+      id: Ident,
+      tpe: Type,
+      top: Boolean): Tree = {
       val (constructor, deconstructor) = matchingApplyUnapply(tpe).getOrElse(
         c.abort(c.enclosingPosition, s"No matching apply/unapply found: $tpe"))
 
@@ -515,7 +534,10 @@ private[bson] class MacroImpl(val c: Context) {
 
       val accName = TermName(c.freshName("acc"))
 
-      val wcfg = if (constructorParams.nonEmpty) macroCfgInit else EmptyTree
+      val wcfg = {
+        if (top && constructorParams.nonEmpty) macroCfgInit
+        else EmptyTree
+      }
 
       def writer =
         q"""$wcfg
@@ -556,7 +578,7 @@ private[bson] class MacroImpl(val c: Context) {
     private def classNameTree(tpe: c.Type): Option[Tree] = {
       val tpeSym = aTpe.typeSymbol.asClass
 
-      if (tpeSym.isSealed && tpeSym.isAbstract) Some {
+      if (hasOption[MacroOptions.UnionType[_]] || tpeSym.isSealed && tpeSym.isAbstract) Some {
         val cls = q"implicitly[$reflPkg.ClassTag[$tpe]].runtimeClass"
 
         q"""${bsonPkg}.BSONElement(
@@ -798,7 +820,7 @@ private[bson] class MacroImpl(val c: Context) {
 
     private def isSingleton(tpe: Type): Boolean = tpe <:< typeOf[Singleton]
 
-    @inline private def companion(implicit tpe: Type): Symbol = tpe.typeSymbol.companion
+    @inline private def companion(tpe: Type): Symbol = tpe.typeSymbol.companion
 
     private lazy val warn: String => Unit = {
       if (hasOption[MacroOptions.DisableWarnings]) {
