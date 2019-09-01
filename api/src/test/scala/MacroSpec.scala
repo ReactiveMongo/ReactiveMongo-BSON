@@ -281,6 +281,23 @@ final class MacroSpec extends org.specs2.mutable.Specification {
               aka("discriminator UB") must beSuccessfulTry("UB")
           } and roundtrip(a, format) and roundtrip(b, format)
       }
+
+      "without sealed trait" in {
+        import Union._
+        import MacroOptions._
+
+        val a = UA2(1)
+        val b = UB2("hai")
+
+        val format = Macros.handlerOpts[UT2, UnionType[UA2 \/ UB2] with AutomaticMaterialization]
+
+        format.writeTry(a).map(_.getAsOpt[String]("className")).
+          aka("class #1") must beSuccessfulTry(
+            Some("MacroTest.Union.UA2")) and {
+              format.writeTry(b).map(_.getAsOpt[String]("className")).
+                aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB2"))
+            } and roundtrip(a, format) and roundtrip(b, format)
+      }
     }
 
     "handle recursive structure" in {
