@@ -1428,7 +1428,6 @@ sealed abstract class BSONDocument
     lazy val elements = self.elements.filterNot { e => keys.contains(e.name) }
     @inline def headOption = elements.headOption
     val isEmpty = fields.isEmpty
-    @inline override def contains(key: String): Boolean = false
   }
 
   /** The number of fields */
