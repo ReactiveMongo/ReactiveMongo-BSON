@@ -51,7 +51,7 @@ lazy val api = (project in file("api")).settings(
     description := "New BSON API",
     libraryDependencies ++= Seq(
       "org.specs2" %% "specs2-scalacheck" % specsVer,
-      "org.typelevel" %% "discipline-specs2" % "1.0.0-RC1",
+      "org.typelevel" %% "discipline-specs2" % "1.0.0",
       spireLaws.value,
       "com.chuusai" %% "shapeless" % "2.3.3",
       "org.slf4j" % "slf4j-simple" % "1.7.28").map(_ % Test),
