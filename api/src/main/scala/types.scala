@@ -386,7 +386,7 @@ final class BSONArray private[bson] (
   private[reactivemongo] lazy val byteSize: Int =
     values.zipWithIndex.foldLeft(5) {
       case (sz, (v, i)) =>
-        sz + 2 + i.toString.getBytes.size + v.byteSize
+        sz + 2 /* '\0' + type code */ + i.toString.getBytes.size + v.byteSize
     }
 }
 
@@ -1517,7 +1517,8 @@ sealed abstract class BSONDocument
   @inline private[bson] final def generate() = elements
 
   private[reactivemongo] lazy val byteSize: Int = fields.foldLeft(5) {
-    case (sz, (n, v)) => sz + 2 + n.getBytes.size + v.byteSize
+    case (sz, (n, v)) =>
+      sz + 2 /* '\0' + type code */ + n.getBytes.size + v.byteSize
   }
 }
 
