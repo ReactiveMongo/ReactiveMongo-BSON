@@ -121,7 +121,7 @@ lazy val msbCompat = (project in file("msb-compat")).settings(
     },
     libraryDependencies ++= {
       if (scalaBinaryVersion.value != "2.13") {
-        Seq("org.mongodb.scala" %% "mongo-scala-bson" % "2.6.0" % Provided)
+        Seq("org.mongodb.scala" %% "mongo-scala-bson" % "2.7.0" % Provided)
       } else {
         Seq.empty
       }
