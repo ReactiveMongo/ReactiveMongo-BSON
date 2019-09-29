@@ -17,7 +17,7 @@ ThisBuild / scalacOptions ++= Seq(
 )
 
 ThisBuild / scalacOptions ++= {
-  if (scalaVersion.value startsWith "2.12") {
+  if (scalaBinaryVersion.value == "2.12") {
     Seq(
       "-Ywarn-numeric-widen",
       "-Ywarn-dead-code",
@@ -27,10 +27,10 @@ ThisBuild / scalacOptions ++= {
       "-Ywarn-unused-import",
       "-Ywarn-macros:after"
     )
-  } else if (scalaVersion.value startsWith "2.11.") {
+  } else if (scalaBinaryVersion.value == "2.11") {
     Seq("-Yopt:_", "-Ydead-code", "-Yclosure-elim", "-Yconst-opt")
   } else {
-    Seq("-Ywarn-macros:after")
+    Seq("-Wmacros:after")
   }
 }
 
