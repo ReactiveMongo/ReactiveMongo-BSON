@@ -13,6 +13,6 @@ addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.6.1")
 
 addSbtPlugin("com.github.gseitz" % "sbt-release" % "1.0.11")
 
-addSbtPlugin("com.sksamuel.scapegoat" %% "sbt-scapegoat" % "1.0.9")
+addSbtPlugin("com.sksamuel.scapegoat" %% "sbt-scapegoat" % "1.0.10")
 
 addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.3.7")
