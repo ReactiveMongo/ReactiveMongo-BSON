@@ -182,8 +182,10 @@ object BSONSerializationPack
 
     def uuid(id: UUID): Value = BSONBinary(id)
 
-    /** Returns a timestamp as a serialized value. */
     def timestamp(time: Long): Value = BSONTimestamp(time)
+
+    def regex(pattern: String, options: String): Value =
+      BSONRegex(pattern, options)
   }
 
   private object Decoder
