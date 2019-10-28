@@ -29,11 +29,6 @@ fi
 source "$SCRIPT_DIR/jvmopts.sh"
 
 export JVM_OPTS
-
-# Prepare SBT options
-SBT_OPTS="$SBT_OPTS -Dreactivemongo.io.netty.leakDetection.level=paranoid"
-SBT_OPTS="$SBT_OPTS -Dreactivemongo.io.netty.leakDetection.acquireAndReleaseOnly=true"
-
 export SBT_OPTS
 
 TEST_ARGS=";mimaReportBinaryIssues"

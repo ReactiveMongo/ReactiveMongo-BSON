@@ -10,7 +10,7 @@ name := "reactivemongo-biːsən"
 
 resolvers in ThisBuild ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
-  "Typesafe repository releases" at "http://repo.typesafe.com/typesafe/releases/")
+  "Typesafe repository releases" at "https://repo.typesafe.com/typesafe/releases/")
 
 ThisBuild / mimaFailOnNoPrevious := false
 
@@ -69,7 +69,7 @@ lazy val monocle = (project in file("monocle")).settings(
         if (ver == "2.11") "1.6.0-M1"
         else "2.0.0-RC1"
       },
-      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test)
+      slf4jApi % Test)
   )).dependsOn(api)
 
 lazy val geo = (project in file("geo")).settings(
@@ -78,30 +78,9 @@ lazy val geo = (project in file("geo")).settings(
     description := "GeoJSON support for the BSON API",
     fork in Test := true,
     libraryDependencies ++= Seq(
-      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test)
+      slf4jApi % Test)
   )
 ).dependsOn(api, monocle % Test)
-
-lazy val compat = (project in file("compat")).settings(
-  commonSettings ++ Seq(
-    name := s"${baseArtifact}-compat",
-    description := "Compatibility library between legacy & new BSON APIs",
-    fork in Test := true,
-    libraryDependencies ++= Seq(
-      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test,
-      "org.reactivemongo" %% "reactivemongo-bson" % version.value % Provided)
-  )
-).dependsOn(api)
-
-lazy val collection = (project in file("collection")).settings(
-  commonSettings ++ Seq(
-    name := s"${baseArtifact}-collection",
-    description := "Collection/query library using new BSON serialization",
-    fork in Test := true,
-    libraryDependencies ++= Seq(
-      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test,
-      "org.reactivemongo" %% "reactivemongo" % version.value % Provided)
-  )).dependsOn(api, compat)
 
 lazy val benchmarks = (project in file("benchmarks")).
   enablePlugins(JmhPlugin).settings(
@@ -144,5 +123,5 @@ lazy val msbCompat = (project in file("msb-compat")).settings(
 lazy val root = (project in file(".")).settings(
   publish := ({}),
   publishTo := None
-).aggregate(api, compat, collection, benchmarks, msbCompat, geo, monocle)
+).aggregate(api, benchmarks, msbCompat, geo, monocle)
 // !! Do not aggregate msbCompat as not 2.13
