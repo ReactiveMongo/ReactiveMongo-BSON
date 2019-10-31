@@ -54,7 +54,7 @@ lazy val api = (project in file("api")).settings(
       "org.typelevel" %% "discipline-specs2" % "1.0.0",
       spireLaws.value,
       "com.chuusai" %% "shapeless" % "2.3.3",
-      "org.slf4j" % "slf4j-simple" % "1.7.28").map(_ % Test),
+      "org.slf4j" % "slf4j-simple" % "1.7.29").map(_ % Test),
     libraryDependencies ++= Seq(reactivemongoShaded.value % Provided)
   ))
 
@@ -69,7 +69,7 @@ lazy val monocle = (project in file("monocle")).settings(
         if (ver == "2.11") "1.6.0-M1"
         else "2.0.0-RC1"
       },
-      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test)
+      "org.slf4j" % "slf4j-simple" % "1.7.29" % Test)
   )).dependsOn(api)
 
 lazy val geo = (project in file("geo")).settings(
@@ -78,7 +78,7 @@ lazy val geo = (project in file("geo")).settings(
     description := "GeoJSON support for the BSON API",
     fork in Test := true,
     libraryDependencies ++= Seq(
-      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test)
+      "org.slf4j" % "slf4j-simple" % "1.7.29" % Test)
   )
 ).dependsOn(api, monocle % Test)
 
@@ -88,7 +88,7 @@ lazy val compat = (project in file("compat")).settings(
     description := "Compatibility library between legacy & new BSON APIs",
     fork in Test := true,
     libraryDependencies ++= Seq(
-      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test,
+      "org.slf4j" % "slf4j-simple" % "1.7.29" % Test,
       "org.reactivemongo" %% "reactivemongo-bson" % version.value % Provided)
   )
 ).dependsOn(api)
@@ -99,7 +99,7 @@ lazy val collection = (project in file("collection")).settings(
     description := "Collection/query library using new BSON serialization",
     fork in Test := true,
     libraryDependencies ++= Seq(
-      "org.slf4j" % "slf4j-simple" % "1.7.28" % Test,
+      "org.slf4j" % "slf4j-simple" % "1.7.29" % Test,
       "org.reactivemongo" %% "reactivemongo" % version.value % Provided)
   )).dependsOn(api, compat)
 
