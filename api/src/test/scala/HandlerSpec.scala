@@ -418,6 +418,10 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     "be read from BSONLong" in {
       handler.readTry(BSONLong(123L)) must beSuccessfulTry(123L)
     }
+
+    "be read from BSONDateTime" in {
+      handler.readTry(BSONDateTime(12345L)) must beSuccessfulTry(12345L)
+    }
   }
 
   "BSONString" should {
