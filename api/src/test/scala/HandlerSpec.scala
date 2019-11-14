@@ -145,49 +145,80 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
   "Map" should {
     import reactivemongo.api.bson
 
-    "write primitives values" in {
-      val input = Map("a" -> 1, "b" -> 2)
-      val result = bson.mapKeyWriter[String, Int].writeTry(input)
+    "with primitive/safe values" >> {
+      "write" in {
+        val input = Map("a" -> 1, "b" -> 2)
+        val result1 = bson.mapKeyWriter[String, Int].writeTry(input)
+        def result2 = bson.mapSafeWriter[Int].writeTry(input)
 
-      result must beSuccessfulTry(BSONDocument("a" -> 1, "b" -> 2))
+        result1 must beSuccessfulTry(BSONDocument("a" -> 1, "b" -> 2)) and {
+          result2 must_=== result1
+        }
+      }
+
+      "read" in {
+        val input = BSONDocument("a" -> 1, "b" -> 2)
+        val handler = implicitly[BSONReader[Map[String, Int]]]
+
+        handler.readTry(input) must beSuccessfulTry(
+          Map("a" -> 1, "b" -> 2)) and {
+            implicitly[BSONReader[Map[Char, Int]]].
+              readTry(input) must beSuccessfulTry(Map('a' -> 1, 'b' -> 2))
+          }
+      }
     }
 
-    "read primitives values" in {
-      val input = BSONDocument("a" -> 1, "b" -> 2)
-      val handler = implicitly[BSONReader[Map[String, Int]]]
+    "with BSON values" >> {
+      "write" in {
+        val input = Map("a" -> BSONInteger(1), "b" -> BSONInteger(2))
+        val result1 = bson.mapKeyWriter[String, BSONInteger].writeTry(input)
+        def result2 = bson.bsonMapWriter[BSONInteger].writeTry(input)
 
-      handler.readTry(input) must beSuccessfulTry(Map("a" -> 1, "b" -> 2))
+        result1 must beSuccessfulTry(BSONDocument("a" -> 1, "b" -> 2)) and {
+          result2 must_=== result1
+        }
+      }
+
+      "read" in {
+        val input = BSONDocument("a" -> 1, "b" -> 2)
+        val handler = implicitly[BSONReader[Map[String, BSONInteger]]]
+
+        handler.readTry(input) must beSuccessfulTry(
+          Map("a" -> BSONInteger(1), "b" -> BSONInteger(2)))
+      }
     }
 
-    case class Foo(label: String, count: Int)
-    implicit val fooWriter = BSONDocumentWriter[Foo] { foo =>
-      BSONDocument("label" -> foo.label, "count" -> foo.count)
-    }
-    implicit val fooReader = BSONDocumentReader.from[Foo] { document =>
-      for {
-        label <- document.getAsTry[String]("label")
-        count <- document.getAsTry[Int]("count")
-      } yield Foo(label, count)
-    }
+    "with structured values" >> {
+      case class Foo(label: String, count: Int)
+      implicit val fooWriter = BSONDocumentWriter[Foo] { foo =>
+        BSONDocument("label" -> foo.label, "count" -> foo.count)
+      }
+      implicit val fooReader = BSONDocumentReader.from[Foo] { document =>
+        for {
+          label <- document.getAsTry[String]("label")
+          count <- document.getAsTry[Int]("count")
+        } yield Foo(label, count)
+      }
 
-    "write complex values" in {
-      val expectedResult = BSONDocument(
-        "a" -> BSONDocument("label" -> "foo", "count" -> 10),
-        "b" -> BSONDocument("label" -> "foo2", "count" -> 20))
-      val input = Map("a" -> Foo("foo", 10), "b" -> Foo("foo2", 20))
-      val result = mapWriter[Foo].writeTry(input)
+      "write" in {
+        val expectedResult = BSONDocument(
+          "a" -> BSONDocument("label" -> "foo", "count" -> 10),
+          "b" -> BSONDocument("label" -> "foo2", "count" -> 20))
+        val input = Map("a" -> Foo("foo", 10), "b" -> Foo("foo2", 20))
+        val result = mapWriter[Foo].writeTry(input)
 
-      result must beSuccessfulTry(expectedResult)
-    }
+        result must beSuccessfulTry(expectedResult)
+      }
 
-    "read complex values" in {
-      val expectedResult = Map("a" -> Foo("foo", 10), "b" -> Foo("foo2", 20))
-      val input = BSONDocument(
-        "a" -> BSONDocument("label" -> "foo", "count" -> 10),
-        "b" -> BSONDocument("label" -> "foo2", "count" -> 20))
-      val handler = implicitly[BSONReader[Map[String, Foo]]]
+      "read" in {
+        val expectedResult = Map("a" -> Foo("foo", 10), "b" -> Foo("foo2", 20))
+        val input = BSONDocument(
+          "a" -> BSONDocument("label" -> "foo", "count" -> 10),
+          "b" -> BSONDocument("label" -> "foo2", "count" -> 20))
+        val handler = implicitly[BSONReader[Map[String, Foo]]]
 
-      handler.readTry(input) must beSuccessfulTry(expectedResult)
+        handler.readTry(input) must beSuccessfulTry(expectedResult)
+      }
     }
   }
 

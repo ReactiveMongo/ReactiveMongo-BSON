@@ -35,7 +35,7 @@ This refactoring also includes the following optional libraries.
 
 **compat:**
 
-The compatibility library, that provides conversions between the current and the future APIs. It can be configured in the `build.sbt` as below.
+The compatibility library, that provides conversions between the previous and the new APIs. It can be configured in the `build.sbt` as below.
 
 ```ocaml
 libraryDependencies += "org.reactivemongo" %% "reactivemongo-bson-compat" % VERSION
@@ -50,15 +50,9 @@ import reactivemongo.api.bson.compat._
 - [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-compat_2.12/0.18.5/reactivemongo-bson-compat_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/compat/index.html)
 - [Examples](compat/src/test/scala/ValueConverterSpec.scala)
 
-**collection:**
-
-The library providing collection references, with operations using the BSON values from the new API.
-
-- [Examples](collection/src/test/scala/CollectionSpec.scala)
-
 **msb-compat:**
 
-The compatiblity library for `org.bson`, that provides conversions between this package and the future BSON API. It can be configured in the `build.sbt` as below.
+The compatiblity library for `org.bson`, that provides conversions between this package and the new BSON API. It can be configured in the `build.sbt` as below.
 
 ```ocaml
 libraryDependencies += "org.reactivemongo" %% "reactivemongo-bson-msb-compat" % VERSION

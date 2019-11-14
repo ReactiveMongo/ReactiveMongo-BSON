@@ -1,6 +1,8 @@
 package reactivemongo
 package api.bson
 
+import scala.language.implicitConversions
+
 import org.openjdk.jmh.annotations._
 
 import reactivemongo.api.bson.buffer.{
@@ -21,7 +23,31 @@ class BSONDocumentBenchmark {
   private var fixtures: Iterator[BSONDocument] = Iterator.empty
 
   protected var bigSet: BSONDocument = _
+
   protected var smallSet: BSONDocument = _
+  private var smallMap: Map[String, BSONValue] = _
+
+  private val safeMap: Map[String, String] = Map(
+    "Lorem ipsum" -> "dolor sit amet",
+    "consectetur" -> "adipiscing elit",
+    "sed do eiusmod tempor incididunt" -> "ut labore et dolore magna aliqua",
+    "Ut enim ad" -> "minim veniam",
+    "quis nostrud exercitation ullamco laboris nisi" -> "ut aliquip ex ea commodo consequat",
+    "Duis aute irure dolor in reprehenderit in voluptate velit" -> "esse cillum dolore eu fugiat nulla pariatur",
+    "Excepteur sint occaecat" -> "cupidatat non proident",
+    "sunt in culpa" -> "qui officia deserunt mollit anim id est laborum")
+
+  private val otherMap = Map(
+    "foo" -> BigDecimal("123.45"),
+    "bar lorem" -> BigDecimal(0L),
+    "ipsum" -> BigDecimal(10000))
+
+  private val complexMap: Map[Int, String] = (safeMap ++ otherMap.map {
+    case (k, v) => k -> v.toString
+  }).map {
+    case (k, v) => k.hashCode -> v
+  }
+
   protected var key: String = _
 
   private var emptyBuffer: WritableBuffer = _
@@ -41,6 +67,7 @@ class BSONDocumentBenchmark {
       case Some(a) => {
         bigSet = bigDocument()
         smallSet = a
+        smallMap = a.toMap
 
         bigSet.elements.lastOption match {
           case Some(BSONElement(k, _)) =>
@@ -272,13 +299,35 @@ class BSONDocumentBenchmark {
   }
 
   @Benchmark
-  def readAsMap() = {
+  def readAsCustomMap() = {
+    assert(bigSet.asTry[Map[String, BSONValue]](mapKeyReader).isSuccess)
+  }
+
+  @Benchmark
+  def readAsSimpleMap() = {
     assert(bigSet.asTry[Map[String, BSONValue]](mapReader).isSuccess)
   }
 
   @Benchmark
+  def writeFromSafeMap() = {
+    assert(mapSafeWriter[String].writeTry(safeMap).isSuccess)
+  }
+
+  @Benchmark
+  def writeFromBSONMap() = {
+    assert(bsonMapWriter[BSONValue].writeTry(smallMap).isSuccess)
+  }
+
+  implicit def int2String(i: Int): StringOps = i.toString
+
+  @Benchmark
+  def writeFromComplexMap() = {
+    assert(mapKeyWriter[Int, String].writeTry(complexMap).isSuccess)
+  }
+
+  @Benchmark
   def writeFromMap() = {
-    assert(mapWriter[BSONValue].writeTry(smallSet.toMap).isSuccess)
+    assert(mapWriter[BigDecimal].writeTry(otherMap).isSuccess)
   }
 }
 

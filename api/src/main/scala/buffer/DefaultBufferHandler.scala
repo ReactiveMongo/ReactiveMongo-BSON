@@ -6,7 +6,7 @@ import scala.collection.immutable.IndexedSeq
 
 import reactivemongo.api.bson._
 
-private[bson] object DefaultBufferHandler {
+private[api] object DefaultBufferHandler {
   def serialize(bson: BSONValue, buffer: WritableBuffer): WritableBuffer =
     bson match {
       case BSONDouble(v) => buffer writeDouble v

@@ -12,14 +12,14 @@ import java.time.{
 }
 
 import scala.collection.mutable.Builder
-import scala.collection.immutable.{ IndexedSeq, HashMap }
+import scala.collection.immutable.IndexedSeq
 
 import scala.util.{ Failure, Success, Try }
 
 import exceptions.TypeDoesNotMatchException
 
 private[bson] trait DefaultBSONHandlers
-  extends LowPriorityBSONHandlers with BSONIdentityHandlers {
+  extends LowPriority1BSONHandlers with BSONIdentityHandlers {
 
   implicit object BSONIntegerHandler
     extends BSONHandler[Int] with SafeBSONWriter[Int] {
@@ -212,9 +212,10 @@ private[bson] trait DefaultBSONHandlers
   }
 }
 
-private[bson] trait LowPriorityBSONHandlers
+@SuppressWarnings(Array("TryGet"))
+private[bson] trait LowPriority1BSONHandlers
   extends LowPriorityBSONHandlersCompat
-  with LowerPriorityBSONHandlers { _: DefaultBSONHandlers =>
+  with LowPriority2BSONHandlers { _: DefaultBSONHandlers =>
 
   import scala.language.higherKinds
 
@@ -272,84 +273,108 @@ private[bson] trait LowPriorityBSONHandlers
     }
   }
 
-  implicit def mapReader[K, V](implicit keyReader: BSONReader[K], valueReader: BSONReader[V]): BSONDocumentReader[Map[K, V]] =
+  implicit def mapReader[V](implicit valueReader: BSONReader[V]): BSONDocumentReader[Map[String, V]] =
+    new BSONDocumentReader[Map[String, V]] {
+      def readDocument(doc: BSONDocument): Try[Map[String, V]] = Try {
+        mapValues(doc.fields) { v =>
+          valueReader.readTry(v).get
+        }
+      }
+    }
+
+  implicit def mapSafeWriter[V](implicit valueWriter: BSONWriter[V] with SafeBSONWriter[V]): BSONDocumentWriter[Map[String, V]] = new BSONDocumentWriter[Map[String, V]] {
+    def writeTry(inputMap: Map[String, V]): Try[BSONDocument] =
+      Success(BSONDocument(mapValues(inputMap)(valueWriter.safeWrite)))
+  }
+
+  implicit def bsonMapWriter[V <: BSONValue]: BSONDocumentWriter[Map[String, V]] = new BSONDocumentWriter[Map[String, V]] {
+    def writeTry(inputMap: Map[String, V]): Try[BSONDocument] =
+      Success(BSONDocument(inputMap))
+  }
+}
+
+@SuppressWarnings(Array("TryGet"))
+private[bson] trait LowPriority2BSONHandlers
+  extends LowPriority3BSONHandlers { _: DefaultBSONHandlers =>
+
+  implicit def mapKeyReader[K, V](implicit keyReader: KeyReader[K], valueReader: BSONReader[V]): BSONDocumentReader[Map[K, V]] =
     new BSONDocumentReader[Map[K, V]] {
-      def readDocument(doc: BSONDocument): Try[Map[K, V]] = {
-        val builder = Map.newBuilder[K, V]
-
-        @annotation.tailrec
-        def parse(entries: Seq[(String, BSONValue)]): Try[Map[K, V]] =
-          entries.headOption match {
-            case Some((k, v)) => (for {
-              key <- keyReader.readTry(BSONString(k))
-              vlu <- valueReader.readTry(v)
-            } yield (key -> vlu)) match {
-              case Success(entry) => {
-                builder += entry
-                parse(entries.tail)
-              }
-
-              case Failure(cause) => Failure(cause)
-            }
-
-            case _ => Success(builder.result())
-          }
-
-        parse(doc.fields.toSeq)
+      def readDocument(doc: BSONDocument): Try[Map[K, V]] = Try {
+        doc.fields.map {
+          case (k, v) =>
+            keyReader.readTry(k).get -> valueReader.readTry(v).get
+        }
       }
     }
 
   implicit def mapWriter[V](implicit valueWriter: BSONWriter[V]): BSONDocumentWriter[Map[String, V]] = new BSONDocumentWriter[Map[String, V]] {
-    def writeTry(inputMap: Map[String, V]): Try[BSONDocument] = {
-      val m = HashMap.newBuilder[String, BSONValue]
+    def writeTry(inputMap: Map[String, V]): Try[BSONDocument] = Try {
+      val m = Seq.newBuilder[BSONElement]
 
-      @annotation.tailrec
-      def write(entries: Map[String, V]): Try[HashMap[String, BSONValue]] =
-        entries.headOption match {
-          case Some((k, v)) => (valueWriter.writeTry(v).map { vlu =>
-            m += BSONStringHandler.safeWrite(k).value -> vlu
-            ()
-          }) match {
-            case Success(_) => write(entries.tail)
-            case Failure(cause) => Failure(cause)
-          }
+      inputMap.foreach {
+        case (k, v) =>
+          m += BSONElement(k, valueWriter.writeTry(v).get)
+      }
 
-          case _ => Success(m.result())
-        }
-
-      write(inputMap).map(BSONDocument(_))
+      BSONDocument(ElementProducer(m.result()))
     }
   }
-
 }
 
-private[bson] trait LowerPriorityBSONHandlers { _: DefaultBSONHandlers =>
+@SuppressWarnings(Array("TryGet"))
+private[bson] trait LowPriority3BSONHandlers
+  extends LowPriority4BSONHandlers { _: DefaultBSONHandlers =>
+
+  implicit def mapKeySafeWriter[K, V](
+    implicit
+    keyWriter: KeyWriter[K] with SafeKeyWriter[K],
+    valueWriter: BSONWriter[V] with SafeBSONWriter[V]): BSONDocumentWriter[Map[K, V]] =
+    new BSONDocumentWriter[Map[K, V]] {
+      def writeTry(inputMap: Map[K, V]): Try[BSONDocument] = Success {
+        val m = Seq.newBuilder[BSONElement]
+
+        inputMap.foreach {
+          case (k, v) =>
+            m += BSONElement(keyWriter.write(k), valueWriter.safeWrite(v))
+        }
+
+        BSONDocument(ElementProducer(m.result()))
+      }
+    }
+
+  implicit def bsonMapKeyWriter[K, V <: BSONValue](
+    implicit
+    keyWriter: KeyWriter[K]): BSONDocumentWriter[Map[K, V]] =
+    new BSONDocumentWriter[Map[K, V]] {
+      def writeTry(inputMap: Map[K, V]): Try[BSONDocument] = Try {
+        val m = Seq.newBuilder[BSONElement]
+
+        inputMap.foreach {
+          case (k, v) =>
+            m += BSONElement(keyWriter.writeTry(k).get, v)
+        }
+
+        BSONDocument(ElementProducer(m.result()))
+      }
+    }
+}
+
+@SuppressWarnings(Array("TryGet"))
+private[bson] trait LowPriority4BSONHandlers { _: DefaultBSONHandlers =>
   implicit def mapKeyWriter[K, V](
     implicit
     ev: K => StringOps,
     valueWriter: BSONWriter[V]): BSONDocumentWriter[Map[K, V]] =
     new BSONDocumentWriter[Map[K, V]] {
-      def writeTry(inputMap: Map[K, V]): Try[BSONDocument] = {
-        val m = HashMap.newBuilder[String, BSONValue]
+      def writeTry(inputMap: Map[K, V]): Try[BSONDocument] = Try {
+        val m = Seq.newBuilder[BSONElement]
 
-        @annotation.tailrec
-        def write(entries: Map[K, V]): Try[HashMap[String, BSONValue]] =
-          entries.headOption match {
-            case Some((k, v)) =>
-              (valueWriter.writeTry(v).map { vlu =>
-                val key = BSONStringHandler.safeWrite(ev(k).mkString)
+        inputMap.foreach {
+          case (k, v) =>
+            m += BSONElement(ev(k).mkString, valueWriter.writeTry(v).get)
+        }
 
-                m += (key).value -> vlu
-                ()
-              }) match {
-                case Success(_) => write(entries.tail)
-                case Failure(cause) => Failure(cause)
-              }
-
-            case _ => Success(m.result())
-          }
-
-        write(inputMap).map(BSONDocument(_))
+        BSONDocument(ElementProducer(m.result()))
       }
     }
 }
