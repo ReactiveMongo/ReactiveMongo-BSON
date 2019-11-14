@@ -23,4 +23,7 @@ private[bson] trait Utils {
   @inline private[bson] def lazyZip[A, B](a: Iterable[A], b: Iterable[B]) = a.lazyZip(b)
 
   @inline private[bson] def toLazy[T](it: Iterable[T]) = it.to(LazyList)
+
+  @inline private[bson] def mapValues[K, V, U](m: Map[K, V])(f: V => U) =
+    m.view.mapValues(f).toMap
 }

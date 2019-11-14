@@ -2,6 +2,8 @@ package reactivemongo.api.bson
 
 import java.math.{ BigDecimal => JBigDec }
 
+import java.util.UUID
+
 import java.time.Instant
 
 import java.nio.ByteBuffer
@@ -544,10 +546,9 @@ object BSONUndefined extends BSONUndefined {
 /**
  * BSON ObjectId value.
  *
- * +------------------------+------------------------+------------------------+------------------------+
- * + timestamp (in seconds) +   machine identifier   +    thread identifier   +        increment       +
- * +        (4 bytes)       +        (3 bytes)       +        (2 bytes)       +        (3 bytes)       +
- * +------------------------+------------------------+------------------------+------------------------+
+ * | Timestamp (seconds) | Machine identifier | Thread identifier | Increment
+ * | ---                 | ---                | ---               | ---
+ * | 4 bytes             | 3 bytes            | 2 bytes           | 3 bytes
  */
 sealed abstract class BSONObjectID extends BSONValue {
   import java.util.Arrays
@@ -1344,7 +1345,8 @@ object BSONMaxKey extends BSONMaxKey {
  * @define keyParam the key to be found in the document
  */
 sealed abstract class BSONDocument
-  extends BSONValue with ElementProducer with BSONDocumentLowPriority { self =>
+  extends BSONValue with ElementProducer
+  with BSONDocumentLowPriority with BSONDocumentExperimental { self =>
 
   final val code = 0x03.toByte
 
@@ -1490,6 +1492,8 @@ sealed abstract class BSONDocument
     case Some(v) => reader.readTry(v).map(Some(_))
   }
 
+  // ---
+
   private[bson] final def copy(newFields: Map[String, BSONValue] = self.fields): BSONDocument = new BSONDocument {
     val fields = newFields
 
@@ -1520,6 +1524,82 @@ sealed abstract class BSONDocument
     case (sz, (n, v)) =>
       sz + 2 /* '\0' + type code */ + n.getBytes.size + v.byteSize
   }
+}
+
+private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is an array field.
+   */
+  def array(name: String): Option[Seq[BSONValue]] =
+    get(name).collect {
+      case arr: BSONArray => arr.values
+    }
+
+  final def values[T](name: String)(implicit r: BSONReader[T]): Option[Seq[T]] = document.getAsOpt[Seq[T]](name)
+
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a binary field.
+   */
+  def binary(name: String): Option[Array[Byte]] =
+    getAsOpt[Array[Byte]](name)
+
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a boolean-like field
+   * (numeric or boolean).
+   */
+  def booleanLike(name: String): Option[Boolean] =
+    getAsTry[BSONBooleanLike](name).flatMap(_.toBoolean).toOption
+
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a nested document.
+   */
+  def child(name: String): Option[BSONDocument] = get(name).collect {
+    case doc: BSONDocument => doc
+  }
+
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a list of nested documents.
+   */
+  def children(name: String): List[BSONDocument] =
+    get(name).toList.flatMap {
+      case arr: BSONArray => arr.values.collect {
+        case doc: BSONDocument => doc
+      }
+
+      case _ =>
+        List.empty[BSONDocument]
+
+    }
+
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a double field.
+   */
+  def double(name: String): Option[Double] = getAsOpt[Double](name)
+
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a integer field.
+   */
+  def int(name: String): Option[Int] = getAsOpt[Int](name)
+
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a long field.
+   */
+  def long(name: String): Option[Long] = getAsOpt[Long](name)
+
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a string field.
+   */
+  def string(name: String): Option[String] = getAsOpt[String](name)
+
+  /**
+   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a binary/uuid field.
+   */
+  def uuid(name: String): Option[UUID] =
+    document.getAsOpt[BSONBinary](name).collect { // TODO: As BSONReader?
+      case bin @ BSONBinary(Subtype.UuidSubtype) =>
+        UUID.nameUUIDFromBytes(bin.byteArray)
+    }
+
 }
 
 private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
@@ -1701,6 +1781,20 @@ object ElementProducer extends ElementProducerLowPriority {
     private val underlying = Seq.empty[BSONElement]
     def generate() = underlying
   }
+
+  private[bson] def apply(elements: Iterable[BSONElement]): ElementProducer =
+    new ElementProducer {
+      def generate() = elements
+
+      override def equals(that: Any): Boolean = that match {
+        case other: ElementProducer => other.generate() == elements
+        case _ => false
+      }
+
+      override def hashCode: Int = elements.hashCode
+
+      override def toString = s"ElementProducer(${elements.mkString(", ")})"
+    }
 
   /**
    * A composition operation for [[ElementProducer]],

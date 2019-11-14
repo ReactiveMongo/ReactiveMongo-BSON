@@ -8,4 +8,6 @@ private[bson] trait Utils {
   @inline private[bson] def lazyZip[A, B](a: Iterable[A], b: Iterable[B]) = (a -> b).zipped
 
   @inline private[bson] def toLazy[T](it: Traversable[T]) = it.toStream
+
+  @inline private[bson] def mapValues[K, V, U](m: Map[K, V])(f: V => U): Map[K, U] = m.mapValues(f)
 }

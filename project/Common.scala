@@ -13,6 +13,7 @@ object Common extends AutoPlugin {
   override def projectSettings = Seq(
     organization := "org.reactivemongo",
     autoAPIMappings := true,
+    testFrameworks ~= { _.filterNot(_ == TestFrameworks.ScalaTest) },
     scalacOptions ++= {
       if (scalaBinaryVersion.value != "2.10") {
         Seq("-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used")

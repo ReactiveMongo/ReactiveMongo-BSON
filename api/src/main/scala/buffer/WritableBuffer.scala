@@ -11,7 +11,7 @@ import reactivemongo.io.netty.buffer.{ ByteBuf, Unpooled }
  * when needed.
  */
 private[bson] final class WritableBuffer private[bson] (
-  private val buffer: ByteBuf) extends AnyVal {
+  private[api] val buffer: ByteBuf) extends AnyVal {
 
   /** Returns the current size of this buffer. */
   @inline def size(): Int = buffer.readableBytes()
