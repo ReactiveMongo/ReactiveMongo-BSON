@@ -303,11 +303,10 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     val reader = implicitly[BSONReader[BSONNumberLike]]
 
     "read BSONTimestamp" in {
-      val time = System.currentTimeMillis()
-      val num = time / 1000L
-      val bson = BSONTimestamp(num)
+      val time = System.nanoTime() / 1000L
+      val bson = BSONTimestamp(time)
 
-      reader.readOpt(bson).map(_.toLong) must beSome(Success(num * 1000L))
+      reader.readOpt(bson).map(_.toLong) must beSome(Success(time))
     }
   }
 

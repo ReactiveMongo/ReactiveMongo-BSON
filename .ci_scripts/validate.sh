@@ -33,7 +33,7 @@ export SBT_OPTS
 
 TEST_ARGS=";mimaReportBinaryIssues"
 
-if [ ! `echo "n$TRAVIS_SCALA_VERSION" | sed -e 's/v2.13.*/o/'` = "no" ]; then
+if [ ! `echo "n$TRAVIS_SCALA_VERSION" | sed -e 's/2.13.*/o/'` = "no" ]; then
   TEST_ARGS=";scapegoat $TEST_ARGS"
 fi
 
@@ -43,7 +43,7 @@ else
   TEST_ARGS="$TEST_ARGS ;testOnly -- exclude mongo2"
 fi
 
-if [ ! "v$TRAVIS_SCALA_VERSION" = "v2.13.0" ]; then
+if [ ! "v$TRAVIS_SCALA_VERSION" = "v2.13.1" ]; then
   TEST_ARGS="$TEST_ARGS ;msbCompat/testOnly"
 fi
 

@@ -18,7 +18,7 @@ matrix:
     scala: 2.12.8
   - env: MONGO_VER=4
     jdk: openjdk9
-    scala: 2.13.0
+    scala: 2.13.1
 
 before_install: ./.ci_scripts/beforeInstall.sh $TRAVIS_SCALA_VERSION
 script: ./.ci_scripts/validate.sh

@@ -1,7 +1,5 @@
 package reactivemongo.api.bson
 
-import scala.language.higherKinds
-
 import scala.collection.Factory
 
 private[bson] trait LowPriorityBSONHandlersCompat {

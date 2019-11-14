@@ -10,8 +10,8 @@ import reactivemongo.io.netty.buffer.{ ByteBuf, Unpooled }
  * The implementation '''MUST''' ensure it stores data in little endian
  * when needed.
  */
-private[bson] final class WritableBuffer private[bson] (
-  private[api] val buffer: ByteBuf) extends AnyVal {
+private[api] final class WritableBuffer(
+  val buffer: ByteBuf) extends AnyVal {
 
   /** Returns the current size of this buffer. */
   @inline def size(): Int = buffer.readableBytes()

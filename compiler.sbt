@@ -1,7 +1,7 @@
 ThisBuild / scalaVersion := "2.12.8"
 
 ThisBuild / crossScalaVersions := Seq(
-  "2.11.12", scalaVersion.value, "2.13.0")
+  "2.11.12", scalaVersion.value, "2.13.1")
 
 ThisBuild / crossVersion := CrossVersion.binary
 
@@ -12,7 +12,6 @@ ThisBuild / scalacOptions ++= Seq(
   "-feature",
   "-Xlint",
   "-g:vars",
-  "-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used",
   "-Xfatal-warnings"
 )
 
@@ -39,13 +38,6 @@ ThisBuild / scalacOptions in (Compile, console) ~= {
     o.startsWith("-X") || o.startsWith("-Y") || o.startsWith("-P:silencer"))
 }
 
-val silencerVersion = "1.4.2"
-
-libraryDependencies in ThisBuild ++= Seq(
-  compilerPlugin("com.github.ghik" %% "silencer-plugin" % silencerVersion),
-  "com.github.ghik" %% "silencer-lib" % silencerVersion % Provided
-)
-
 scalacOptions in Test ~= {
   _.filterNot(_ == "-Xfatal-warnings")
 }
@@ -56,4 +48,28 @@ scalacOptions in (Compile, console) ~= {
 
 scalacOptions in (Test, console) ~= {
   _.filterNot { opt => opt.startsWith("-X") || opt.startsWith("-Y") }
+}
+
+// Silencer
+ThisBuild / libraryDependencies ++= {
+  val silencerVersion = "1.4.4"
+
+  if (scalaBinaryVersion.value != "2.10") {
+    Seq(
+      compilerPlugin(("com.github.ghik" %% "silencer-plugin" % silencerVersion).
+        cross(CrossVersion.full)),
+      ("com.github.ghik" %% "silencer-lib" % silencerVersion % Provided).
+        cross(CrossVersion.full)
+    )
+  } else {
+    Seq.empty
+  }
+}
+
+ThisBuild / scalacOptions ++= {
+  if (scalaBinaryVersion.value != "2.10") {
+    Seq("-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used")
+  } else {
+    Seq.empty
+  }
 }
