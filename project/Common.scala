@@ -8,19 +8,10 @@ object Common extends AutoPlugin {
   override def trigger = allRequirements
   override def requires = JvmPlugin
 
-  val silencerVersion = "1.4.2"
-
   override def projectSettings = Seq(
     organization := "org.reactivemongo",
     autoAPIMappings := true,
     testFrameworks ~= { _.filterNot(_ == TestFrameworks.ScalaTest) },
-    scalacOptions ++= {
-      if (scalaBinaryVersion.value != "2.10") {
-        Seq("-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used")
-      } else {
-        Seq.empty
-      }
-    },
     scalacOptions ++= {
       val v = scalaBinaryVersion.value
 
@@ -57,16 +48,6 @@ object Common extends AutoPlugin {
     resolvers ++= Seq(
       Resolver.sonatypeRepo("snapshots"),
       "Typesafe repository releases" at "https://repo.typesafe.com/typesafe/releases/"),
-    mimaFailOnNoPrevious := false,
-    libraryDependencies ++= {
-      if (scalaBinaryVersion.value != "2.10") {
-        Seq(
-          compilerPlugin("com.github.ghik" %% "silencer-plugin" % silencerVersion),
-          "com.github.ghik" %% "silencer-lib" % silencerVersion % Provided
-        )
-      } else {
-        Seq.empty
-      }
-    }
+    mimaFailOnNoPrevious := false
   )
 }

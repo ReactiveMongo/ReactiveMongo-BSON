@@ -213,6 +213,7 @@ private[bson] trait DefaultBSONHandlers
 }
 
 @SuppressWarnings(Array("TryGet"))
+@com.github.ghik.silencer.silent("Unused import") // higherKinds: 2.13+
 private[bson] trait LowPriority1BSONHandlers
   extends LowPriorityBSONHandlersCompat
   with LowPriority2BSONHandlers { _: DefaultBSONHandlers =>

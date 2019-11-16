@@ -1047,7 +1047,11 @@ object BSONInteger {
   @inline def apply(value: Int): BSONInteger = new BSONInteger(value)
 }
 
-/** BSON Timestamp value */
+/**
+ * [[https://docs.mongodb.com/manual/reference/bson-types/#timestamps BSON Timestamp]] value
+ *
+ * @param value the raw value (most significant 32 bits = epoch seconds / least significant 32 bits = ordinal)
+ */
 final class BSONTimestamp private[bson] (val value: Long) extends BSONValue {
   val code = 0x11: Byte
 
