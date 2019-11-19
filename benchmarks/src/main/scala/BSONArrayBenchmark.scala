@@ -3,6 +3,8 @@ package api.bson
 
 import scala.util.Random
 
+import scala.collection.immutable.IndexedSeq
+
 import org.openjdk.jmh.annotations._
 
 import reactivemongo.api.bson.buffer.{ ReadableBuffer, WritableBuffer }
@@ -19,6 +21,10 @@ class BSONArrayBenchmark {
   private var fixtures: Iterator[BSONArray] = Iterator.empty
 
   protected var bigSet: BSONArray = _
+  private var bigSetValues: Traversable[BSONValue] = _
+  private var value1: BSONValue = _
+  private var value2: BSONValue = _
+
   protected var smallSet: BSONArray = _
 
   private val bsonArray = BSONArray(BSONBoolean(true))
@@ -39,6 +45,14 @@ class BSONArrayBenchmark {
     data match {
       case Some(a) => {
         bigSet = bigArray()
+        bigSetValues = bigSet.values.toList
+
+        bigSetValues match {
+          case _1 :: _2 :: _ =>
+            value1 = _1
+            value2 = _2
+        }
+
         smallSet = a
       }
 
@@ -63,7 +77,10 @@ class BSONArrayBenchmark {
   def prettyPrintArray() = BSONArray.pretty(smallSet)
 
   @Benchmark
-  def varArgArray(): BSONArray = BSONArray(bigSet.values)
+  def bulkArray(): BSONArray = BSONArray(bigSetValues)
+
+  @Benchmark
+  def varArgArray(): BSONArray = BSONArray(value1, value2)
 
   @Benchmark
   final def valuesBigSet() = bigSet.values
@@ -133,7 +150,7 @@ class BSONArrayBenchmark {
 
 object BSONArrayBenchmark {
   private[bson] def bigArray() = {
-    val s = Seq.newBuilder[BSONValue]
+    val s = List.newBuilder[BSONValue]
     def randomValues() = Random.shuffle(BSONValueFixtures.bsonValueFixtures)
     var vs = randomValues().iterator
 

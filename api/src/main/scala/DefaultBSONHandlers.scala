@@ -240,7 +240,7 @@ private[bson] trait LowPriority1BSONHandlers
           case _ => Success(builder.result())
         }
 
-      write(repr).map { seq => new BSONArray(seq) }
+      write(repr).map { BSONArray(_) }
     }
   }
 

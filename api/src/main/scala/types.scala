@@ -144,7 +144,7 @@ object BSONValue extends BSONValueLowPriority1 {
       case (a: BSONArray, b: BSONArray) => a ++ b
       case (a: BSONArray, _) => a ++ y
       case (_, b: BSONArray) => x +: b
-      case _ => new BSONArray(IndexedSeq(x, y))
+      case _ => BSONArray(IndexedSeq(x, y))
     }
   }
 
@@ -278,8 +278,9 @@ object BSONString {
  *
  * @define indexParam the index to be found in the array
  */
-final class BSONArray private[bson] (
-  val values: IndexedSeq[BSONValue]) extends BSONValue {
+sealed abstract class BSONArray extends BSONValue {
+  /** The BSON values */
+  def values: IndexedSeq[BSONValue]
 
   val code = 0x04: Byte
 
@@ -297,10 +298,10 @@ final class BSONArray private[bson] (
   def headOption: Option[BSONValue] = values.headOption
 
   /** Returns a BSON array with the given value prepended. */
-  def +:(value: BSONValue): BSONArray = new BSONArray(value +: values)
+  def +:(value: BSONValue): BSONArray = BSONArray(value +: values)
 
   /** Returns a BSON array with the values of the given one appended. */
-  def ++(arr: BSONArray): BSONArray = new BSONArray(values ++ arr.values)
+  def ++(arr: BSONArray): BSONArray = BSONArray(values ++ arr.values)
 
   /** Returns a BSON array with the given values appended. */
   def ++(values: BSONValue*): BSONArray = {
@@ -308,7 +309,7 @@ final class BSONArray private[bson] (
 
     values.foreach { vs += _ }
 
-    new BSONArray(this.values ++ vs.result())
+    BSONArray(this.values ++ vs.result())
   }
 
   /** The number of values */
@@ -370,7 +371,7 @@ final class BSONArray private[bson] (
     case Some(v) => reader.readTry(v).map(Some(_))
   }
 
-  private[bson] def copy(values: IndexedSeq[BSONValue] = this.values): BSONArray = new BSONArray(values)
+  private[bson] def copy(values: IndexedSeq[BSONValue] = this.values): BSONArray = BSONArray(values)
 
   override def equals(that: Any): Boolean = that match {
     case other: BSONArray => {
@@ -427,25 +428,43 @@ object BSONArray {
 
   /** Creates a new [[BSONArray]] containing all the given `values`. */
   def apply(values: Producer[BSONValue]*): BSONArray = {
-    val vs = IndexedSeq.newBuilder[BSONValue]
+    def init = {
+      val vs = IndexedSeq.newBuilder[BSONValue]
 
-    values.foreach {
-      vs ++= _.generate()
+      values.foreach {
+        vs ++= _.generate()
+      }
+
+      vs.result()
     }
 
-    new BSONArray(vs.result())
+    new BSONArray {
+      lazy val values = init
+    }
   }
 
   /**
    * Creates a new [[BSONArray]] containing all the `values`
    * in the given `Iterable`.
    */
-  def apply(values: Iterable[BSONValue]): BSONArray = {
-    val vs = IndexedSeq.newBuilder[BSONValue]
+  def apply(values: IndexedSeq[BSONValue]): BSONArray = {
+    def init = values
 
-    values.foreach { vs += _ }
+    new BSONArray {
+      val values = init
+    }
+  }
 
-    new BSONArray(vs.result())
+  /**
+   * Creates a new [[BSONArray]] containing all the `values`
+   * in the given `Iterable`.
+   */
+  def apply(values: Traversable[BSONValue]): BSONArray = {
+    def init = values.toIndexedSeq
+
+    new BSONArray {
+      lazy val values = init
+    }
   }
 
   /** Returns a String representing the given [[BSONArray]]. */
@@ -453,7 +472,7 @@ object BSONArray {
     s"[\n${BSONIterator.pretty(0, array.values)}\n]"
 
   /** An empty BSONArray. */
-  val empty: BSONArray = new BSONArray(IndexedSeq.empty[BSONValue])
+  val empty: BSONArray = BSONArray(IndexedSeq.empty[BSONValue])
 }
 
 /**
