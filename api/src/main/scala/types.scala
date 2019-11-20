@@ -58,11 +58,8 @@ sealed trait BSONValue { self =>
    * def foo(v: BSONValue): Option[String] = v.asOpt[String]
    * }}}
    */
-  final def asOpt[T](implicit reader: BSONReader[T]): Option[T] = try {
+  @inline final def asOpt[T](implicit reader: BSONReader[T]): Option[T] =
     reader.readOpt(this)
-  } catch {
-    case NonFatal(_) => Option.empty[T]
-  }
 
   // --- Optimized/builtin conversions
 
@@ -78,11 +75,11 @@ sealed trait BSONValue { self =>
     Failure(TypeDoesNotMatchException(
       "BSONDateTime", self.getClass.getSimpleName))
 
-  @inline private[bson] def asDouble: Try[Double] =
+  @inline private[bson] def toDouble: Try[Double] =
     Failure(TypeDoesNotMatchException(
       "BSONDouble", self.getClass.getSimpleName))
 
-  @inline private[bson] def asFloat: Try[Float] =
+  @inline private[bson] def toFloat: Try[Float] =
     Failure(TypeDoesNotMatchException(
       "<float>", self.getClass.getSimpleName))
 
@@ -188,31 +185,37 @@ private[bson] sealed trait BSONValueLowPriority2 {
 }
 
 /** A BSON Double. */
-final class BSONDouble private[bson] (val value: Double) extends BSONValue {
+final class BSONDouble private[bson] (val value: Double)
+  extends BSONValue with BSONNumberLike.Value {
+
   val code = 0x01: Byte
 
   override private[reactivemongo] val byteSize = 8
 
-  override private[bson] lazy val asDouble: Try[Double] = Success(value)
+  override lazy val toDouble: Try[Double] = Success(value)
 
-  override private[bson] lazy val asFloat: Try[Float] = {
+  override lazy val toFloat: Try[Float] = {
     if (value >= Float.MinValue && value <= Float.MaxValue) {
       Try(value.toFloat)
     } else {
-      super.asFloat
+      super.toFloat
     }
   }
 
-  override private[bson] lazy val asLong: Try[Long] =
+  private[bson] override lazy val asLong: Try[Long] =
     if (value.isWhole) Try(value.toLong) else super.asLong
 
-  override private[bson] lazy val asInt: Try[Int] = {
+  @inline def toLong = Try(value.toLong)
+
+  override lazy val asInt: Try[Int] = {
     if (value.isWhole && value >= Int.MinValue && value <= Int.MaxValue) {
       Try(value.toInt)
     } else {
       super.asInt
     }
   }
+
+  @inline def toInt = Try(value.toInt)
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Try(BigDecimal exact value)
@@ -811,13 +814,22 @@ object BSONBoolean {
 }
 
 /** BSON date time value */
-final class BSONDateTime private[bson] (val value: Long) extends BSONValue {
+final class BSONDateTime private[bson] (val value: Long)
+  extends BSONValue with BSONNumberLike.Value {
   val code = 0x09: Byte
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Success(BigDecimal(value))
 
-  override private[bson] lazy val asLong: Try[Long] = Success(value)
+  @inline override def toDouble: Try[Double] = super.toDouble
+
+  @inline override def toFloat: Try[Float] = super.toFloat
+
+  private[bson] override lazy val asLong: Try[Long] = Success(value)
+
+  @inline def toLong = asLong
+
+  @inline def toInt = Try(value.toInt)
 
   override private[bson] lazy val asDateTime: Try[Instant] =
     Success(Instant ofEpochMilli value)
@@ -1024,26 +1036,30 @@ object BSONJavaScriptWS {
 }
 
 /** BSON Integer value */
-final class BSONInteger private[bson] (val value: Int) extends BSONValue {
+final class BSONInteger private[bson] (val value: Int)
+  extends BSONValue with BSONNumberLike.Value {
+
   val code = 0x10: Byte
   override private[reactivemongo] val byteSize = 4
 
-  override private[bson] lazy val asDouble: Try[Double] =
-    Success(value.toDouble)
+  override lazy val toDouble: Try[Double] = Success(value.toDouble)
 
-  override private[bson] lazy val asFloat: Try[Float] = {
+  override lazy val toFloat: Try[Float] = {
     if (value >= Float.MinValue && value <= Float.MaxValue) {
       Try(value.toFloat)
     } else {
-      super.asFloat
+      super.toFloat
     }
   }
 
-  override private[bson] lazy val asInt: Try[Int] = Success(value)
+  override lazy val asInt: Try[Int] = Success(value)
+  @inline def toInt = asInt
 
-  override private[bson] lazy val asLong: Try[Long] = Success(value.toLong)
+  private[bson] override lazy val asLong: Try[Long] = Success(value.toLong)
+  @inline def toLong = asLong
 
-  override private[bson] lazy val asDecimal: Try[BigDecimal] = Success(BigDecimal(value))
+  override private[bson] lazy val asDecimal: Try[BigDecimal] =
+    Success(BigDecimal(value))
 
   override def hashCode: Int = value.hashCode
 
@@ -1071,7 +1087,9 @@ object BSONInteger {
  *
  * @param value the raw value (most significant 32 bits = epoch seconds / least significant 32 bits = ordinal)
  */
-final class BSONTimestamp private[bson] (val value: Long) extends BSONValue {
+final class BSONTimestamp private[bson] (val value: Long)
+  extends BSONValue with BSONNumberLike.Value {
+
   val code = 0x11: Byte
 
   /** Seconds since the Unix epoch */
@@ -1080,12 +1098,22 @@ final class BSONTimestamp private[bson] (val value: Long) extends BSONValue {
   /** Ordinal (with the second) */
   val ordinal = value.toInt
 
-  override private[bson] lazy val asLong: Try[Long] = Success(value)
+  @inline override def toDouble: Try[Double] = super.toDouble
+
+  @inline override def toFloat: Try[Float] = super.toFloat
+
+  private[bson] override lazy val asLong: Try[Long] = Success(value)
+  @inline def toLong = asLong
+
+  @inline def toInt: Try[Int] = Failure(
+    TypeDoesNotMatchException("BSONInteger", "BSONTimestamp"))
 
   override private[bson] lazy val asDateTime: Try[Instant] =
     Success(Instant ofEpochMilli value)
 
   override private[reactivemongo] val byteSize = 8
+
+  private[bson] val underlying: BSONValue = this
 
   override def hashCode: Int = value.hashCode
 
@@ -1123,27 +1151,33 @@ object BSONTimestamp {
 }
 
 /** BSON Long value */
-final class BSONLong private[bson] (val value: Long) extends BSONValue {
+final class BSONLong private[bson] (val value: Long)
+  extends BSONValue with BSONNumberLike.Value {
+
   val code = 0x12: Byte
 
-  override private[bson] lazy val asDouble: Try[Double] = {
+  override lazy val toDouble: Try[Double] = {
     if (value >= Double.MinValue && value <= Double.MaxValue) {
       Try(value.toDouble)
-    } else super.asDouble
+    } else super.toDouble
   }
 
-  override private[bson] lazy val asFloat: Try[Float] = {
+  override lazy val toFloat: Try[Float] = {
     if (value >= Float.MinValue && value <= Float.MaxValue) {
       Try(value.toFloat)
-    } else super.asFloat
+    } else super.toFloat
   }
 
-  override private[bson] lazy val asInt: Try[Int] = {
+  override lazy val asInt: Try[Int] = {
     if (value >= Int.MinValue && value <= Int.MaxValue) Try(value.toInt)
     else super.asInt
   }
 
-  override private[bson] lazy val asLong: Try[Long] = Success(value)
+  @inline def toInt = Try(value.toInt)
+
+  private[bson] override lazy val asLong: Try[Long] = Success(value)
+
+  @inline def toLong = asLong
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Success(BigDecimal(value))
@@ -1184,24 +1218,28 @@ object BSONLong {
  */
 final class BSONDecimal private[bson] (
   val high: Long,
-  val low: Long) extends BSONValue {
+  val low: Long) extends BSONValue with BSONNumberLike.Value {
 
   val code = 0x13: Byte
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     BSONDecimal.toBigDecimal(this)
 
-  override private[bson] lazy val asDouble: Try[Double] =
+  override lazy val toDouble: Try[Double] =
     asDecimal.filter(_.isDecimalDouble).map(_.toDouble)
 
-  override private[bson] lazy val asFloat: Try[Float] =
+  override lazy val toFloat: Try[Float] =
     asDecimal.filter(_.isDecimalDouble).map(_.toFloat)
 
-  override private[bson] lazy val asInt: Try[Int] =
+  override lazy val asInt: Try[Int] =
     asDecimal.filter(_.isValidInt).map(_.toInt)
 
-  override private[bson] lazy val asLong: Try[Long] =
+  @inline def toInt = asInt
+
+  private[bson] override lazy val asLong: Try[Long] =
     asDecimal.filter(_.isValidLong).map(_.toLong)
+
+  @inline def toLong = asLong
 
   /** Returns true if is negative. */
   lazy val isNegative: Boolean =
@@ -1216,6 +1254,8 @@ final class BSONDecimal private[bson] (
     (high & Decimal128.NaNMask) == Decimal128.NaNMask
 
   override private[reactivemongo] lazy val byteSize = 16
+
+  private[bson] val underlying: BSONValue = this
 
   // ---
 
@@ -1907,5 +1947,42 @@ private[bson] sealed trait ElementProducerLowPriority {
   implicit def tuple2ElementProducer[T](pair: (String, T))(implicit writer: BSONWriter[T]): ElementProducer = writer.writeOpt(pair._2) match {
     case Some(v) => BSONElement(pair._1, v)
     case _ => ElementProducer.Empty
+  }
+}
+
+/** A BSON value that can be seen as a number. */
+sealed trait BSONNumberLike {
+  /** Converts this number into an `Int`. */
+  def toInt: Try[Int]
+
+  /** Converts this number into a `Long`. */
+  def toLong: Try[Long]
+
+  /** Converts this number into a `Float`. */
+  def toFloat: Try[Float]
+
+  /** Converts this number into a `Double`. */
+  def toDouble: Try[Double]
+
+  private[bson] def numberValue: BSONValue
+}
+
+object BSONNumberLike {
+  private[bson] sealed trait Value extends BSONNumberLike { self: BSONValue =>
+    @inline private[bson] def numberValue = self
+  }
+
+  implicit object BSONNumberLikeHandler extends BSONReader[BSONNumberLike]
+    with BSONWriter[BSONNumberLike] with SafeBSONWriter[BSONNumberLike] {
+
+    def readTry(bson: BSONValue): Try[BSONNumberLike] = bson match {
+      case n: BSONNumberLike => Success(n)
+
+      case _ => Failure(
+        exceptions.TypeDoesNotMatchException(
+          "<number>", bson.getClass.getSimpleName))
+    }
+
+    def safeWrite(n: BSONNumberLike) = n.numberValue
   }
 }

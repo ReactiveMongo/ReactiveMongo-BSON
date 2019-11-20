@@ -42,7 +42,7 @@ private[bson] trait DefaultBSONHandlers
   implicit object BSONDoubleHandler
     extends BSONHandler[Double] with SafeBSONWriter[Double] {
 
-    @inline def readTry(bson: BSONValue): Try[Double] = bson.asDouble
+    @inline def readTry(bson: BSONValue): Try[Double] = bson.toDouble
 
     @inline def safeWrite(double: Double) = BSONDouble(double)
   }
@@ -57,7 +57,7 @@ private[bson] trait DefaultBSONHandlers
   implicit object BSONFloatHandler
     extends BSONHandler[Float] with SafeBSONWriter[Float] {
 
-    @inline def readTry(bson: BSONValue): Try[Float] = bson.asFloat
+    @inline def readTry(bson: BSONValue): Try[Float] = bson.toFloat
 
     @inline def safeWrite(float: Float) = BSONDouble(float.toDouble)
   }
