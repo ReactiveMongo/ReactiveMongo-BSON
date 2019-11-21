@@ -17,6 +17,7 @@ object ¬ {
 
 private[bson] trait Aliases {
   type StringOps = scala.collection.StringOps
+  type BaseColl[T] = Iterable[T]
 }
 
 private[bson] trait Utils {

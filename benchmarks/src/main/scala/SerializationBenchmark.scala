@@ -37,11 +37,13 @@ sealed trait SerializationBenchmark {
     DefaultBufferHandler.serialize(value, output)
 
   @Benchmark
+  @SuppressWarnings(Array("VarClosure" /*value*/ ))
   def read(): Unit = {
     val name = input.readBsonString()
-    val result = DefaultBufferHandler.deserialize(input).map(name -> _)
+    val result = DefaultBufferHandler.deserialize(input)
 
-    assert(result.filter(_ == ("field" -> value)).isSuccess)
+    assert(name == "field")
+    assert(result.filter(_ == value).isSuccess)
   }
 }
 

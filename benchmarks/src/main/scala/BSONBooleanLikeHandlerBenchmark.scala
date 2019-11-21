@@ -6,9 +6,9 @@ import org.openjdk.jmh.annotations._
 @State(Scope.Benchmark)
 class BSONBooleanLikeHandlerBenchmark {
 
-  val values = BSONValueFixtures.bsonBoolFixtures ++ BSONValueFixtures.bsonIntFixtures ++ BSONValueFixtures.bsonDoubleFixtures ++ BSONValueFixtures.bsonLongFixtures ++ BSONValueFixtures.bsonDecimalFixtures ++ Seq(BSONNull, BSONUndefined)
+  val values: List[BSONValue] = BSONValueFixtures.bsonBoolFixtures ++ BSONValueFixtures.bsonIntFixtures ++ BSONValueFixtures.bsonDoubleFixtures ++ BSONValueFixtures.bsonLongFixtures ++ BSONValueFixtures.bsonDecimalFixtures ++ Seq(BSONNull, BSONUndefined)
 
-  lazy val handler = BSONBooleanLike.BSONBooleanLikeHandler
+  lazy val handler = BSONBooleanLike.Handler
   @inline def unsafeHandler: BSONReader[_] = handler
 
   @Benchmark

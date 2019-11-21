@@ -21,7 +21,7 @@ class BSONArrayBenchmark {
   private var fixtures: Iterator[BSONArray] = Iterator.empty
 
   protected var bigSet: BSONArray = _
-  private var bigSetValues: Traversable[BSONValue] = _
+  private var bigSetValues: Iterable[BSONValue] = _
   private var value1: BSONValue = _
   private var value2: BSONValue = _
 

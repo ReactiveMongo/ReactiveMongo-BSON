@@ -80,7 +80,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
       val buffer = DefaultBufferHandler.serialize(
         expected, WritableBuffer.empty).toReadableBuffer
 
-      DefaultBufferHandler.readValue(buffer, expected.code)
+      DefaultBufferHandler.readValue(buffer, expected.byteCode)
     }.toOption
 
     "serialize a BSON decimal" in {
@@ -215,6 +215,30 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
       val buffer = ReadableBuffer(expectedWholeDocumentBytes)
 
       readDocument(buffer) must_=== wholeDoc
+    }
+
+    Fragments.foreach(BSONValueFixtures.bsonJSWsFixtures) { jsWs =>
+      s"de/serialize $jsWs" in {
+        val buffer = WritableBuffer.empty.writeByte(jsWs.code)
+
+        val readable = DefaultBufferHandler.
+          serialize(jsWs, buffer).toReadableBuffer
+
+        DefaultBufferHandler.
+          deserialize(readable) must beSuccessfulTry[BSONValue].like {
+            case res => res must_== jsWs and {
+              res.code must_=== jsWs.code
+            }
+          }
+      }
+    }
+  }
+
+  "Code" should {
+    Fragments.foreach(BSONValueFixtures.bsonValueFixtures) { v =>
+      s"be consistent for $v" in {
+        v.code.toByte must_=== v.byteCode
+      }
     }
   }
 

@@ -1,6 +1,4 @@
-package reactivemongo
-
-import reactivemongo.api.bson.{ BSONObjectID, Digest }
+package reactivemongo.api.bson
 
 final class BSONObjectIDSpec extends org.specs2.mutable.Specification {
   "BSONObjectID" title

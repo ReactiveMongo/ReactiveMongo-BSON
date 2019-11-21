@@ -83,10 +83,15 @@ private[bson] trait DefaultBSONHandlers
 
     def readTry(bson: BSONValue): Try[Array[Byte]] = bson match {
       case bin: BSONBinary =>
-        Try(bin.value.duplicate().readArray(bin.value.size))
+        Try(bin.byteArray)
 
       case _ => Failure(TypeDoesNotMatchException(
         "BSONBinary", bson.getClass.getSimpleName))
+    }
+
+    override def readOpt(bson: BSONValue): Option[Array[Byte]] = bson match {
+      case bin: BSONBinary => Some(bin.byteArray)
+      case _ => None
     }
 
     def safeWrite(xs: Array[Byte]): BSONBinary =
@@ -157,6 +162,11 @@ private[bson] trait DefaultBSONHandlers
         "BSONString", bson.getClass.getSimpleName))
     }
 
+    override def readOpt(bson: BSONValue): Option[URL] = bson match {
+      case BSONString(repr) => Some(new URL(repr))
+      case _ => None
+    }
+
     def safeWrite(url: URL) = BSONString(url.toString)
   }
 
@@ -206,6 +216,11 @@ private[bson] trait DefaultBSONHandlers
 
       case _ => Failure(TypeDoesNotMatchException(
         "BSONString", bson.getClass.getSimpleName))
+    }
+
+    override def readOpt(bson: BSONValue): Option[URI] = bson match {
+      case BSONString(repr) => Some(new URI(repr))
+      case _ => None
     }
 
     def safeWrite(url: URI) = BSONString(url.toString)

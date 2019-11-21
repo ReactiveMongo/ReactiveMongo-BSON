@@ -28,7 +28,12 @@ sealed trait BSONValue { self =>
   /**
    * The code indicating the BSON type for this value
    */
-  val code: Byte
+  private[bson] val code: Int
+
+  /**
+   * The code indicating the BSON type for this value as Byte
+   */
+  private[bson] def byteCode: Byte
 
   /** The number of bytes for the serialized representation */
   private[reactivemongo] def byteSize: Int
@@ -186,9 +191,10 @@ private[bson] sealed trait BSONValueLowPriority2 {
 
 /** A BSON Double. */
 final class BSONDouble private[bson] (val value: Double)
-  extends BSONValue with BSONNumberLike.Value {
+  extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value {
 
-  val code = 0x01: Byte
+  val code = 0x01
+  val byteCode = 0x01: Byte
 
   override private[reactivemongo] val byteSize = 8
 
@@ -206,6 +212,8 @@ final class BSONDouble private[bson] (val value: Double)
     if (value.isWhole) Try(value.toLong) else super.asLong
 
   @inline def toLong = Try(value.toLong)
+
+  @inline def toBoolean = Success(value > 0D)
 
   override lazy val asInt: Try[Int] = {
     if (value.isWhole && value >= Int.MinValue && value <= Int.MaxValue) {
@@ -242,7 +250,8 @@ object BSONDouble {
 }
 
 final class BSONString private[bson] (val value: String) extends BSONValue {
-  val code = 0x02: Byte
+  val code = 0x02
+  val byteCode = 0x02: Byte
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 
@@ -272,6 +281,7 @@ object BSONString {
   /** Returns the plain string representation for the given [[BSONString]]. */
   @inline def pretty(str: BSONString): String =
     s"""'${str.value.replaceAll("\'", "\\\\'")}'"""
+
 }
 
 /**
@@ -285,7 +295,8 @@ sealed abstract class BSONArray extends BSONValue {
   /** The BSON values */
   def values: IndexedSeq[BSONValue]
 
-  val code = 0x04: Byte
+  val code = 0x04
+  val byteCode = 0x04: Byte
 
   /**
    * Returns the [[BSONValue]] at the given `index`.
@@ -462,7 +473,7 @@ object BSONArray {
    * Creates a new [[BSONArray]] containing all the `values`
    * in the given `Iterable`.
    */
-  def apply(values: Traversable[BSONValue]): BSONArray = {
+  def apply(values: BaseColl[BSONValue]): BSONArray = {
     def init = values.toIndexedSeq
 
     new BSONArray {
@@ -488,7 +499,8 @@ final class BSONBinary private[bson] (
   private[bson] val value: ReadableBuffer,
   val subtype: Subtype) extends BSONValue {
 
-  val code = 0x05: Byte
+  val code = 0x05
+  val byteCode = 0x05: Byte
 
   /** Returns the whole binary content as array. */
   def byteArray: Array[Byte] = value.duplicate().readArray(value.size)
@@ -553,10 +565,14 @@ object BSONBinary {
   }
 }
 
-/** BSON Undefined value */
-sealed trait BSONUndefined extends BSONValue {
-  val code = 0x06: Byte
+/** BSON undefined value */
+sealed trait BSONUndefined extends BSONValue with BSONBooleanLike.Value {
+  val code = 0x06
+  val byteCode = (0x06: Byte)
+
   override private[reactivemongo] val byteSize = 0
+
+  val toBoolean = Success(false)
 
   override def toString: String = "BSONUndefined"
 }
@@ -575,7 +591,8 @@ object BSONUndefined extends BSONUndefined {
 sealed abstract class BSONObjectID extends BSONValue {
   import java.util.Arrays
 
-  val code = 0x07: Byte
+  val code = 0x07
+  val byteCode = 0x07: Byte
 
   protected val raw: Array[Byte]
 
@@ -786,11 +803,17 @@ object BSONObjectID {
 }
 
 /** BSON boolean value */
-final class BSONBoolean private[bson] (val value: Boolean) extends BSONValue {
-  val code = 0x08: Byte
+final class BSONBoolean private[bson] (val value: Boolean)
+  extends BSONValue with BSONBooleanLike.Value {
+
+  val code = 0x08
+  val byteCode = 0x08: Byte
+
   override private[reactivemongo] val byteSize = 1
 
   override lazy val asBoolean: Try[Boolean] = Success(value)
+
+  @inline def toBoolean = asBoolean
 
   override def hashCode: Int = value.hashCode
 
@@ -816,7 +839,8 @@ object BSONBoolean {
 /** BSON date time value */
 final class BSONDateTime private[bson] (val value: Long)
   extends BSONValue with BSONNumberLike.Value {
-  val code = 0x09: Byte
+  val code = 0x09
+  val byteCode = 0x09: Byte
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Success(BigDecimal(value))
@@ -866,9 +890,13 @@ object BSONDateTime {
 }
 
 /** BSON null value */
-sealed trait BSONNull extends BSONValue {
-  val code = 0x0A: Byte
+sealed trait BSONNull extends BSONValue with BSONBooleanLike.Value {
+  val code = 0x0A
+  val byteCode = 0x0A: Byte
+
   override private[reactivemongo] val byteSize = 0
+
+  val toBoolean = Success(false)
 
   override def toString: String = "BSONNull"
 }
@@ -886,7 +914,8 @@ object BSONNull extends BSONNull {
 final class BSONRegex private[bson] (
   val value: String, val flags: String)
   extends BSONValue {
-  val code = 0x0B: Byte
+  val code = 0x0B
+  val byteCode = 0x0B: Byte
 
   override private[reactivemongo] lazy val byteSize =
     2 + value.getBytes.size + flags.getBytes.size
@@ -927,7 +956,8 @@ object BSONRegex {
  * @param value The JavaScript source code.
  */
 final class BSONJavaScript private[bson] (val value: String) extends BSONValue {
-  val code = 0x0D: Byte
+  val code = 0x0D
+  val byteCode = 0x0D: Byte
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 
@@ -961,7 +991,8 @@ object BSONJavaScript {
  * @param value the symbol value (name)
  */
 final class BSONSymbol private[bson] (val value: String) extends BSONValue {
-  val code = 0x0E: Byte
+  val code = 0x0E
+  val byteCode = 0x0E: Byte
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 
@@ -997,7 +1028,8 @@ object BSONSymbol {
 final class BSONJavaScriptWS private[bson] (
   val value: String,
   val scope: BSONDocument) extends BSONValue {
-  val code = 0x0F: Byte
+  val code = 0x0F
+  val byteCode = 0x0F: Byte
 
   override private[reactivemongo] lazy val byteSize =
     5 + value.getBytes.size + scope.byteSize
@@ -1033,13 +1065,16 @@ object BSONJavaScriptWS {
   /** Returns a [[BSONJavaScriptWS]] with given `scope` */
   @inline def apply(value: String, scope: BSONDocument): BSONJavaScriptWS =
     new BSONJavaScriptWS(value, scope)
+
 }
 
 /** BSON Integer value */
 final class BSONInteger private[bson] (val value: Int)
-  extends BSONValue with BSONNumberLike.Value {
+  extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value {
 
-  val code = 0x10: Byte
+  val code = 0x10
+  val byteCode = 0x10: Byte
+
   override private[reactivemongo] val byteSize = 4
 
   override lazy val toDouble: Try[Double] = Success(value.toDouble)
@@ -1060,6 +1095,8 @@ final class BSONInteger private[bson] (val value: Int)
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Success(BigDecimal(value))
+
+  @inline def toBoolean = Success(value != 0)
 
   override def hashCode: Int = value.hashCode
 
@@ -1090,7 +1127,8 @@ object BSONInteger {
 final class BSONTimestamp private[bson] (val value: Long)
   extends BSONValue with BSONNumberLike.Value {
 
-  val code = 0x11: Byte
+  val code = 0x11
+  val byteCode = 0x11: Byte
 
   /** Seconds since the Unix epoch */
   val time = value >>> 32
@@ -1152,9 +1190,10 @@ object BSONTimestamp {
 
 /** BSON Long value */
 final class BSONLong private[bson] (val value: Long)
-  extends BSONValue with BSONNumberLike.Value {
+  extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value {
 
-  val code = 0x12: Byte
+  val code = 0x12
+  val byteCode = 0x12: Byte
 
   override lazy val toDouble: Try[Double] = {
     if (value >= Double.MinValue && value <= Double.MaxValue) {
@@ -1181,6 +1220,8 @@ final class BSONLong private[bson] (val value: Long)
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Success(BigDecimal(value))
+
+  @inline def toBoolean = Success(value != 0L)
 
   override private[reactivemongo] val byteSize = 8
 
@@ -1218,9 +1259,11 @@ object BSONLong {
  */
 final class BSONDecimal private[bson] (
   val high: Long,
-  val low: Long) extends BSONValue with BSONNumberLike.Value {
+  val low: Long) extends BSONValue
+  with BSONNumberLike.Value with BSONBooleanLike.Value {
 
-  val code = 0x13: Byte
+  val code = 0x13
+  val byteCode = 0x13: Byte
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     BSONDecimal.toBigDecimal(this)
@@ -1240,6 +1283,8 @@ final class BSONDecimal private[bson] (
     asDecimal.filter(_.isValidLong).map(_.toLong)
 
   @inline def toLong = asLong
+
+  @inline def toBoolean: Try[Boolean] = toInt.map(_ != 0)
 
   /** Returns true if is negative. */
   lazy val isNegative: Boolean =
@@ -1376,7 +1421,9 @@ object BSONDecimal {
 
 /** BSON Min key value */
 sealed trait BSONMinKey extends BSONValue {
-  val code = 0xFF.toByte
+  val byteCode = 0xFF.toByte
+  val code = byteCode.toInt
+
   override private[reactivemongo] val byteSize = 0
   override val toString = "BSONMinKey"
 }
@@ -1387,7 +1434,9 @@ object BSONMinKey extends BSONMinKey {
 
 /** BSON Max key value */
 sealed trait BSONMaxKey extends BSONValue {
-  val code = 0x7F: Byte
+  val code = 0x7F
+  val byteCode = 0x7F: Byte
+
   override private[reactivemongo] val byteSize = 0
   override val toString = "BSONMaxKey"
 }
@@ -1411,7 +1460,8 @@ sealed abstract class BSONDocument
   extends BSONValue with ElementProducer
   with BSONDocumentLowPriority with BSONDocumentExperimental { self =>
 
-  final val code = 0x03.toByte
+  val code = 0x03
+  val byteCode = 0x03: Byte
 
   /** The document fields */
   private[bson] def fields: Map[String, BSONValue]
@@ -1611,7 +1661,8 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
    * (numeric or boolean).
    */
   def booleanLike(name: String): Option[Boolean] =
-    getAsTry[BSONBooleanLike](name).flatMap(_.toBoolean).toOption
+    getAsTry[BSONBooleanLike](name)(BSONBooleanLike.Handler).
+      flatMap(_.toBoolean).toOption
 
   /**
    * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a nested document.
@@ -1678,6 +1729,7 @@ private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
   }
 }
 
+/** [[BSONDocument]] factories & utilities */
 object BSONDocument {
   /**
    * Extracts the elements if `that`'s a [[BSONDocument]].
@@ -1687,11 +1739,11 @@ object BSONDocument {
     case _ => None
   }
 
-  /** Creates a new [[BSONDocument]] containing all the given `seq`. */
-  def apply(seq: ElementProducer*): BSONDocument = new BSONDocument {
-    val elements = toLazy(seq).distinct.flatMap(_.generate())
-    lazy val fields = BSONDocument.toMap(seq)
-    val isEmpty = seq.isEmpty
+  /** Creates a new [[BSONDocument]] containing all the given elements. */
+  def apply(elms: ElementProducer*): BSONDocument = new BSONDocument {
+    val elements = toLazy(elms).distinct.flatMap(_.generate())
+    lazy val fields = BSONDocument.toMap(elms)
+    val isEmpty = elms.isEmpty
     @inline def headOption = elements.headOption
   }
 
@@ -1699,9 +1751,9 @@ object BSONDocument {
    * Creates a new [[BSONDocument]] containing all the elements
    * in the given sequence.
    */
-  def apply(seq: Iterable[(String, BSONValue)]): BSONDocument =
+  def apply(elms: Iterable[(String, BSONValue)]): BSONDocument =
     new BSONDocument {
-      val pairs = toLazy(seq).distinct
+      val pairs = toLazy(elms).distinct
       val elements = pairs.map {
         case (k, v) => BSONElement(k, v)
       }
@@ -1716,13 +1768,23 @@ object BSONDocument {
         m.toMap
       }
 
-      val isEmpty = seq.isEmpty
+      val isEmpty = elms.isEmpty
 
       @inline def headOption = elements.headOption
     }
 
   /** Returns a String representing the given [[BSONDocument]]. */
   def pretty(doc: BSONDocument): String = BSONIterator.pretty(doc.elements)
+
+  /** Internal (optimized/eager) factory. */
+  private[bson] def apply(
+    elms: Seq[BSONElement],
+    fs: Map[String, BSONValue]): BSONDocument = new BSONDocument {
+    val elements = elms
+    lazy val fields = fs
+    val isEmpty = elms.isEmpty
+    @inline def headOption = elements.headOption
+  }
 
   private[bson] def toMap(seq: Iterable[ElementProducer]): Map[String, BSONValue] = {
     val m = MMap.empty[String, BSONValue]
@@ -1756,7 +1818,7 @@ sealed abstract class BSONElement extends ElementProducer {
   /** Element (BSON) value */
   def value: BSONValue
 
-  final def generate() = Option(this)
+  final def generate() = Some(this)
 
   override final lazy val hashCode: Int = {
     import scala.util.hashing.MurmurHash3
@@ -1784,18 +1846,16 @@ object BSONElement extends BSONElementLowPriority {
   }
 
   /** Create a new [[BSONElement]]. */
-  def apply[T <: BSONValue](name: String, value: T): BSONElement =
+  def apply(name: String, value: BSONValue): BSONElement =
     new DefaultElement(name, value)
 
   /** Returns an empty [[ElementProducer]] */
   def apply: (String, None.type) => ElementProducer =
     { (_, _) => ElementProducer.Empty }
 
-  private final class DefaultElement[T <: BSONValue](
+  private final class DefaultElement(
     val name: String,
-    val value: T) extends BSONElement {
-    type ValueType = T
-  }
+    val value: BSONValue) extends BSONElement
 }
 
 private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
@@ -1968,11 +2028,7 @@ sealed trait BSONNumberLike {
 }
 
 object BSONNumberLike {
-  private[bson] sealed trait Value extends BSONNumberLike { self: BSONValue =>
-    @inline private[bson] def numberValue = self
-  }
-
-  implicit object BSONNumberLikeHandler extends BSONReader[BSONNumberLike]
+  implicit object Handler extends BSONReader[BSONNumberLike]
     with BSONWriter[BSONNumberLike] with SafeBSONWriter[BSONNumberLike] {
 
     def readTry(bson: BSONValue): Try[BSONNumberLike] = bson match {
@@ -1983,6 +2039,61 @@ object BSONNumberLike {
           "<number>", bson.getClass.getSimpleName))
     }
 
+    override def readOpt(bson: BSONValue): Option[BSONNumberLike] = bson match {
+      case n: BSONNumberLike => Some(n)
+      case _ => None
+    }
+
     def safeWrite(n: BSONNumberLike) = n.numberValue
+  }
+
+  // ---
+
+  private[bson] sealed trait Value extends BSONNumberLike { self: BSONValue =>
+    @inline private[bson] def numberValue = self
+  }
+}
+
+/**
+ * A BSON value that can be seen as a boolean.
+ *
+ * Conversions:
+ *   - `number = 0 ~> false`
+ *   - `number != 0 ~> true`
+ *   - `boolean`
+ *   - `undefined ~> false`
+ *   - `null ~> false`
+ */
+sealed trait BSONBooleanLike {
+  private[bson] def boolValue: BSONValue
+
+  /** Returns the boolean equivalent value */
+  def toBoolean: Try[Boolean]
+}
+
+object BSONBooleanLike {
+  implicit object Handler extends BSONReader[BSONBooleanLike]
+    with BSONWriter[BSONBooleanLike] with SafeBSONWriter[BSONBooleanLike] {
+
+    def readTry(bson: BSONValue): Try[BSONBooleanLike] = bson match {
+      case b: BSONBooleanLike => Success(b)
+
+      case _ => Failure(exceptions.TypeDoesNotMatchException(
+        "<boolean>", bson.getClass.getSimpleName))
+    }
+
+    override def readOpt(bson: BSONValue): Option[BSONBooleanLike] =
+      bson match {
+        case b: BSONBooleanLike => Some(b)
+        case _ => None
+      }
+
+    def safeWrite(b: BSONBooleanLike) = b.boolValue
+  }
+
+  // ---
+
+  private[bson] sealed trait Value extends BSONBooleanLike { self: BSONValue =>
+    @inline private[bson] def boolValue = self
   }
 }
