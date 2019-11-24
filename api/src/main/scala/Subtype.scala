@@ -3,31 +3,34 @@ package reactivemongo.api.bson
 /** Binary Subtype */
 sealed trait Subtype {
   /** Subtype code */
-  val value: Byte
+  private[bson] val value: Int
 
   override lazy val toString = getClass.getName
 }
 
 object Subtype {
-  sealed trait GenericBinarySubtype extends Subtype { val value = 0x00: Byte }
+  sealed trait GenericBinarySubtype extends Subtype { val value = 0x00 }
   object GenericBinarySubtype extends GenericBinarySubtype
 
-  sealed trait FunctionSubtype extends Subtype { val value = 0x01: Byte }
+  sealed trait FunctionSubtype extends Subtype { val value = 0x01 }
   object FunctionSubtype extends FunctionSubtype
 
-  sealed trait OldBinarySubtype extends Subtype { val value = 0x02: Byte }
+  sealed trait OldBinarySubtype extends Subtype { val value = 0x02 }
   object OldBinarySubtype extends OldBinarySubtype
 
-  sealed trait OldUuidSubtype extends Subtype { val value = 0x03: Byte }
+  sealed trait OldUuidSubtype extends Subtype { val value = 0x03 }
   object OldUuidSubtype extends OldUuidSubtype
 
-  sealed trait UuidSubtype extends Subtype { val value = 0x04: Byte }
+  sealed trait UuidSubtype extends Subtype { val value = 0x04 }
   object UuidSubtype extends UuidSubtype
 
-  sealed trait Md5Subtype extends Subtype { val value = 0x05: Byte }
+  sealed trait Md5Subtype extends Subtype { val value = 0x05 }
   object Md5Subtype extends Md5Subtype
 
-  sealed trait UserDefinedSubtype extends Subtype { val value = 0x80.toByte }
+  sealed trait UserDefinedSubtype extends Subtype {
+    val value = 0x80.toByte.toInt
+  }
+
   object UserDefinedSubtype extends UserDefinedSubtype
 
   def apply(code: Byte) = code match {

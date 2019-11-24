@@ -2,6 +2,8 @@ package reactivemongo.api.bson
 
 import scala.util.Try
 
+import scala.util.control.NonFatal
+
 /**
  * A reader that produces an instance of `T` from a subtype of [[BSONValue]].
  */
@@ -67,6 +69,13 @@ object BSONReader {
   private class FunctionalReader[T](
     read: BSONValue => T) extends BSONReader[T] {
     def readTry(bson: BSONValue): Try[T] = Try(read(bson))
+
+    override def readOpt(bson: BSONValue): Option[T] = try {
+      Some(read(bson))
+    } catch {
+      case NonFatal(_) =>
+        None
+    }
   }
 
   private[bson] class MappedReader[T, U](

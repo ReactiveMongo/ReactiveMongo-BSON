@@ -70,7 +70,7 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         doc.getAsTry[BSONBooleanLike]("score").
           flatMap(_.toBoolean) must beSuccessfulTry(true)
       }
-    }
+    } tag "wip"
 
     "be read" in {
       val reader1 = BSONDocumentReader.from(_.getAsTry[String]("name"))

@@ -2,6 +2,7 @@ package reactivemongo.api.bson
 
 private[bson] trait Aliases {
   type StringOps = scala.collection.immutable.StringOps
+  type BaseColl[T] = Traversable[T]
 }
 
 private[bson] trait Utils {

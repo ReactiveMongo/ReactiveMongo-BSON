@@ -2,11 +2,12 @@ package reactivemongo.api.bson.buffer
 
 import scala.util.{ Failure, Success, Try }
 
+import scala.collection.mutable.{ Map => MMap }
 import scala.collection.immutable.IndexedSeq
 
 import reactivemongo.api.bson._
 
-private[api] object DefaultBufferHandler {
+private[reactivemongo] object DefaultBufferHandler {
   def serialize(bson: BSONValue, buffer: WritableBuffer): WritableBuffer =
     bson match {
       case BSONDouble(v) => buffer writeDouble v
@@ -96,22 +97,29 @@ private[api] object DefaultBufferHandler {
 
     // assert(length == b.size)
 
-    val builder = Seq.newBuilder[(String, BSONValue)]
+    val elms = Seq.newBuilder[BSONElement]
+    val fields = MMap.empty[String, BSONValue]
 
     @scala.annotation.tailrec
-    def elements(): Seq[(String, BSONValue)] = {
+    def read(): Unit = {
       lazy val code = buffer.readByte()
 
       if (buffer.readable() > 1 && code != (0x0: Byte)) {
         // Last is 0 (see readDocument#write_1)
 
-        builder += buffer.readCString() -> readValue(buffer, code)
+        val name = buffer.readCString()
+        val v = readValue(buffer, code)
 
-        elements()
-      } else builder.result()
+        elms += BSONElement(name, v)
+        fields.put(name, v)
+
+        read()
+      }
     }
 
-    BSONDocument(elements())
+    read()
+
+    BSONDocument(elms.result(), fields.toMap)
   }
 
   private[bson] def readArray(buffer: ReadableBuffer): BSONArray = {
@@ -132,7 +140,7 @@ private[api] object DefaultBufferHandler {
       } else builder.result()
     }
 
-    new BSONArray(makeSeq())
+    BSONArray(makeSeq())
   }
 
   @inline def writeBinary(binary: BSONBinary, buffer: WritableBuffer) =

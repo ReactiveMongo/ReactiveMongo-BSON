@@ -35,8 +35,8 @@ private[reactivemongo] final class WritableBuffer(
   }
 
   /** Writes the given `byte` into this buffer. */
-  def writeByte(byte: Byte): WritableBuffer = {
-    buffer.writeByte(byte.toInt)
+  def writeByte(byte: Int): WritableBuffer = {
+    buffer.writeByte(byte)
     this
   }
 
@@ -104,7 +104,7 @@ private[reactivemongo] object WritableBuffer {
    *
    * Note: The initial capacity for the empty buffer can be customized,
    * using the system property `reactivemongo.api.bson.bufferSizeBytes`
-   * (integer number of bytes). The default size is 64 bytes.
+   * (integer number of bytes). The default size is 96 bytes.
    */
   def empty: WritableBuffer =
     new WritableBuffer(Unpooled buffer initialBufferSize)

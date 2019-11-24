@@ -20,10 +20,6 @@ class WritableBufferBenchmark {
 
     emptyBuffer = WritableBuffer.empty
     outputBuffer = WritableBuffer(bytes)
-  }
-
-  @Setup(Level.Invocation)
-  def setupInvocation(): Unit = {
     bytesBuffer = outputBuffer.toReadableBuffer
   }
 
@@ -49,7 +45,7 @@ class WritableBufferBenchmark {
     emptyBuffer.writeBytes(bytesBuffer)
 
   @Benchmark
-  def writeByte(): WritableBuffer = emptyBuffer.writeByte(0x04: Byte)
+  def writeByte() = emptyBuffer.writeByte(0x04: Int)
 
   @Benchmark
   def writeInt(): WritableBuffer = emptyBuffer.writeInt(20)
