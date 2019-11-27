@@ -5,25 +5,38 @@ private[reactivemongo] object Digest {
   private val HEX_CHARS: Array[Char] = "0123456789abcdef".toCharArray
 
   /** Turns an array of Byte into a String representation in hexadecimal. */
+  @com.github.ghik.silencer.silent("\\+=\\ in\\ trait\\ Growable")
   def hex2Str(bytes: Array[Byte]): String = {
-    val hex = new Array[Char](2 * bytes.length)
+    val len = bytes.length
+    val hex = new Array[Char](2 * len)
+
     var i = 0
-    while (i < bytes.length) {
-      hex(2 * i) = HEX_CHARS((bytes(i) & 0xF0) >>> 4)
-      hex(2 * i + 1) = HEX_CHARS(bytes(i) & 0x0F)
+    while (i < len) {
+      val b = bytes(i)
+
+      val t = 2 * i // index in output buffer
+
+      hex(t) = HEX_CHARS((b & 0xF0) >>> 4)
+      hex(t + 1) = HEX_CHARS(b & 0x0F)
+
       i = i + 1
     }
+
     new String(hex)
   }
 
   /** Turns a hexadecimal String into an array of Byte. */
   def str2Hex(str: String): Array[Byte] = {
-    val bytes = new Array[Byte](str.length / 2)
+    val sz = str.length / 2
+    val bytes = new Array[Byte](sz)
+
     var i = 0
-    while (i < bytes.length) {
-      bytes(i) = Integer.parseInt(str.substring(2 * i, 2 * i + 2), 16).toByte
+    while (i < sz) {
+      val t = 2 * i
+      bytes(i) = Integer.parseInt(str.substring(t, t + 2), 16).toByte
       i += 1
     }
+
     bytes
   }
 

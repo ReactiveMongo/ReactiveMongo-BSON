@@ -726,8 +726,8 @@ object BSONObjectID {
         s"Wrong ObjectId: length(${bytes.length}) != 12"))
 
     } else Try {
-      bytes(0) << 24 | (bytes(1) << 0xFF) << 16 | (
-        bytes(2) & 0xFF) << 8 | (bytes(3) & 0xFF)
+      (bytes(0) << 24) | ((bytes(1) & 0xFF) << 16) | (
+        (bytes(2) & 0xFF) << 8) | (bytes(3) & 0xFF)
 
     }.map { timeSec =>
       new BSONObjectID {
@@ -765,13 +765,13 @@ object BSONObjectID {
    */
   def fromTime(timeMillis: Long, fillOnlyTimestamp: Boolean = false): BSONObjectID = {
     // n of seconds since epoch. Big endian
-    val timestamp = (timeMillis / 1000).toInt
+    val timestamp = (timeMillis / 1000L).toInt
     val id = Array.ofDim[Byte](12)
 
-    id(0) = (timestamp >>> 24).toByte
-    id(1) = (timestamp >> 16 & 0xFF).toByte
-    id(2) = (timestamp >> 8 & 0xFF).toByte
-    id(3) = (timestamp & 0xFF).toByte
+    id(0) = (timestamp >> 24).toByte
+    id(1) = (timestamp >> 16).toByte
+    id(2) = (timestamp >> 8).toByte
+    id(3) = timestamp.toByte
 
     if (!fillOnlyTimestamp) {
       // machine id, 3 first bytes of md5(macadress or hostname)
