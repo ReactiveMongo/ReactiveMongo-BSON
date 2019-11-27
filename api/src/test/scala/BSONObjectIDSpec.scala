@@ -13,6 +13,8 @@ final class BSONObjectIDSpec extends org.specs2.mutable.Specification {
             objectID.byteArray must_=== sameObjectID.byteArray and {
               BSONObjectID.parse(objectID.byteArray).
                 aka("parsed from bytes") must beSuccessfulTry(objectID)
+            } and {
+              sameObjectID.time must_=== objectID.time
             }
         }
     }
@@ -22,7 +24,9 @@ final class BSONObjectIDSpec extends org.specs2.mutable.Specification {
 
       BSONObjectID.parse(objectID.stringify).
         aka("parsed") must beSuccessfulTry[BSONObjectID].like {
-          case sameObjectID => objectID must_=== sameObjectID
+          case sameObjectID => sameObjectID must_=== objectID and {
+            sameObjectID.time must_=== objectID.time
+          }
         }
     }
 
