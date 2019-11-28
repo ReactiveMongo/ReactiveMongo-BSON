@@ -1122,19 +1122,24 @@ object BSONInteger {
 /**
  * [[https://docs.mongodb.com/manual/reference/bson-types/#timestamps BSON Timestamp]] value
  *
- * @param value the raw value (most significant 32 bits = epoch seconds / least significant 32 bits = ordinal)
+ * @param value
  */
-final class BSONTimestamp private[bson] (val value: Long)
+sealed abstract class BSONTimestamp
   extends BSONValue with BSONNumberLike.Value {
 
   val code = 0x11
   val byteCode = 0x11: Byte
 
+  /**
+   * Raw value (most significant 32 bits = epoch seconds / least significant 32 bits = ordinal)
+   */
+  def value: Long
+
   /** Seconds since the Unix epoch */
-  val time = value >>> 32
+  def time: Int
 
   /** Ordinal (with the second) */
-  val ordinal = value.toInt
+  def ordinal: Int
 
   @inline override def toDouble: Try[Double] = super.toDouble
 
@@ -1151,9 +1156,9 @@ final class BSONTimestamp private[bson] (val value: Long)
 
   override private[reactivemongo] val byteSize = 8
 
-  private[bson] val underlying: BSONValue = this
+  @inline private[bson] def underlying: BSONValue = this
 
-  override def hashCode: Int = value.hashCode
+  override def hashCode: Int = (value ^ (value >>> 32)).toInt
 
   override def equals(that: Any): Boolean = that match {
     case other: BSONTimestamp => value == other.value
@@ -1172,7 +1177,15 @@ object BSONTimestamp {
   }
 
   /** Returns a [[BSONTimestamp]] */
-  @inline def apply(value: Long): BSONTimestamp = new BSONTimestamp(value)
+  @inline def apply(value: Long): BSONTimestamp = {
+    @inline def v = value
+
+    new BSONTimestamp {
+      val value = v
+      val time = (value >> 32).toInt
+      val ordinal = value.toInt
+    }
+  }
 
   /**
    * Returns the timestamp corresponding to the given `time` and `ordinal`.
@@ -1180,8 +1193,16 @@ object BSONTimestamp {
    * @param time the 32bits time value (seconds since the Unix epoch)
    * @param ordinal an incrementing ordinal for operations within a same second
    */
-  def apply(time: Long, ordinal: Int): BSONTimestamp =
-    BSONTimestamp((time << 32) ^ ordinal)
+  def apply(time: Int, ordinal: Int): BSONTimestamp = {
+    @inline def t = time
+    @inline def i = ordinal
+
+    new BSONTimestamp {
+      val value = (t.toLong << 32) | (i & 0xFFFFFFFFL)
+      val time = t
+      val ordinal = i
+    }
+  }
 
   /** Returns the string representation for the given [[BSONTimestamp]]. */
   @inline def pretty(ts: BSONTimestamp): String =
@@ -1300,7 +1321,7 @@ final class BSONDecimal private[bson] (
 
   override private[reactivemongo] lazy val byteSize = 16
 
-  private[bson] val underlying: BSONValue = this
+  @inline private[bson] def underlying: BSONValue = this
 
   // ---
 
