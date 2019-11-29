@@ -12,13 +12,13 @@ object BSONHandler {
    * Handler factory.
    *
    * {{{
-   * import reactivemongo.bson.{ BSONHandler, BSONString }
+   * import reactivemongo.api.bson.{ BSONHandler, BSONString }
    *
    * case class Foo(value: String)
    *
-   * val foo: BSONHandler[BSONString, Foo] = BSONHandler(
-   *   { read: BSONString => Foo(read.value) },
-   *   { write: Foo => BSONString(write.value) }
+   * val foo: BSONHandler[Foo] = BSONHandler(
+   *   { _ => Foo("value") },
+   *   { f: Foo => BSONString(f.value) }
    * )
    * }}}
    */
