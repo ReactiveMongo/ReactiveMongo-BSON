@@ -3,7 +3,7 @@ package reactivemongo.api.bson
 /** Binary Subtype */
 sealed trait Subtype {
   /** Subtype code */
-  private[api] val value: Int
+  private[reactivemongo] val value: Int
 
   override lazy val toString = getClass.getName
 }

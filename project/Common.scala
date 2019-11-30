@@ -46,8 +46,9 @@ object Common extends AutoPlugin {
       }
     },
     resolvers ++= Seq(
+      Resolver.sonatypeRepo("staging"),
       Resolver.sonatypeRepo("snapshots"),
-      "Typesafe repository releases" at "https://repo.typesafe.com/typesafe/releases/"),
+      Resolver.typesafeRepo("releases")),
     mimaFailOnNoPrevious := false
   )
 }
