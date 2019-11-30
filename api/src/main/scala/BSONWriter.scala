@@ -77,13 +77,13 @@ object BSONWriter {
 }
 
 /** A writer that is safe, as `writeTry` can always return a `Success`. */
-private[bson] trait SafeBSONWriter[T] { writer: BSONWriter[T] =>
+private[reactivemongo] trait SafeBSONWriter[T] { writer: BSONWriter[T] =>
   def safeWrite(value: T): BSONValue
 
   final def writeTry(value: T): Success[BSONValue] = Success(safeWrite(value))
 }
 
-private[bson] object SafeBSONWriter {
+private[reactivemongo] object SafeBSONWriter {
   @com.github.ghik.silencer.silent
   def unapply[T](w: BSONWriter[T]): Option[SafeBSONWriter[T]] = w match {
     case s: SafeBSONWriter[T] => Some(s)
