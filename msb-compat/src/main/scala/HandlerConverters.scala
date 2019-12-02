@@ -54,16 +54,16 @@ object HandlerConverters extends HandlerConverters {
  * between `org.bson` and `reactivemongo.api.bson` .
  *
  * {{{
- * import reactivemongo.api.bson.compat.HandlerConverters._
+ * import reactivemongo.api.bson.msb.HandlerConverters._
  *
- * def foo[T](lw: org.bson.Encoder[T]) = {
- *   val w: reactivemongo.api.bson.BSONDocumentWriter[T] = lw
+ * def foo[T](enc: org.bson.codecs.Encoder[T]) = {
+ *   val w: reactivemongo.api.bson.BSONWriter[T] = enc
  *   w
  * }
  *
  * def bar[T](lr: reactivemongo.api.bson.BSONReader[T]) = {
- *   val r: org.bson.Decoder[T] = lr
- *   r
+ *   val dec: org.bson.codecs.Decoder[T] = lr
+ *   dec
  * }
  * }}}
  */

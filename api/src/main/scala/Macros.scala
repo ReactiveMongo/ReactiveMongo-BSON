@@ -6,7 +6,10 @@ import scala.util.Success
  * Macros for generating `BSONReader` and `BSONWriter` at compile time.
  *
  * {{{
+ * import reactivemongo.api.bson.Macros
+ *
  * case class Person(name: String, surname: String)
+ *
  * implicit val personHandler = Macros.handler[Person]
  * }}}
  *
@@ -92,6 +95,8 @@ object Macros {
    *   BSONDocumentReader, MacroConfiguration, Macros
    * }
    *
+   * case class Foo(name: String)
+   *
    * // Materializes a `BSONDocumentReader[Foo]`,
    * // with the configuration resolved at compile time
    * val r1: BSONDocumentReader[Foo] = Macros.configured.reader[Foo]
@@ -110,9 +115,9 @@ object Macros {
    * $tparamOpts
    *
    * {{{
-   * import reactivemongo.api.bson.{
-   *   BSONDocumentReader, MacroConfiguration, Macros
-   * }
+   * import reactivemongo.api.bson.{ BSONDocumentWriter, Macros, MacroOptions }
+   *
+   * case class Bar(score: Float)
    *
    * val w: BSONDocumentWriter[Bar] =
    *   Macros.using[MacroOptions.Default].writer[Bar]
@@ -178,6 +183,8 @@ object Macros {
      * but don't want to actually use `_id` in your code.
      *
      * {{{
+     * import reactivemongo.api.bson.Macros.Annotations.Key
+     *
      * case class Website(@Key("_id") url: String)
      * }}}
      *
@@ -206,14 +213,16 @@ object Macros {
      * rather than nesting it.
      *
      * {{{
+     * import reactivemongo.api.bson.Macros.Annotations.Flatten
+     *
      * case class Range(start: Int, end: Int)
      *
      * case class LabelledRange(
      *   name: String,
      *   @Flatten range: Range)
      *
-     * // Flattened
-     * BSONDocument("name" -> "foo", "start" -> 0, "end" -> 1)
+     * val flattened = reactivemongo.api.bson.BSONDocument(
+     *   "name" -> "foo", "start" -> 0, "end" -> 1)
      *
      * // Rather than:
      * // BSONDocument("name" -> "foo", "range" -> BSONDocument(
@@ -235,6 +244,8 @@ object Macros {
      * it will be represented by `BSONNull` rather than being omitted.
      *
      * {{{
+     * import reactivemongo.api.bson.Macros.Annotations.NoneAsNull
+     *
      * case class Foo(
      *   title: String,
      *   @NoneAsNull description: Option[String])

@@ -66,23 +66,15 @@ object GeoPoint {
   val `type` = "Point"
 
   /**
-   * Convenient factory (See [[GeoPosition]]).
-   *
-   * {{{
-   * // Equivalent to
-   * GeoPoint(GeoPosition(_1, _2))
-   * }}}
+   * Convenient factory (See [[GeoPosition]];
+   * equivalent to `GeoPoint(GeoPosition(_1, _2))`).
    */
   @inline def apply(_1: Double, _2: Double): GeoPoint =
     GeoPoint(GeoPosition(_1, _2, None))
 
   /**
-   * Convenient factory (See [[GeoPosition]]).
-   *
-   * {{{
-   * // Equivalent to
-   * GeoPoint(GeoPosition(_1, _2, elevation))
-   * }}}
+   * Convenient factory (See [[GeoPosition]];
+   * equivalent to `GeoPoint(GeoPosition(_1, _2, elevation))`).
    */
   @inline def apply(_1: Double, _2: Double, elevation: Option[Double]): GeoPoint = GeoPoint(GeoPosition(_1, _2, elevation))
 
@@ -116,11 +108,13 @@ final case class GeoLineString(
   val coordinates = Tuple3(_1, _2, more)
 
   /**
-   * Appends more positions.
+   * Appends more positions
    *
    * {{{
-   * // Equivalent to
-   * lineString.copy(more = lineString.more ++ positions)
+   * import reactivemongo.api.bson.{ GeoLineString, GeoPosition }
+   *
+   * def equivalentTo(lineString: GeoLineString, positions: GeoPosition*) =
+   *   lineString.copy(more = lineString.more ++ positions)
    * }}}
    */
   @inline def ++(positions: GeoPosition*): GeoLineString =
@@ -132,12 +126,8 @@ object GeoLineString {
   val `type` = "LineString"
 
   /**
-   * Convenient factory.
-   *
-   * {{{
-   * // Equivalent to
-   * GeoLineString(_1, _2, Seq.empty)
-   * }}}
+   * Convenient factory
+   * (equivalent to `GeoLineString(_1, _2, Seq.empty)`).
    */
   @inline def apply(_1: GeoPosition, _2: GeoPosition): GeoLineString =
     GeoLineString(_1, _2, Seq.empty)
@@ -184,8 +174,10 @@ final class GeoPolygon private[bson] (
 
   /**
    * {{{
-   * // Equivalent to
-   * GeoPolygon(this.exterior, this.interior ++ interior)
+   * import reactivemongo.api.bson.{ GeoLinearRing, GeoPolygon }
+   *
+   * def equivalentTo(poly: GeoPolygon, interior: Seq[GeoLinearRing]) =
+   *   GeoPolygon(poly.exterior, (poly.interior ++ interior): _*)
    * }}}
    */
   def ++(interior: GeoLinearRing*): GeoPolygon =

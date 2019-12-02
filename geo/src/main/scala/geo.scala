@@ -16,12 +16,7 @@ case class GeoPosition(
 
 object GeoPosition {
   /**
-   * Convenient factory.
-   *
-   * {{{
-   * // Equivalent to
-   * GeoPosition(_1, _2, None)
-   * }}}
+   * Convenient factory (equivalent to `GeoPosition(_1, _2, None)`).
    */
   @inline def apply(_1: Double, _2: Double): GeoPosition =
     GeoPosition(_1, _2, None)
