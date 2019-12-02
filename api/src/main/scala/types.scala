@@ -57,7 +57,6 @@ sealed trait BSONValue { self =>
    * @return `Some` successfully parsed value, or `None` if fails
    *
    * {{{
-   * import scala.util.Try
    * import reactivemongo.api.bson.BSONValue
    *
    * def foo(v: BSONValue): Option[String] = v.asOpt[String]
@@ -413,7 +412,7 @@ object BSONArray {
    * Extracts the values sequence if `that`'s a [[BSONArray]].
    *
    * {{{
-   * import reactivemongo.api.bson.{ BSON, BSONArray, BSONValue }
+   * import reactivemongo.api.bson.{ BSONArray, BSONValue }
    *
    * def foo(input: BSONValue): Unit = input match {
    *   case BSONArray(vs) => pretty(vs)
@@ -423,7 +422,7 @@ object BSONArray {
    * def bar(arr: BSONArray): Unit = arr match {
    *   // with splat pattern
    *   case BSONArray(Seq(requiredFirst, other @ _*)) =>
-   *     println(s"first = \$requiredFirst")
+   *     println(s"first = \\$requiredFirst")
    *     pretty(other)
    *
    *   case _ =>
@@ -431,7 +430,7 @@ object BSONArray {
    * }
    *
    * def pretty(values: Seq[BSONValue]): Unit =
-   *   println(values.map(BSON.pretty).mkString(", "))
+   *   println(values.map(BSONValue.pretty).mkString(", "))
    *
    * }}}
    */
@@ -1901,7 +1900,7 @@ private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
   // Conversions
   /**
    * {{{
-   * import reactivemongo.api.bson.BSONDocument
+   * import reactivemongo.api.bson.{ BSONDocument, BSONInteger }
    *
    * BSONDocument(
    *   "foo" -> BSONInteger(1) // tuple as BSONElement("foo", BSONInteger(1))

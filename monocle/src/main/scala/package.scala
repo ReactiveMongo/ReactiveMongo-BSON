@@ -26,6 +26,8 @@ package object monocle extends LowPriorityMonocle {
    * nested in a document field.
    *
    * {{{
+   * import reactivemongo.api.bson.monocle._
+   *
    * // For a top document { "foo": { "bar": 1 } }
    * val lens = nested("foo", field[Int]("bar"))
    * }}}
@@ -36,6 +38,8 @@ package object monocle extends LowPriorityMonocle {
   implicit final class Field(val name: String) extends AnyVal {
     /**
      * {{{
+     * import reactivemongo.api.bson.monocle._
+     *
      * // For a top document { "foo": { "bar": 1 } }
      * val lens = "foo" \ field[Int]("bar")
      * // equivalent to nested("foo", field[Int]("bar"))
@@ -45,6 +49,11 @@ package object monocle extends LowPriorityMonocle {
 
     /**
      * {{{
+     * import _root_.monocle.Optional
+     *
+     * import reactivemongo.api.bson.BSONDocument
+     * import reactivemongo.api.bson.monocle._
+     *
      * val lens: Optional[BSONDocument, BSONDocument] = "foo" \ "bar"
      * }}}
      */
@@ -58,6 +67,8 @@ package object monocle extends LowPriorityMonocle {
 
     /**
      * {{{
+     * import reactivemongo.api.bson.monocle._
+     *
      * // For a top document { "foo": { "bar": { "lorem": 1 } } }
      * val lens = "foo" \ "bar" \ field[Int]("lorem")
      * }}}
