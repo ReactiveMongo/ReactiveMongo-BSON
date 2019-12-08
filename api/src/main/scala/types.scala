@@ -24,6 +24,7 @@ sealed trait Producer[T] {
   private[bson] def generate(): Iterable[T]
 }
 
+/** A [[https://docs.mongodb.com/manual/reference/bson-types/ BSON]] value */
 sealed trait BSONValue { self =>
   /**
    * The code indicating the BSON type for this value
@@ -101,8 +102,20 @@ sealed trait BSONValue { self =>
 
 }
 
+/** [[BSONValue]] factories and utilities */
 object BSONValue extends BSONValueLowPriority1 {
-  /** Returns a String representation for the value. */
+  /**
+   * Returns a String representation for the value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONValue }
+   *
+   * def foo(v: BSONValue): String = BSONValue.pretty(v)
+   *
+   * foo(BSONDocument("bar" -> 1))
+   * // { "bar": 1 }
+   * }}}
+   */
   def pretty(value: BSONValue): String = value match {
     case arr: BSONArray => BSONArray.pretty(arr)
 
@@ -188,7 +201,13 @@ private[bson] sealed trait BSONValueLowPriority2 {
   }
 }
 
-/** A BSON Double. */
+/**
+ * A BSON Double.
+ *
+ * {{{
+ * reactivemongo.api.bson.BSONDouble(1.23D)
+ * }}}
+ */
 final class BSONDouble private[bson] (val value: Double)
   extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value {
 
@@ -237,6 +256,7 @@ final class BSONDouble private[bson] (val value: Double)
   override def toString: String = s"BSONDouble($value)"
 }
 
+/** [[BSONDouble]] factories */
 object BSONDouble {
   /** Extracts the double value if `that`'s a [[BSONDouble]]. */
   def unapply(that: Any): Option[Double] = that match {
@@ -244,10 +264,23 @@ object BSONDouble {
     case _ => None
   }
 
-  /** Returns a [[BSONDouble]] */
+  /**
+   * Returns a [[BSONDouble]].
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONDouble(1.23D)
+   * }}}
+   */
   @inline def apply(value: Double): BSONDouble = new BSONDouble(value)
 }
 
+/**
+ * A [[https://docs.mongodb.com/manual/reference/bson-types/#string BSON string]].
+ *
+ * {{{
+ * reactivemongo.api.bson.BSONString("foo")
+ * }}}
+ */
 final class BSONString private[bson] (val value: String) extends BSONValue {
   val code = 0x02
   val byteCode = 0x02: Byte
@@ -267,6 +300,7 @@ final class BSONString private[bson] (val value: String) extends BSONValue {
   override def toString: String = s"BSONString($value)"
 }
 
+/** [[BSONString]] factories */
 object BSONString {
   /** Extracts the string value if `that`'s a [[BSONString]]. */
   def unapply(that: Any): Option[String] = that match {
@@ -274,7 +308,13 @@ object BSONString {
     case _ => None
   }
 
-  /** Returns a [[BSONString]] */
+  /**
+   * Returns a [[BSONString]].
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONString("foo")
+   * }}}
+   */
   @inline def apply(value: String): BSONString = new BSONString(value)
 
   /** Returns the plain string representation for the given [[BSONString]]. */
@@ -284,9 +324,13 @@ object BSONString {
 }
 
 /**
- * A `BSONArray` structure (BSON type `0x04`).
+ * A `BSONArray` (type `0x04`) is a indexed sequence of [[BSONValue]].
  *
- * A `BSONArray` is a indexed sequence of [[BSONValue]].
+ * {{{
+ * import reactivemongo.api.bson._
+ *
+ * BSONArray(BSONString("foo"), BSONDouble(1.2D))
+ * }}}
  *
  * @define indexParam the index to be found in the array
  */
