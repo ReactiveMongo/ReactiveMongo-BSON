@@ -93,6 +93,40 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       }
     }
 
+    "support generic optional value" >> {
+      val doc1 = BSONDocument("v" -> 1)
+      val none = OptionalGeneric[String](1, None)
+
+      val doc2 = BSONDocument("v" -> 2, "opt" -> "foo")
+      val some = OptionalGeneric(2, Some("foo"))
+
+      "for reader" in {
+        val reader = Macros.reader[OptionalGeneric[String]]
+
+        reader.readTry(doc1) must beSuccessfulTry(none) and {
+          reader.readTry(doc2).
+            aka("some valid") must beSuccessfulTry(some)
+        } and {
+          reader.readTry(BSONDocument("v" -> 3, "opt" -> 4.5D)).
+            aka("some invalid") must beFailedTry[OptionalGeneric[String]]
+        }
+      }
+
+      "for writer" in {
+        val writer = Macros.writer[OptionalGeneric[String]]
+
+        writer.writeTry(none) must beSuccessfulTry(doc1) and {
+          writer.writeTry(some) must beSuccessfulTry(doc2)
+        }
+      }
+
+      "for handler" in {
+        val h = Macros.handler[OptionalGeneric[String]]
+
+        roundtrip(none, h) and roundtrip(some, h)
+      }
+    }
+
     "support generic case class Foo" >> {
       implicit def singleHandler = Macros.handler[Single]
 

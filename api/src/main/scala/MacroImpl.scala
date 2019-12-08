@@ -94,6 +94,8 @@ private[bson] class MacroImpl(val c: Context) {
     private val utilPkg = q"_root_.scala.util"
     private val reflPkg = q"_root_.scala.reflect"
 
+    private val optionTpe = c.typeOf[Option[_]]
+
     protected def aTpe: Type
     protected def optsTpe: Type
 
@@ -239,12 +241,13 @@ private[bson] class MacroImpl(val c: Context) {
       val (constructor, _) = matchingApplyUnapply(tpe).getOrElse(
         c.abort(c.enclosingPosition, s"No matching apply/unapply found: $tpe"))
 
-      val tpeArgs: List[c.Type] = tpe match {
-        case TypeRef(_, _, args) => args
-        case i @ ClassInfoType(_, _, _) => i.typeArgs
-      }
       val boundTypes: Map[String, Type] = {
         val bt = Map.newBuilder[String, Type]
+
+        val tpeArgs: List[c.Type] = tpe match {
+          case TypeRef(_, _, args) => args
+          case i @ ClassInfoType(_, _, _) => i.typeArgs
+        }
 
         lazyZip(constructor.typeParams, tpeArgs).foreach {
           case (sym, ty) => bt += (sym.fullName -> ty)
@@ -414,8 +417,20 @@ private[bson] class MacroImpl(val c: Context) {
       val tupleName = TermName(c.freshName("tuple"))
 
       val (optional, required) =
-        lazyZip(constructorParams.zipWithIndex, types).filterNot {
-          case ((sym, _), _) => ignoreField(sym)
+        lazyZip(constructorParams.zipWithIndex, types).collect {
+          case ((sym, i), o @ OptionTypeParameter(st)) if !ignoreField(sym) => {
+            val sig = boundTypes.get(st.typeSymbol.fullName).fold(o) { t =>
+              o.substituteTypes(List(st.typeSymbol), List(t))
+            }
+
+            (sym -> i) -> sig
+          }
+
+          case ((sym, i), st) if !ignoreField(sym) => {
+            //val sig = boundTypes.getOrElse(st.typeSymbol.fullName, st)
+
+            (sym -> i) -> st //sig
+          }
         }.partition(t => isOptionalType(t._2))
 
       def resolveWriter(pname: String, tpe: Type) = {
@@ -708,7 +723,7 @@ private[bson] class MacroImpl(val c: Context) {
     }
 
     private def isOptionalType(implicit A: c.Type): Boolean =
-      (c.typeOf[Option[_]].typeConstructor == A.typeConstructor)
+      (optionTpe.typeConstructor == A.typeConstructor)
 
     private def paramName(param: c.Symbol): String = {
       param.annotations.collect {
