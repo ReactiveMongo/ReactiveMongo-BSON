@@ -119,6 +119,12 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           writer.writeTry(some) must beSuccessfulTry(doc2)
         }
       }
+
+      "for handler" in {
+        val h = Macros.handler[OptionalGeneric[String]]
+
+        roundtrip(none, h) and roundtrip(some, h)
+      }
     }
 
     "support generic case class Foo" >> {
