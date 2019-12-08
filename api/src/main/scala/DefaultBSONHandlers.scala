@@ -255,7 +255,9 @@ private[bson] trait LowPriority1BSONHandlers
           case _ => Success(builder.result())
         }
 
-      write(repr).map { BSONArray(_) }
+      val result = write(repr).map { BSONArray(_) }
+      builder.clear()
+      result
     }
   }
 
@@ -280,12 +282,14 @@ private[bson] trait LowPriority1BSONHandlers
         case _ => Success(builder.result())
       }
 
-      bson match {
+      val result = bson match {
         case BSONArray(vs) => read(vs)
 
         case _ => Failure(TypeDoesNotMatchException(
           "BSONArray", bson.getClass.getSimpleName))
       }
+      builder.clear()
+      result
     }
   }
 
