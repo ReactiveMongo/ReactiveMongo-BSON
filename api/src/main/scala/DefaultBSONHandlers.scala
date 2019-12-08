@@ -263,9 +263,11 @@ private[bson] trait LowPriority1BSONHandlers
   implicit def collectionWriter[T, Repr <% Iterable[T]](implicit writer: BSONWriter[T], notOption: Repr ¬ Option[T]): BSONWriter[Repr] = new BSONArrayCollectionWriter[T, Repr]
 
   protected class BSONArrayCollectionReader[M[_], T](
-    builder: Builder[T, M[T]])(implicit reader: BSONReader[T]) extends BSONReader[M[T]] {
+    makeBuilder: () => Builder[T, M[T]])(implicit reader: BSONReader[T]) extends BSONReader[M[T]] {
 
     def readTry(bson: BSONValue): Try[M[T]] = {
+      val builder = makeBuilder()
+
       @annotation.tailrec
       def read(vs: Seq[BSONValue]): Try[M[T]] = vs.headOption match {
         case Some(v) => reader.readTry(v) match {
