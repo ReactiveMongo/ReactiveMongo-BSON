@@ -22,10 +22,13 @@ object MacroTest {
   case class Person(firstName: String, lastName: String)
   case class Pet(name: String, owner: Person)
   case class Primitives(dbl: Double, str: String, bl: Boolean, int: Int, long: Long)
+
   case class Optional(name: String, value: Option[String])
   case class OptionalAsNull(name: String, @NoneAsNull value: Option[String])
-  case class Single(value: BigDecimal)
   case class OptionalSingle(value: Option[String])
+  case class OptionalGeneric[T](v: Int, opt: Option[T])
+
+  case class Single(value: BigDecimal)
   case class SingleTuple(value: (String, String))
   case class User(_id: BSONObjectID = BSONObjectID.generate(), name: String)
   case class WordLover(name: String, words: Seq[String])
