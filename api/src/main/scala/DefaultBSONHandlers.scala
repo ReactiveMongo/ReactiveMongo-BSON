@@ -262,24 +262,28 @@ private[bson] trait LowPriority1BSONHandlers
   @com.github.ghik.silencer.silent
   implicit def collectionWriter[T, Repr <% Iterable[T]](implicit writer: BSONWriter[T], notOption: Repr ¬ Option[T]): BSONWriter[Repr] = new BSONArrayCollectionWriter[T, Repr]
 
-  protected class BSONArrayCollectionReader[M[_], T](
-    makeBuilder: () => Builder[T, M[T]])(implicit reader: BSONReader[T]) extends BSONReader[M[T]] {
+  protected abstract class BSONArrayCollectionReader[M[_], T]
+    extends BSONReader[M[T]] {
+
+    protected implicit def reader: BSONReader[T]
+
+    protected def builder(): Builder[T, M[T]]
 
     def readTry(bson: BSONValue): Try[M[T]] = {
-      val builder = makeBuilder()
+      val b = builder()
 
       @annotation.tailrec
       def read(vs: Seq[BSONValue]): Try[M[T]] = vs.headOption match {
         case Some(v) => reader.readTry(v) match {
           case Success(r) => {
-            builder += r
+            b += r
             read(vs.tail)
           }
 
           case Failure(cause) => Failure(cause)
         }
 
-        case _ => Success(builder.result())
+        case _ => Success(b.result())
       }
 
       bson match {
