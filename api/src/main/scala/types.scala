@@ -302,7 +302,18 @@ final class BSONString private[bson] (val value: String) extends BSONValue {
 
 /** [[BSONString]] factories */
 object BSONString {
-  /** Extracts the string value if `that`'s a [[BSONString]]. */
+  /**
+   * Extracts the string value if `that`'s a [[BSONString]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONString, BSONValue }
+   *
+   * def show(v: BSONValue): String = v match {
+   *   case BSONString(s) => s
+   *   case _ => "not-string"
+   * }
+   * }}}
+   */
   def unapply(that: Any): Option[String] = that match {
     case bson: BSONString => Some(bson.value)
     case _ => None
@@ -354,13 +365,42 @@ sealed abstract class BSONArray extends BSONValue {
   /** The first/mandatory value, if any */
   def headOption: Option[BSONValue] = values.headOption
 
-  /** Returns a BSON array with the given value prepended. */
+  /**
+   * Returns a BSON array with the given value prepended.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONArray, BSONString }
+   *
+   * BSONString("foo") +: BSONArray(1L) // [ 'foo', NumberLong(1) ]
+   * }}}
+   */
   def +:(value: BSONValue): BSONArray = BSONArray(value +: values)
 
-  /** Returns a BSON array with the values of the given one appended. */
+  /**
+   * Returns a BSON array with the values of the given one appended.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONArray
+   *
+   * val arr1 = BSONArray(1, "foo")
+   * val arr2 = BSONArray(2L, "bar")
+   *
+   * arr1 ++ arr2 // [ 1, 'foo', NumberLong(2), 'bar' ]
+   * }}}
+   */
   def ++(arr: BSONArray): BSONArray = BSONArray(values ++ arr.values)
 
-  /** Returns a BSON array with the given values appended. */
+  /**
+   * Returns a BSON array with the given values appended.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONArray, BSONLong }
+   *
+   * val arr = BSONArray(1, "foo")
+   *
+   * arr ++ BSONLong(3L) // [ 1, 'foo', NumberLong(3) ]
+   * }}}
+   */
   def ++(values: BSONValue*): BSONArray = {
     val vs = IndexedSeq.newBuilder[BSONValue]
 
@@ -382,6 +422,15 @@ sealed abstract class BSONArray extends BSONValue {
    * If there is no matching value, or the value could not be deserialized,
    * or converted, returns a `None`.
    *
+   * {{{
+   * import reactivemongo.api.bson.BSONArray
+   *
+   * val arr = BSONArray(1, "foo")
+   *
+   * arr.getAsOpt[Int](0) // Some(1)
+   * arr.getAsOpt[Int](1) // None; "foo" not int
+   * }}}
+   *
    * @param index $indexParam
    */
   def getAsOpt[T](index: Int)(implicit reader: BSONReader[T]): Option[T] =
@@ -400,6 +449,15 @@ sealed abstract class BSONArray extends BSONValue {
    * The `Failure` holds a [[exceptions.BSONValueNotFoundException]]
    * if the index could not be found.
    *
+   * {{{
+   * import reactivemongo.api.bson.BSONArray
+   *
+   * val arr = BSONArray(1, "foo")
+   *
+   * arr.getAsTry[Int](0) // Success(1)
+   * arr.getAsTry[Int](1) // Failure(BSONValueNotFoundException(..))
+   * }}}
+   *
    * @param index $indexParam
    */
   def getAsTry[T](index: Int)(implicit reader: BSONReader[T]): Try[T] =
@@ -416,6 +474,16 @@ sealed abstract class BSONArray extends BSONValue {
    *
    * If there is no matching value, `Success(None)` is returned.
    * If there is a value, it must be valid or a `Failure` is returned.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONArray
+   *
+   * val arr = BSONArray(1, "foo")
+   *
+   * arr.getAsUnflattendTry[Int](0) // Success(Some(1))
+   * arr.getAsUnflattendTry[Int](1) // Failure(BSONValueNotFoundException(..))
+   * arr.getAsUnflattendTry[Int](2) // Success(None) // no value at 2
+   * }}}
    *
    * @param index $indexParam
    */
@@ -1512,7 +1580,7 @@ object BSONMaxKey extends BSONMaxKey {
 /**
  * A `BSONDocument` structure (BSON type `0x03`).
  *
- * A `BSONDocument` is basically a set of fields `(String, BSONValue)`.
+ * A `BSONDocument` is an unordered set of fields `(String, BSONValue)`.
  *
  *
  * '''Note:''' The insertion/initial order of the fields may not
@@ -1536,12 +1604,29 @@ sealed abstract class BSONDocument
   def elements: Seq[BSONElement]
 
   /**
-   * Returns the map representation for this document.
+   * Returns the [[scala.collection.immutable.Map]]
+   * representation for this document.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument("foo" -> 1).toMap
+   * // => Map("foo" -> BSONInteger(1))
+   * }}}
    */
   @inline final def toMap: Map[String, BSONValue] = fields
 
   /**
    * Checks whether the given key is found in this element set.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * val doc = BSONDocument("foo" -> 1)
+   *
+   * doc.contains("foo") // true
+   * doc.contains("bar") // false
+   * }}}
    *
    * @param key $keyParam
    * @return true if the key is found
@@ -1552,19 +1637,55 @@ sealed abstract class BSONDocument
    * Returns the [[BSONValue]] associated with the given `key`.
    * If the key cannot be found, returns `None`.
    *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * val doc = BSONDocument("foo" -> 1)
+   *
+   * doc.get("foo") // Some(BSONInteger(1))
+   * doc.contains("bar") // None
+   * }}}
+   *
    * @param key $keyParam
    */
   final def get(key: String): Option[BSONValue] = fields.get(key)
 
-  /** The first/mandatory element, if any */
+  /**
+   * The first/mandatory element, if any.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument("foo" -> 1).
+   *   headOption // Some(BSONInteger(1))
+   * }}}
+   */
   def headOption: Option[BSONElement]
 
-  /** Returns the values of the document fields. */
+  /**
+   * Returns the values of the document fields.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument("foo" -> 1).
+   *   values // Seq(BSONInteger(1))
+   * }}}
+   */
   final def values: Iterable[BSONValue] = fields.values
 
   /**
    * Returns the [[BSONDocument]] containing all the elements
    * of this one and the elements of the given document.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * val doc1 = BSONDocument("foo" -> 1)
+   * val doc2 = BSONDocument("bar" -> "lorem")
+   *
+   * doc1 ++ doc2 // { 'foo': 1, 'bar': 'lorem' }
+   * }}}
    */
   final def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
     lazy val fields: Map[String, BSONValue] = self.fields ++ doc.fields
@@ -1579,6 +1700,17 @@ sealed abstract class BSONDocument
   /**
    * Creates a new [[BSONDocument]] containing all the elements
    * of this one and the specified element sequence.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{
+   *   BSONDocument, BSONElement, BSONString
+   * }
+   *
+   * val doc = BSONDocument("foo" -> 1)
+   *
+   * doc ++ BSONElement("bar", BSONString("lorem"))
+   * // { 'foo': 1, 'bar': 'lorem' }
+   * }}}
    */
   final def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
     val elements = (toLazy(self.elements) ++ toLazy(seq)).distinct
@@ -1601,6 +1733,15 @@ sealed abstract class BSONDocument
 
   /**
    * Returns a set without the values corresponding to the specified keys.
+   *
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * val doc = BSONDocument("foo" -> 1, "bar" -> "v")
+   *
+   * doc -- "bar" // { 'foo': 1 }
+   * }}}
    */
   final def --(keys: String*): BSONDocument = new BSONDocument {
     val fields = self.fields -- keys
@@ -1619,8 +1760,19 @@ sealed abstract class BSONDocument
    * Returns the [[BSONValue]] associated with the given `key`,
    * and converts it with the given implicit [[BSONReader]].
    *
-   * If there is no matching value, or the value could not be deserialized,
-   * or converted, returns a `None`.
+   * If there is no matching value (or value is a [[BSONNull]]),
+   * or the value could not be deserialized, or converted, returns a `None`.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONNull }
+   *
+   * val doc = BSONDocument("foo" -> 1, "bar" -> BSONNull)
+   *
+   * doc.getAsOpt[Int]("foo") // Some(1)
+   * doc.getAsOpt[String]("foo") // None, as not a string
+   * doc.getAsOpt[Int]("lorem") // None, no 'lorem' key
+   * doc.getAsOpt[Int]("bar") // None, as `BSONNull`
+   * }}}
    *
    * @param key $keyParam
    *
@@ -1641,6 +1793,21 @@ sealed abstract class BSONDocument
    * The `Failure` may hold a [[exceptions.BSONValueNotFoundException]],
    * if the key could not be found.
    *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONNull }
+   *
+   * val doc = BSONDocument("foo" -> 1, "bar" -> BSONNull)
+   *
+   * doc.getAsTry[Int]("foo") // Success(1)
+   * doc.getAsTry[String]("foo") // Failure(..), as not a string
+   *
+   * doc.getAsTry[Int]("lorem")
+   * // Failure(BSONValueNotFoundException), no 'lorem' key
+   *
+   * doc.getAsTry[Int]("bar")
+   * // Failure(BSONValueNotFoundException), as `BSONNull`
+   * }}}
+   *
    * @param key $keyParam
    */
   final def getAsTry[T](key: String)(implicit reader: BSONReader[T]): Try[T] =
@@ -1657,6 +1824,22 @@ sealed abstract class BSONDocument
    *
    * If there is no matching value, `Success(None)` is returned.
    * If there is a value, it must be valid or a `Failure` is returned.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONNull }
+   *
+   * val doc = BSONDocument("foo" -> 1, "bar" -> BSONNull)
+   *
+   * doc.getAsUnflattenedTry[Int]("foo") // Success(Some(1))
+   *
+   * doc.getAsUnflattenedTry[String]("foo") // Failure(..), as not a string
+   *
+   * doc.getAsUnflattenedTry[Int]("lorem")
+   * // Success(None), no 'lorem' key
+   *
+   * doc.getAsUnflattenedTry[Int]("bar")
+   * // Success(None), as `BSONNull`
+   * }}}
    *
    * @param key $keyParam
    */
@@ -1784,6 +1967,14 @@ private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
   /**
    * Creates a new [[BSONDocument]] containing all the elements
    * of this one and the specified element producers.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * val doc = BSONDocument("foo" -> 1)
+   *
+   * doc ++ ("bar" -> "lorem") // { 'foo': 1, 'bar': 'lorem' }
+   * }}}
    */
   def ++(producers: ElementProducer*): BSONDocument = new BSONDocument {
     val elements = toLazy(producers).flatMap(_.generate()).distinct
@@ -1797,13 +1988,30 @@ private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
 object BSONDocument {
   /**
    * Extracts the elements if `that`'s a [[BSONDocument]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONValue }
+   *
+   * def names(v: BSONValue): Seq[String] = v match {
+   *   case BSONDocument(elements) => elements.map(_.name)
+   *   case _ => Seq.empty[String]
+   * }
+   * }}}
    */
   def unapply(that: Any): Option[Seq[BSONElement]] = that match {
     case doc: BSONDocument => Some(doc.elements)
     case _ => None
   }
 
-  /** Creates a new [[BSONDocument]] containing all the given elements. */
+  /**
+   * Creates a new [[BSONDocument]] containing all the given elements.
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONDocument(
+   *   "foo" -> 1, "bar" -> "lorem"
+   * ) // => { 'foo': 1, 'bar': 'lorem' }
+   * }}}
+   */
   def apply(elms: ElementProducer*): BSONDocument = new BSONDocument {
     val elements = toLazy(elms).distinct.flatMap(_.generate())
     lazy val fields = BSONDocument.toMap(elms)
@@ -1814,6 +2022,14 @@ object BSONDocument {
   /**
    * Creates a new [[BSONDocument]] containing all the elements
    * in the given sequence.
+   *
+   * {{{
+   * import reactivemongo.api.bson._
+   *
+   * BSONDocument(Seq(
+   *   "foo" -> BSONInteger(1), "bar" -> BSONString("lorem")))
+   * // { 'foo': 1, 'bar': 'lorem' }
+   * }}}
    */
   def apply(elms: Iterable[(String, BSONValue)]): BSONDocument =
     new BSONDocument {
@@ -1837,7 +2053,11 @@ object BSONDocument {
       @inline def headOption = elements.headOption
     }
 
-  /** Returns a String representing the given [[BSONDocument]]. */
+  /**
+   * Returns a String representing the given [[BSONDocument]].
+   *
+   * @see [[BSONValue$.pretty]]
+   */
   def pretty(doc: BSONDocument): String = BSONIterator.pretty(doc.elements)
 
   /** Internal (optimized/eager) factory. */
@@ -1875,6 +2095,15 @@ object BSONDocument {
   }
 }
 
+/**
+ * BSON element, typically a pair of name and [[BSONValue]].
+ *
+ * {{{
+ * import reactivemongo.api.bson.{ BSONElement, BSONString }
+ *
+ * BSONElement("name", BSONString("value"))
+ * }}}
+ */
 sealed abstract class BSONElement extends ElementProducer {
   /** Element (field) name */
   def name: String
@@ -1903,13 +2132,31 @@ sealed abstract class BSONElement extends ElementProducer {
 }
 
 object BSONElement extends BSONElementLowPriority {
-  /** Extracts the name and [[BSONValue]] if `that`'s a [[BSONElement]]. */
+  /**
+   * Extracts the name and [[BSONValue]] if `that`'s a [[BSONElement]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONElement }
+   *
+   * def foo(doc: BSONDocument): Unit = doc.elements.foreach {
+   *   case BSONElement(name, bson) => println(s"- " + name + " = " + bson)
+   * }
+   * }}}
+   */
   def unapply(that: Any): Option[(String, BSONValue)] = that match {
     case elmt: BSONElement => Some(elmt.name -> elmt.value)
     case _ => None
   }
 
-  /** Create a new [[BSONElement]]. */
+  /**
+   * Create a new [[BSONElement]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONElement, BSONLong }
+   *
+   * BSONElement("name", BSONLong(2L))
+   * }}}
+   */
   def apply(name: String, value: BSONValue): BSONElement =
     new DefaultElement(name, value)
 
@@ -1925,6 +2172,13 @@ object BSONElement extends BSONElementLowPriority {
 private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
   /**
    * Returns a [[ElementProducer]] for the given name and value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONElement, ElementProducer }
+   *
+   * val e1: ElementProducer = BSONElement("name1", 1) // BSONInteger
+   * val e2 = BSONElement("name2", "foo") // BSONString
+   * }}}
    */
   def apply[T](name: String, value: T)(implicit ev: T => Producer[BSONValue]): ElementProducer = {
     val produced = ev(value).generate()
@@ -1944,11 +2198,10 @@ private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
   // Conversions
   /**
    * {{{
-   * import reactivemongo.api.bson.{ BSONDocument, BSONInteger }
+   * import reactivemongo.api.bson.{ BSONElement, BSONInteger }
    *
-   * BSONDocument(
-   *   "foo" -> BSONInteger(1) // tuple as BSONElement("foo", BSONInteger(1))
-   * )
+   * val e: BSONElement = "foo" -> BSONInteger(1)
+   * // tuple as BSONElement("foo", BSONInteger(1))
    * }}}
    */
   implicit def bsonTuple2BSONElement(pair: (String, BSONValue)): BSONElement =

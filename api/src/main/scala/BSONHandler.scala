@@ -2,6 +2,21 @@ package reactivemongo.api.bson
 
 import scala.util.Try
 
+/**
+ * A BSON handler is able to both read and write `T` values
+ * from/to BSON representation.
+ *
+ * {{{
+ * import scala.util.Try
+ * import reactivemongo.api.bson.{ BSONHandler, BSONValue }
+ *
+ * def roundtrip[T](value: T)(implicit handler: BSONHandler[T]): Try[Boolean] =
+ *   for {
+ *     bson: BSONValue <- handler.writeTry(value)
+ *     dser <- handler.readTry(bson)
+ *   } yield (dser == value) // true
+ * }}}
+ */
 trait BSONHandler[T] extends BSONReader[T] with BSONWriter[T] {
   final def as[R](to: T => R, from: R => T): BSONHandler[R] =
     new BSONHandler.MappedHandler(this, to, from)
