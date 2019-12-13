@@ -20,16 +20,51 @@ package reactivemongo.api
 package object bson extends DefaultBSONHandlers with Aliases with Utils {
   // DSL helpers:
 
-  /** Returns an empty document. */
+  /**
+   * Returns an empty document.
+   *
+   * {{{
+   * import reactivemongo.api.bson._
+   *
+   * val doc = document ++ ("foo" -> 1)
+   * // { 'foo': 1 }
+   * }}}
+   */
   def document = BSONDocument.empty
 
-  /** Returns a document with given elements. */
+  /**
+   * Returns a document with given elements.
+   *
+   * {{{
+   * import reactivemongo.api.bson._
+   *
+   * val doc = document("foo" -> 1)
+   * // { 'foo': 1 }
+   * }}}
+   */
   def document(elements: ElementProducer*) = BSONDocument(elements: _*)
 
-  /** Returns an empty array. */
+  /**
+   * Returns an empty array.
+   *
+   * {{{
+   * import reactivemongo.api.bson._
+   *
+   * val arr1 = BSONString("bar") +: array // [ 'bar' ]
+   * val arr2 = BSONInteger(1) +: arr1 // [ 1, 'bar' ]
+   * }}}
+   */
   def array = BSONArray.empty
 
-  /** Returns an array with given values. */
+  /**
+   * Returns an array with given values.
+   *
+   * {{{
+   * import reactivemongo.api.bson._
+   *
+   * val arr = array("bar", 1L) // [ 'bar', NumberLong(1) ]
+   * }}}
+   */
   def array(values: Producer[BSONValue]*) = BSONArray(values: _*)
 
   /** Returns a newly generated object ID. */
