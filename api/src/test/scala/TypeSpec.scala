@@ -28,6 +28,21 @@ final class TypeSpec extends org.specs2.mutable.Specification {
         doc.contains("foo") must beTrue)
     }
 
+    "be created without duplicate element" in {
+      BSONDocument("foo" -> 1, "foo" -> 1) must_=== BSONDocument("foo" -> 1)
+    }
+
+    "be created without duplicate element name (strict)" in {
+      val expected = BSONDocument("foo" -> 1)
+
+      BSONDocument.strict(
+        "foo" -> 1, "foo" -> 2) must_=== expected and {
+          BSONDocument.strict(Seq(
+            "foo" -> BSONInteger(1),
+            "foo" -> BSONString("bar"))) must_=== expected
+        }
+    }
+
     "remove specified elements" in {
       val doc = BSONDocument("Foo" -> 1, "Bar" -> 2, "Lorem" -> 3)
 

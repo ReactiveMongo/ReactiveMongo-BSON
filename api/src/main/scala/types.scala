@@ -14,7 +14,7 @@ import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
 import scala.collection.mutable.{ HashMap => MMap }
-import scala.collection.immutable.{ HashMap, IndexedSeq }
+import scala.collection.immutable.{ HashMap, IndexedSeq, LinearSeq }
 
 import buffer._
 
@@ -1984,7 +1984,13 @@ private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
   }
 }
 
-/** [[BSONDocument]] factories & utilities */
+/**
+ * [[BSONDocument]] factories & utilities.
+ *
+ * @define elementsFactoryDescr Creates a new [[BSONDocument]] containing the unique elements from the given collection (only one instance of a same element, same name & value, is kept).
+ *
+ * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the first instance of element per name is kept).
+ */
 object BSONDocument {
   /**
    * Extracts the elements if `that`'s a [[BSONDocument]].
@@ -2004,7 +2010,7 @@ object BSONDocument {
   }
 
   /**
-   * Creates a new [[BSONDocument]] containing all the given elements.
+   * $elementsFactoryDescr
    *
    * {{{
    * reactivemongo.api.bson.BSONDocument(
@@ -2020,8 +2026,7 @@ object BSONDocument {
   }
 
   /**
-   * Creates a new [[BSONDocument]] containing all the elements
-   * in the given sequence.
+   * $elementsFactoryDescr
    *
    * {{{
    * import reactivemongo.api.bson._
@@ -2034,6 +2039,81 @@ object BSONDocument {
   def apply(elms: Iterable[(String, BSONValue)]): BSONDocument =
     new BSONDocument {
       val pairs = toLazy(elms).distinct
+      val elements = pairs.map {
+        case (k, v) => BSONElement(k, v)
+      }
+
+      lazy val fields = {
+        val m = MMap.empty[String, BSONValue]
+
+        pairs.foreach {
+          case (k, v) => m.put(k, v)
+        }
+
+        m.toMap
+      }
+
+      val isEmpty = elms.isEmpty
+
+      @inline def headOption = elements.headOption
+    }
+
+  /**
+   * '''EXPERIMENTAL:''' $strictFactoryDescr
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONDocument("foo" -> 1, "bar" -> 2, "foo" -> 3)
+   * // => { "foo": 1, "bar": 2 } : No "foo": 3
+   * }}}
+   */
+  def strict(elms: ElementProducer*): BSONDocument = new BSONDocument {
+    def init(in: LinearSeq[ElementProducer]): LinearSeq[BSONElement] = {
+      val ns = scala.collection.mutable.HashSet.empty[String]
+
+      in.flatMap(_.generate()).filter { elm =>
+        if (ns contains elm.name) {
+          false
+        } else {
+          ns += elm.name
+
+          true
+        }
+      }
+    }
+
+    val elements = init(toLazy(elms))
+    lazy val fields = BSONDocument.toMap(elements)
+    val isEmpty = elms.isEmpty
+    @inline def headOption = elements.headOption
+  }
+
+  /**
+   * '''EXPERIMENTAL:''' $strictFactoryDescr
+   *
+   * {{{
+   * import reactivemongo.api.bson._
+   *
+   * BSONDocument.strict(Seq(
+   *   "foo" -> BSONInteger(1), "foo" -> BSONString("lorem")))
+   * // { 'foo': 1 }
+   * }}}
+   */
+  def strict(elms: Iterable[(String, BSONValue)]): BSONDocument =
+    new BSONDocument {
+      def init(in: LinearSeq[(String, BSONValue)]): LinearSeq[(String, BSONValue)] = {
+        val ns = scala.collection.mutable.HashSet.empty[String]
+
+        in.filter { elm =>
+          if (ns contains elm._1) {
+            false
+          } else {
+            ns += elm._1
+            true
+          }
+        }
+      }
+
+      val pairs = init(toLazy(elms))
       val elements = pairs.map {
         case (k, v) => BSONElement(k, v)
       }
