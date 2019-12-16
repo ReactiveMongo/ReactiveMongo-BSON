@@ -27,4 +27,6 @@ private[bson] trait Utils {
 
   @inline private[bson] def mapValues[K, V, U](m: Map[K, V])(f: V => U) =
     m.view.mapValues(f).toMap
+
+  @inline private[bson] def filterKeys[K, V](m: Map[K, V])(f: K => Boolean) = m.view.filterKeys(f)
 }

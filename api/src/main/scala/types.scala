@@ -13,7 +13,7 @@ import scala.language.implicitConversions
 import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
-import scala.collection.mutable.{ HashMap => MMap }
+import scala.collection.mutable.{ HashMap => MMap, HashSet => MSet }
 import scala.collection.immutable.{ HashMap, IndexedSeq, LinearSeq }
 
 import buffer._
@@ -1687,7 +1687,7 @@ sealed abstract class BSONDocument
    * doc1 ++ doc2 // { 'foo': 1, 'bar': 'lorem' }
    * }}}
    */
-  final def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
+  def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
     lazy val fields: Map[String, BSONValue] = self.fields ++ doc.fields
 
     val elements =
@@ -1712,7 +1712,7 @@ sealed abstract class BSONDocument
    * // { 'foo': 1, 'bar': 'lorem' }
    * }}}
    */
-  final def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
+  def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
     val elements = (toLazy(self.elements) ++ toLazy(seq)).distinct
 
     lazy val fields = {
@@ -1963,7 +1963,7 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
 
 }
 
-private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
+private[bson] sealed trait BSONDocumentLowPriority { self: BSONDocument =>
   /**
    * Creates a new [[BSONDocument]] containing all the elements
    * of this one and the specified element producers.
@@ -1977,11 +1977,71 @@ private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
    * }}}
    */
   def ++(producers: ElementProducer*): BSONDocument = new BSONDocument {
-    val elements = toLazy(producers).flatMap(_.generate()).distinct
-    lazy val fields = BSONDocument.toMap(producers)
-    val isEmpty = producers.isEmpty
-    @inline def headOption = elements.headOption
+    val elements = (toLazy(self.elements) ++ toLazy(
+      producers).flatMap(_.generate())).distinct
+
+    lazy val fields = BSONDocument.toMap(elements)
+
+    val isEmpty = self.elements.isEmpty && producers.isEmpty
+    @inline def headOption = self.elements.headOption
   }
+}
+
+private[bson] sealed trait BSONStrictDocument
+  extends BSONStrictDocumentLowPriority { self: BSONDocument =>
+
+  private def dedupElements(in: LinearSeq[BSONElement]): LinearSeq[BSONElement] = {
+    val ns = MSet.empty[String]
+
+    in.filter { ns add _.name }
+  }
+
+  final override def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
+    lazy val fields: Map[String, BSONValue] =
+      self.fields ++ filterKeys(doc.fields) { !self.contains(_) }
+
+    val elements = dedupElements(toLazy(self.elements) ++ toLazy(doc.elements))
+
+    @inline def headOption = self.headOption
+    val isEmpty = self.isEmpty && doc.isEmpty
+  }
+
+  final override def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
+    val elements = dedupElements(toLazy(self.elements) ++ toLazy(seq))
+
+    lazy val fields = {
+      val m = MMap.empty[String, BSONValue]
+
+      m ++= self.fields
+
+      seq.foreach {
+        case BSONElement(name, value) =>
+          if (!self.fields.contains(name)) {
+            m.put(name, value)
+          }
+      }
+
+      m.toMap
+    }
+
+    @inline def headOption = self.headOption
+    val isEmpty = self.isEmpty && seq.isEmpty
+  }
+}
+
+private[bson] sealed trait BSONStrictDocumentLowPriority {
+  self: BSONDocument with BSONStrictDocument =>
+
+  final override def ++(producers: ElementProducer*): BSONDocument =
+    new BSONDocument {
+      val elements = BSONDocument.dedupProducers(
+        toLazy(self.elements) ++ toLazy(producers).flatMap(_.generate()))
+
+      lazy val fields = BSONDocument.toMap(elements)
+
+      val isEmpty = self.elements.isEmpty && producers.isEmpty
+      @inline def headOption = self.elements.headOption
+    }
 }
 
 /**
@@ -1989,7 +2049,7 @@ private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
  *
  * @define elementsFactoryDescr Creates a new [[BSONDocument]] containing the unique elements from the given collection (only one instance of a same element, same name & value, is kept).
  *
- * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the first instance of element per name is kept).
+ * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the first instance of element per name is kept). Then append operations on such document will maintain element unicity by field name.
  */
 object BSONDocument {
   /**
@@ -2066,26 +2126,13 @@ object BSONDocument {
    * // => { "foo": 1, "bar": 2 } : No "foo": 3
    * }}}
    */
-  def strict(elms: ElementProducer*): BSONDocument = new BSONDocument {
-    def init(in: LinearSeq[ElementProducer]): LinearSeq[BSONElement] = {
-      val ns = scala.collection.mutable.HashSet.empty[String]
-
-      in.flatMap(_.generate()).filter { elm =>
-        if (ns contains elm.name) {
-          false
-        } else {
-          ns += elm.name
-
-          true
-        }
-      }
+  def strict(elms: ElementProducer*): BSONDocument =
+    new BSONDocument with BSONStrictDocument {
+      val elements = dedupProducers(toLazy(elms))
+      lazy val fields = BSONDocument.toMap(elements)
+      val isEmpty = elms.isEmpty
+      @inline def headOption = elements.headOption
     }
-
-    val elements = init(toLazy(elms))
-    lazy val fields = BSONDocument.toMap(elements)
-    val isEmpty = elms.isEmpty
-    @inline def headOption = elements.headOption
-  }
 
   /**
    * '''EXPERIMENTAL:''' $strictFactoryDescr
@@ -2099,21 +2146,14 @@ object BSONDocument {
    * }}}
    */
   def strict(elms: Iterable[(String, BSONValue)]): BSONDocument =
-    new BSONDocument {
-      def init(in: LinearSeq[(String, BSONValue)]): LinearSeq[(String, BSONValue)] = {
-        val ns = scala.collection.mutable.HashSet.empty[String]
+    new BSONDocument with BSONStrictDocument {
+      def dedup(in: LinearSeq[(String, BSONValue)]): LinearSeq[(String, BSONValue)] = {
+        val ns = MSet.empty[String]
 
-        in.filter { elm =>
-          if (ns contains elm._1) {
-            false
-          } else {
-            ns += elm._1
-            true
-          }
-        }
+        in.filter { ns add _._1 }
       }
 
-      val pairs = init(toLazy(elms))
+      val pairs = dedup(toLazy(elms))
       val elements = pairs.map {
         case (k, v) => BSONElement(k, v)
       }
@@ -2172,6 +2212,20 @@ object BSONDocument {
     val isEmpty = true
     override val size = 0
     val headOption = Option.empty[BSONElement]
+  }
+
+  private[bson] def dedupProducers(in: LinearSeq[ElementProducer]): LinearSeq[BSONElement] = {
+    val ns = MSet.empty[String]
+
+    in.flatMap(_.generate()).filter { elm =>
+      if (ns contains elm.name) {
+        false
+      } else {
+        ns += elm.name
+
+        true
+      }
+    }
   }
 }
 

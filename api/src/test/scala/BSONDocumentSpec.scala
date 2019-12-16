@@ -33,35 +33,37 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
   "append" should {
     "update list and map representation" in {
+      implicit def ord = Ord
+
       def spec(doc: BSONDocument, expected: BSONDocument) = {
-        val a = doc ++ BSONDocument("ipsum" -> 4)
-        val b = doc ++ ("ipsum" -> 4)
-        val c = doc ++ BSONElement("ipsum", BSONInteger(4))
+        val a = doc ++ BSONDocument("foo" -> 4)
+        val b = doc ++ ("foo" -> 4)
+        val c = doc ++ BSONElement("foo", BSONInteger(4))
 
         a must_=== expected and {
-          a.toMap.toSeq must_=== a.elements.map {
+          a.toMap.toSeq.sorted aka "a repr" must_=== a.elements.map {
             case BSONElement(k, v) => k -> v
-          }.toSeq
+          }.toSeq.sorted
         } and {
           b must_=== expected
         } and {
-          b.toMap.toSeq must_=== b.elements.map {
+          b.toMap.toSeq.sorted aka "b repr" must_=== b.elements.map {
             case BSONElement(k, v) => k -> v
-          }.toSeq
+          }.toSeq.sorted
         } and {
           c must_=== expected
         } and {
-          c.toMap.toSeq must_=== c.elements.map {
+          c.toMap.toSeq.sorted aka "c repr" must_=== c.elements.map {
             case BSONElement(k, v) => k -> v
-          }.toSeq
+          }.toSeq.sorted
         }
       }
 
       spec(doc1, BSONDocument(
-        "Foo" -> 1, "Bar" -> 2, "Lorem" -> 3, "ipsum" -> 4)) and {
-        spec(strict1, BSONDocument("foo" -> 1, "ipsum" -> 4))
+        "Foo" -> 1, "Bar" -> 2, "Lorem" -> 3, "foo" -> 4)) and {
+        spec(strict1, BSONDocument("foo" -> 1))
       } and {
-        spec(strict2, BSONDocument("foo" -> 1, "ipsum" -> 4))
+        spec(strict2, BSONDocument("foo" -> 1))
       }
     }
   }
@@ -84,4 +86,8 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
     "foo" -> BSONInteger(1),
     "foo" -> BSONString("bar")))
 
+  private object Ord extends scala.math.Ordering[(String, BSONValue)] {
+    def compare(x: (String, BSONValue), y: (String, BSONValue)): Int =
+      x._1 compare y._1
+  }
 }
