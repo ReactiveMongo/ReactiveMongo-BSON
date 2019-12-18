@@ -1966,17 +1966,17 @@ private[bson] sealed trait BSONDocumentExperimental { self: BSONDocument =>
 
   /**
    * '''EXPERIMENTAL:''' Returns a strict representation
-   * (with only the first value kept per each field name).
+   * (with only the last value kept per each field name).
    *
    * {{{
    * reactivemongo.api.bson.BSONDocument(
    *   "foo" -> 1, "bar" -> 2, "foo" -> 3).asStrict
-   * // { 'foo': 1, 'bar': 2 }
+   * // { 'foo': 3, 'bar': 2 }
    * }}}
    */
   def asStrict: BSONDocument with BSONStrictDocument = {
     val ns = MSet.empty[String]
-    val elms = self.elements.filter { ns add _.name }
+    val elms = self.elements.reverse.filter { ns add _.name }.reverse
 
     new BSONDocument with BSONStrictDocument {
       val elements = elms

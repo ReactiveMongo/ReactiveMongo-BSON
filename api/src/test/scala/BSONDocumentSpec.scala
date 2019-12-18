@@ -42,13 +42,13 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
   "strict representation" should {
     "be updated without duplicate field" in {
-      val s = BSONDocument.strict("Foo" -> 1, "Bar" -> 2, "Lorem" -> 3)
-      val x = (doc1 ++ ("Foo" -> 1)).asStrict
+      val s = BSONDocument.strict("Bar" -> 2, "Lorem" -> 3, "Foo" -> "other")
+      val x = (doc1 ++ ("Foo" -> "other")).asStrict
 
       eqSpec(x, "dedup'ed as", s) and {
         eqSpec(
           doc1.asStrict /* no duplicate there at least*/ ,
-          "with strict type", s)
+          "with strict type", doc1)
       }
     }
 
