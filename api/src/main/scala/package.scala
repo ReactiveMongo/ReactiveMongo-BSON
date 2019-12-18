@@ -84,4 +84,21 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
 
     def provided[T](implicit r: BSONDocumentReader[T], w: BSONDocumentWriter[T]): BSONDocumentHandler[T] = new DefaultDocumentHandler[T](r, w)
   }
+
+  /**
+   * Key/value ordering
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONString
+   *
+   * Seq("foo" -> BSONString("1"), "bar" -> BSONString("1")).
+   *   sorted // == [ "bar" -> .., "foo" -> .. ]
+   * }}}
+   */
+  implicit def nameValueOrdering[T <: BSONValue] =
+    new scala.math.Ordering[(String, T)] {
+
+      def compare(x: (String, T), y: (String, T)): Int =
+        x._1 compare y._1
+    }
 }

@@ -496,7 +496,7 @@ sealed abstract class BSONArray extends BSONValue {
     case Some(v) => reader.readTry(v).map(Some(_))
   }
 
-  private[bson] def copy(values: IndexedSeq[BSONValue] = this.values): BSONArray = BSONArray(values)
+  private[bson] final def copy(values: IndexedSeq[BSONValue] = this.values): BSONArray = BSONArray(values)
 
   override def equals(that: Any): Boolean = that match {
     case other: BSONArray => {
@@ -1743,7 +1743,7 @@ sealed abstract class BSONDocument
    * doc -- "bar" // { 'foo': 1 }
    * }}}
    */
-  final def --(keys: String*): BSONDocument = new BSONDocument {
+  def --(keys: String*): BSONDocument = new BSONDocument {
     val fields = self.fields -- keys
     lazy val elements = self.elements.filterNot { e => keys.contains(e.name) }
     @inline def headOption = elements.headOption
@@ -1886,9 +1886,12 @@ sealed abstract class BSONDocument
   }
 }
 
-private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
+/**
+ * @define getFieldIf '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is
+ */
+private[bson] sealed trait BSONDocumentExperimental { self: BSONDocument =>
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is an array field.
+   * $getFieldIf an array field.
    */
   def array(name: String): Option[Seq[BSONValue]] =
     get(name).collect {
@@ -1898,13 +1901,13 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
   final def values[T](name: String)(implicit r: BSONReader[T]): Option[Seq[T]] = document.getAsOpt[Seq[T]](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a binary field.
+   * $getFieldIf a binary field.
    */
   def binary(name: String): Option[Array[Byte]] =
     getAsOpt[Array[Byte]](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a boolean-like field
+   * $getFieldIf a boolean-like field
    * (numeric or boolean).
    */
   def booleanLike(name: String): Option[Boolean] =
@@ -1912,14 +1915,14 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
       flatMap(_.toBoolean).toOption
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a nested document.
+   * $getFieldIf a nested document.
    */
   def child(name: String): Option[BSONDocument] = get(name).collect {
     case doc: BSONDocument => doc
   }
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a list of nested documents.
+   * $getFieldIf a list of nested documents.
    */
   def children(name: String): List[BSONDocument] =
     get(name).toList.flatMap {
@@ -1933,27 +1936,27 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
     }
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a double field.
+   * $getFieldIf a double field.
    */
   def double(name: String): Option[Double] = getAsOpt[Double](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a integer field.
+   * $getFieldIf a integer field.
    */
   def int(name: String): Option[Int] = getAsOpt[Int](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a long field.
+   * $getFieldIf a long field.
    */
   def long(name: String): Option[Long] = getAsOpt[Long](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a string field.
+   * $getFieldIf a string field.
    */
   def string(name: String): Option[String] = getAsOpt[String](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a binary/uuid field.
+   * $getFieldIf a binary/uuid field.
    */
   def uuid(name: String): Option[UUID] =
     document.getAsOpt[BSONBinary](name).collect { // TODO: As BSONReader?
@@ -1961,6 +1964,27 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
         UUID.nameUUIDFromBytes(bin.byteArray)
     }
 
+  /**
+   * '''EXPERIMENTAL:''' Returns a strict representation
+   * (with only the first value kept per each field name).
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONDocument(
+   *   "foo" -> 1, "bar" -> 2, "foo" -> 3).asStrict
+   * // { 'foo': 1, 'bar': 2 }
+   * }}}
+   */
+  def asStrict: BSONDocument with BSONStrictDocument = {
+    val ns = MSet.empty[String]
+    val elms = self.elements.filter { ns add _.name }
+
+    new BSONDocument with BSONStrictDocument {
+      val elements = elms
+      lazy val fields = BSONDocument.toMap(elms)
+      val isEmpty = elms.isEmpty
+      @inline def headOption = self.elements.headOption
+    }
+  }
 }
 
 private[bson] sealed trait BSONDocumentLowPriority { self: BSONDocument =>
@@ -1987,27 +2011,58 @@ private[bson] sealed trait BSONDocumentLowPriority { self: BSONDocument =>
   }
 }
 
-private[bson] sealed trait BSONStrictDocument
+/**
+ * '''EXPERIMENTAL:''' Strict documentation representation with at most
+ * one value per field name (no duplicate).
+ *
+ * {{{
+ * import reactivemongo.api.bson.BSONDocument
+ *
+ * def strict1 = // { 'foo': 1 }
+ *   BSONDocument.strict("foo" -> 1, "foo" -> 2)
+ *
+ * def strict2 = BSONDocument("foo" -> 1, "foo" -> 2).asStrict
+ *
+ * assert(strict1 == strict2)
+ * }}}
+ */
+sealed trait BSONStrictDocument
   extends BSONStrictDocumentLowPriority { self: BSONDocument =>
 
-  private def dedupElements(in: LinearSeq[BSONElement]): LinearSeq[BSONElement] = {
-    val ns = MSet.empty[String]
-
-    in.filter { ns add _.name }
-  }
-
+  /**
+   * Concatenate the two documents, maintaining field unicity
+   * by keeping only the last value per each name.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument("foo" -> 1, "bar" -> 2) ++ BSONDocument("foo" -> 4)
+   * // { 'foo': 4, 'bar': 2 }
+   * }}}
+   */
   final override def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
-    lazy val fields: Map[String, BSONValue] =
-      self.fields ++ filterKeys(doc.fields) { !self.contains(_) }
+    lazy val fields: Map[String, BSONValue] = self.fields ++ doc.fields
 
-    val elements = dedupElements(toLazy(self.elements) ++ toLazy(doc.elements))
+    val elements = BSONDocument.dedupElements(
+      toLazy(self.elements) ++ toLazy(doc.elements))
 
     @inline def headOption = self.headOption
     val isEmpty = self.isEmpty && doc.isEmpty
   }
 
+  /**
+   * Appends the given elements to the current document,
+   * or update the value for an already known field to maintain unicity.
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONDocument(
+   *   "foo" -> 1, "bar" -> 2) ++ ("foo" -> 4)
+   * // { 'foo': 4, 'bar': 2 }
+   * }}}
+   */
   final override def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
-    val elements = dedupElements(toLazy(self.elements) ++ toLazy(seq))
+    val elements = BSONDocument.dedupElements(
+      toLazy(self.elements) ++ toLazy(seq))
 
     lazy val fields = {
       val m = MMap.empty[String, BSONValue]
@@ -2015,10 +2070,7 @@ private[bson] sealed trait BSONStrictDocument
       m ++= self.fields
 
       seq.foreach {
-        case BSONElement(name, value) =>
-          if (!self.fields.contains(name)) {
-            m.put(name, value)
-          }
+        case BSONElement(name, value) => m.put(name, value)
       }
 
       m.toMap
@@ -2027,6 +2079,16 @@ private[bson] sealed trait BSONStrictDocument
     @inline def headOption = self.headOption
     val isEmpty = self.isEmpty && seq.isEmpty
   }
+
+  final override def --(keys: String*): BSONDocument =
+    new BSONDocument with BSONStrictDocument {
+      val fields = self.fields -- keys
+      lazy val elements = self.elements.filterNot { e => keys.contains(e.name) }
+      @inline def headOption = elements.headOption
+      val isEmpty = fields.isEmpty
+    }
+
+  final override val asStrict: BSONDocument with BSONStrictDocument = this
 }
 
 private[bson] sealed trait BSONStrictDocumentLowPriority {
@@ -2049,7 +2111,7 @@ private[bson] sealed trait BSONStrictDocumentLowPriority {
  *
  * @define elementsFactoryDescr Creates a new [[BSONDocument]] containing the unique elements from the given collection (only one instance of a same element, same name & value, is kept).
  *
- * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the first instance of element per name is kept). Then append operations on such document will maintain element unicity by field name.
+ * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the last is kept for a same name). Then append operations on such document will maintain element unicity by field name (see `BSONStrictDocument.++`).
  */
 object BSONDocument {
   /**
@@ -2147,13 +2209,12 @@ object BSONDocument {
    */
   def strict(elms: Iterable[(String, BSONValue)]): BSONDocument =
     new BSONDocument with BSONStrictDocument {
-      def dedup(in: LinearSeq[(String, BSONValue)]): LinearSeq[(String, BSONValue)] = {
+      val pairs = {
         val ns = MSet.empty[String]
 
-        in.filter { ns add _._1 }
+        toLazy(elms).reverse.filter { ns add _._1 }.reverse
       }
 
-      val pairs = dedup(toLazy(elms))
       val elements = pairs.map {
         case (k, v) => BSONElement(k, v)
       }
@@ -2190,6 +2251,28 @@ object BSONDocument {
     @inline def headOption = elements.headOption
   }
 
+  /** Internal (optimized/eager) strict factory. */
+  private[bson] def strict(
+    elms: Seq[BSONElement],
+    fs: Map[String, BSONValue]): BSONDocument with BSONStrictDocument =
+    new BSONDocument with BSONStrictDocument {
+      val elements = elms
+      lazy val fields = fs
+      val isEmpty = elms.isEmpty
+      @inline def headOption = elements.headOption
+    }
+
+  /** An empty BSONDocument. */
+  val empty: BSONDocument = new BSONDocument {
+    val fields = HashMap.empty[String, BSONValue]
+    val elements = Seq.empty[BSONElement]
+    val isEmpty = true
+    override val size = 0
+    val headOption = Option.empty[BSONElement]
+  }
+
+  // ---
+
   private[bson] def toMap(seq: Iterable[ElementProducer]): Map[String, BSONValue] = {
     val m = MMap.empty[String, BSONValue]
 
@@ -2205,27 +2288,30 @@ object BSONDocument {
     m.toMap
   }
 
-  /** An empty BSONDocument. */
-  val empty: BSONDocument = new BSONDocument {
-    val fields = HashMap.empty[String, BSONValue]
-    val elements = Seq.empty[BSONElement]
-    val isEmpty = true
-    override val size = 0
-    val headOption = Option.empty[BSONElement]
+  private[bson] def dedupElements(in: Seq[BSONElement]): IndexedSeq[BSONElement] = {
+    var elms = scala.collection.mutable.IndexedSeq.empty[BSONElement]
+    val indexes = MMap.empty[String, Int]
+
+    var i = -1
+    in.foreach { elm =>
+      i += 1
+
+      val idx = indexes.getOrElseUpdate(elm.name, i)
+
+      if (idx == i) { // new field name
+        elms = elms.padTo(idx + 1, elm)
+      } else { // update field
+        elms.update(idx, elm)
+      }
+    }
+
+    elms.toIndexedSeq
   }
 
   private[bson] def dedupProducers(in: LinearSeq[ElementProducer]): LinearSeq[BSONElement] = {
     val ns = MSet.empty[String]
 
-    in.flatMap(_.generate()).filter { elm =>
-      if (ns contains elm.name) {
-        false
-      } else {
-        ns += elm.name
-
-        true
-      }
-    }
+    in.flatMap(_.generate()).reverse.filter { ns add _.name }.reverse
   }
 }
 
