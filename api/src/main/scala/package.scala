@@ -1,6 +1,8 @@
 package reactivemongo.api
 
 /**
+ * BSON main API
+ *
  * {{{
  * import reactivemongo.api.bson._
  *
@@ -16,6 +18,13 @@ package reactivemongo.api
  *   "details" -> document(
  *     "salary" -> 12345L, "inventory" -> array("foo", 7.8, 0L, false)))
  * }}}
+ *
+ * '''System properties:'''
+ *
+ * The following properties can be set (e.g. using `-D` option).
+ *
+ *   - `reactivemongo.api.bson.bufferSizeBytes` (integer; default: `96`): Number of bytes used as initial size when allocating a new buffer.
+ *   - `reactivemongo.api.bson.document.strict` (boolean; default: `false`): Flag to enable strict reading of document (filter duplicate fields, see [[BSONDocument]]).
  */
 package object bson extends DefaultBSONHandlers with Aliases with Utils {
   // DSL helpers:
@@ -84,4 +93,21 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
 
     def provided[T](implicit r: BSONDocumentReader[T], w: BSONDocumentWriter[T]): BSONDocumentHandler[T] = new DefaultDocumentHandler[T](r, w)
   }
+
+  /**
+   * Key/value ordering
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONString
+   *
+   * Seq("foo" -> BSONString("1"), "bar" -> BSONString("1")).
+   *   sorted // == [ "bar" -> .., "foo" -> .. ]
+   * }}}
+   */
+  implicit def nameValueOrdering[T <: BSONValue] =
+    new scala.math.Ordering[(String, T)] {
+
+      def compare(x: (String, T), y: (String, T)): Int =
+        x._1 compare y._1
+    }
 }

@@ -27,14 +27,6 @@ final class TypeSpec extends org.specs2.mutable.Specification {
       doc must_=== BSONDocument("foo" -> 1) and (
         doc.contains("foo") must beTrue)
     }
-
-    "remove specified elements" in {
-      val doc = BSONDocument("Foo" -> 1, "Bar" -> 2, "Lorem" -> 3)
-
-      (doc -- ("Bar", "Lorem") must_=== BSONDocument("Foo" -> 1)) and
-        (doc -- ("Foo", "Bar") must_=== BSONDocument("Lorem" -> 3)) and
-        (doc -- ("Bar") contains ("Foo") must beTrue)
-    }
   }
 
   "BSON array" should {

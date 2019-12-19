@@ -13,8 +13,8 @@ import scala.language.implicitConversions
 import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
-import scala.collection.mutable.{ HashMap => MMap }
-import scala.collection.immutable.{ HashMap, IndexedSeq }
+import scala.collection.mutable.{ HashMap => MMap, HashSet => MSet }
+import scala.collection.immutable.{ HashMap, IndexedSeq, LinearSeq }
 
 import buffer._
 
@@ -256,9 +256,31 @@ final class BSONDouble private[bson] (val value: Double)
   override def toString: String = s"BSONDouble($value)"
 }
 
-/** [[BSONDouble]] factories */
+/**
+ * [[BSONDouble]] utilities
+ *
+ * {{{
+ * import reactivemongo.api.bson.BSONDouble
+ *
+ * BSONDouble(1.23D) match {
+ *   case BSONDouble(v) => assert(v == 1.23D)
+ *   case _ => ???
+ * }
+ * }}}
+ */
 object BSONDouble {
-  /** Extracts the double value if `that`'s a [[BSONDouble]]. */
+  /**
+   * Extracts the double value if `that`'s a [[BSONDouble]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDouble, BSONValue }
+   *
+   * def patMat(v: BSONValue): Boolean = v match {
+   *   case BSONDouble(v) => v > 0D
+   *   case _ => false
+   * }
+   * }}}
+   */
   def unapply(that: Any): Option[Double] = that match {
     case bson: BSONDouble => Some(bson.value)
     case _ => None
@@ -300,7 +322,18 @@ final class BSONString private[bson] (val value: String) extends BSONValue {
   override def toString: String = s"BSONString($value)"
 }
 
-/** [[BSONString]] factories */
+/**
+ * [[BSONString]] utilities
+ *
+ * {{{
+ * import reactivemongo.api.bson.BSONString
+ *
+ * BSONString("foo") match {
+ *   case BSONString(v) => v == "foo"
+ *   case _ => false
+ * }
+ * }}}
+ */
 object BSONString {
   /**
    * Extracts the string value if `that`'s a [[BSONString]].
@@ -496,7 +529,7 @@ sealed abstract class BSONArray extends BSONValue {
     case Some(v) => reader.readTry(v).map(Some(_))
   }
 
-  private[bson] def copy(values: IndexedSeq[BSONValue] = this.values): BSONArray = BSONArray(values)
+  private[bson] final def copy(values: IndexedSeq[BSONValue] = this.values): BSONArray = BSONArray(values)
 
   override def equals(that: Any): Boolean = that match {
     case other: BSONArray => {
@@ -518,7 +551,20 @@ sealed abstract class BSONArray extends BSONValue {
     }
 }
 
-/** See [[BSONArray]] */
+/**
+ * [[BSONArray]] utilities
+ *
+ * {{{
+ * import reactivemongo.api.bson.{ BSONArray, BSONString }
+ *
+ * BSONArray("foo", 1) match {
+ *   case BSONArray(BSONString(s) +: _) => s == "foo"
+ *   case _ => false
+ * }
+ * }}}
+ *
+ * @define factoryDescr Creates a new [[BSONArray]] containing all the `values`
+ */
 object BSONArray {
   /**
    * Extracts the values sequence if `that`'s a [[BSONArray]].
@@ -551,7 +597,14 @@ object BSONArray {
     case _ => None
   }
 
-  /** Creates a new [[BSONArray]] containing all the given `values`. */
+  /**
+   * $factoryDescr.
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONArray("foo", 1L)
+   * // [ 'foo', NumberLong(1) ]
+   * }}}
+   */
   def apply(values: Producer[BSONValue]*): BSONArray = {
     def init = {
       val vs = IndexedSeq.newBuilder[BSONValue]
@@ -569,8 +622,14 @@ object BSONArray {
   }
 
   /**
-   * Creates a new [[BSONArray]] containing all the `values`
-   * in the given `Iterable`.
+   * $factoryDescr in the given sequence.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONArray, BSONLong, BSONString }
+   *
+   * BSONArray(Seq(BSONString("foo"), BSONLong(1L)))
+   * // [ 'foo', NumberLong(1) ]
+   * }}}
    */
   def apply(values: IndexedSeq[BSONValue]): BSONArray = {
     def init = values
@@ -581,8 +640,14 @@ object BSONArray {
   }
 
   /**
-   * Creates a new [[BSONArray]] containing all the `values`
-   * in the given `Iterable`.
+   * $factoryDescr in the given `Iterable`.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONArray, BSONLong, BSONString }
+   *
+   * BSONArray(List(BSONString("foo"), BSONLong(1L)))
+   * // [ 'foo', NumberLong(1) ]
+   * }}}
    */
   def apply(values: BaseColl[BSONValue]): BSONArray = {
     def init = values.toIndexedSeq
@@ -592,11 +657,30 @@ object BSONArray {
     }
   }
 
-  /** Returns a String representing the given [[BSONArray]]. */
+  /**
+   * Returns a String representing the given [[BSONArray]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONArray
+   *
+   * BSONArray pretty BSONArray("foo", 1L)
+   * // "[ 'foo', NumberLong(1) ]"
+   * }}}
+   */
   def pretty(array: BSONArray): String =
     s"[\n${BSONIterator.pretty(0, array.values)}\n]"
 
-  /** An empty BSONArray. */
+  /**
+   * An empty BSONArray.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONArray, BSONString }
+   *
+   * val initial = BSONArray.empty // []
+   *
+   * initial ++ BSONString("lorem") // [ 'lorem' ]
+   * }}}
+   */
   val empty: BSONArray = BSONArray(IndexedSeq.empty[BSONValue])
 }
 
@@ -643,6 +727,7 @@ final class BSONBinary private[bson] (
     s"BSONBinary(${subtype}, size = ${value.readable})"
 }
 
+/** [[BSONBinary]] utilities */
 object BSONBinary {
   /** Extracts the [[Subtype]] if `that`'s a [[BSONBinary]]. */
   def unapply(that: Any): Option[Subtype] = that match {
@@ -693,7 +778,7 @@ object BSONUndefined extends BSONUndefined {
 }
 
 /**
- * BSON ObjectId value.
+ * [[https://docs.mongodb.com/manual/reference/bson-types/#objectid BSON ObjectId]] value.
  *
  * | Timestamp (seconds) | Machine identifier | Thread identifier | Increment
  * | ---                 | ---                | ---               | ---
@@ -733,6 +818,7 @@ sealed abstract class BSONObjectID extends BSONValue {
   override lazy val hashCode: Int = Arrays.hashCode(raw)
 }
 
+/** [[BSONObjectID]] utilities */
 object BSONObjectID {
   private val maxCounterValue = 16777216
   private val increment = new java.util.concurrent.atomic.AtomicInteger(
@@ -1687,7 +1773,7 @@ sealed abstract class BSONDocument
    * doc1 ++ doc2 // { 'foo': 1, 'bar': 'lorem' }
    * }}}
    */
-  final def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
+  def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
     lazy val fields: Map[String, BSONValue] = self.fields ++ doc.fields
 
     val elements =
@@ -1712,7 +1798,7 @@ sealed abstract class BSONDocument
    * // { 'foo': 1, 'bar': 'lorem' }
    * }}}
    */
-  final def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
+  def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
     val elements = (toLazy(self.elements) ++ toLazy(seq)).distinct
 
     lazy val fields = {
@@ -1743,7 +1829,7 @@ sealed abstract class BSONDocument
    * doc -- "bar" // { 'foo': 1 }
    * }}}
    */
-  final def --(keys: String*): BSONDocument = new BSONDocument {
+  def --(keys: String*): BSONDocument = new BSONDocument {
     val fields = self.fields -- keys
     lazy val elements = self.elements.filterNot { e => keys.contains(e.name) }
     @inline def headOption = elements.headOption
@@ -1886,9 +1972,12 @@ sealed abstract class BSONDocument
   }
 }
 
-private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
+/**
+ * @define getFieldIf '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is
+ */
+private[bson] sealed trait BSONDocumentExperimental { self: BSONDocument =>
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is an array field.
+   * $getFieldIf an array field.
    */
   def array(name: String): Option[Seq[BSONValue]] =
     get(name).collect {
@@ -1898,13 +1987,13 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
   final def values[T](name: String)(implicit r: BSONReader[T]): Option[Seq[T]] = document.getAsOpt[Seq[T]](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a binary field.
+   * $getFieldIf a binary field.
    */
   def binary(name: String): Option[Array[Byte]] =
     getAsOpt[Array[Byte]](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a boolean-like field
+   * $getFieldIf a boolean-like field
    * (numeric or boolean).
    */
   def booleanLike(name: String): Option[Boolean] =
@@ -1912,14 +2001,14 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
       flatMap(_.toBoolean).toOption
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a nested document.
+   * $getFieldIf a nested document.
    */
   def child(name: String): Option[BSONDocument] = get(name).collect {
     case doc: BSONDocument => doc
   }
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a list of nested documents.
+   * $getFieldIf a list of nested documents.
    */
   def children(name: String): List[BSONDocument] =
     get(name).toList.flatMap {
@@ -1933,27 +2022,27 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
     }
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a double field.
+   * $getFieldIf a double field.
    */
   def double(name: String): Option[Double] = getAsOpt[Double](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a integer field.
+   * $getFieldIf a integer field.
    */
   def int(name: String): Option[Int] = getAsOpt[Int](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a long field.
+   * $getFieldIf a long field.
    */
   def long(name: String): Option[Long] = getAsOpt[Long](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a string field.
+   * $getFieldIf a string field.
    */
   def string(name: String): Option[String] = getAsOpt[String](name)
 
   /**
-   * '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is a binary/uuid field.
+   * $getFieldIf a binary/uuid field.
    */
   def uuid(name: String): Option[UUID] =
     document.getAsOpt[BSONBinary](name).collect { // TODO: As BSONReader?
@@ -1961,9 +2050,30 @@ private[bson] sealed trait BSONDocumentExperimental { _: BSONDocument =>
         UUID.nameUUIDFromBytes(bin.byteArray)
     }
 
+  /**
+   * '''EXPERIMENTAL:''' Returns a strict representation
+   * (with only the last value kept per each field name).
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONDocument(
+   *   "foo" -> 1, "bar" -> 2, "foo" -> 3).asStrict
+   * // { 'foo': 3, 'bar': 2 }
+   * }}}
+   */
+  def asStrict: BSONDocument with BSONStrictDocument = {
+    val ns = MSet.empty[String]
+    val elms = self.elements.reverse.filter { ns add _.name }.reverse
+
+    new BSONDocument with BSONStrictDocument {
+      val elements = elms
+      lazy val fields = BSONDocument.toMap(elms)
+      val isEmpty = elms.isEmpty
+      @inline def headOption = self.elements.headOption
+    }
+  }
 }
 
-private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
+private[bson] sealed trait BSONDocumentLowPriority { self: BSONDocument =>
   /**
    * Creates a new [[BSONDocument]] containing all the elements
    * of this one and the specified element producers.
@@ -1977,14 +2087,118 @@ private[bson] sealed trait BSONDocumentLowPriority { _: BSONDocument =>
    * }}}
    */
   def ++(producers: ElementProducer*): BSONDocument = new BSONDocument {
-    val elements = toLazy(producers).flatMap(_.generate()).distinct
-    lazy val fields = BSONDocument.toMap(producers)
-    val isEmpty = producers.isEmpty
-    @inline def headOption = elements.headOption
+    val elements = (toLazy(self.elements) ++ toLazy(
+      producers).flatMap(_.generate())).distinct
+
+    lazy val fields = BSONDocument.toMap(elements)
+
+    val isEmpty = self.elements.isEmpty && producers.isEmpty
+    @inline def headOption = self.elements.headOption
   }
 }
 
-/** [[BSONDocument]] factories & utilities */
+/**
+ * '''EXPERIMENTAL:''' Strict documentation representation with at most
+ * one value per field name (no duplicate).
+ *
+ * {{{
+ * import reactivemongo.api.bson.BSONDocument
+ *
+ * def strict1 = // { 'foo': 1 }
+ *   BSONDocument.strict("foo" -> 1, "foo" -> 2)
+ *
+ * def strict2 = BSONDocument("foo" -> 1, "foo" -> 2).asStrict
+ *
+ * assert(strict1 == strict2)
+ * }}}
+ */
+sealed trait BSONStrictDocument
+  extends BSONStrictDocumentLowPriority { self: BSONDocument =>
+
+  /**
+   * Concatenate the two documents, maintaining field unicity
+   * by keeping only the last value per each name.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument("foo" -> 1, "bar" -> 2) ++ BSONDocument("foo" -> 4)
+   * // { 'foo': 4, 'bar': 2 }
+   * }}}
+   */
+  final override def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
+    lazy val fields: Map[String, BSONValue] = self.fields ++ doc.fields
+
+    val elements = BSONDocument.dedupElements(
+      toLazy(self.elements) ++ toLazy(doc.elements))
+
+    @inline def headOption = self.headOption
+    val isEmpty = self.isEmpty && doc.isEmpty
+  }
+
+  /**
+   * Appends the given elements to the current document,
+   * or update the value for an already known field to maintain unicity.
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONDocument(
+   *   "foo" -> 1, "bar" -> 2) ++ ("foo" -> 4)
+   * // { 'foo': 4, 'bar': 2 }
+   * }}}
+   */
+  final override def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
+    val elements = BSONDocument.dedupElements(
+      toLazy(self.elements) ++ toLazy(seq))
+
+    lazy val fields = {
+      val m = MMap.empty[String, BSONValue]
+
+      m ++= self.fields
+
+      seq.foreach {
+        case BSONElement(name, value) => m.put(name, value)
+      }
+
+      m.toMap
+    }
+
+    @inline def headOption = self.headOption
+    val isEmpty = self.isEmpty && seq.isEmpty
+  }
+
+  final override def --(keys: String*): BSONDocument =
+    new BSONDocument with BSONStrictDocument {
+      val fields = self.fields -- keys
+      lazy val elements = self.elements.filterNot { e => keys.contains(e.name) }
+      @inline def headOption = elements.headOption
+      val isEmpty = fields.isEmpty
+    }
+
+  final override val asStrict: BSONDocument with BSONStrictDocument = this
+}
+
+private[bson] sealed trait BSONStrictDocumentLowPriority {
+  self: BSONDocument with BSONStrictDocument =>
+
+  final override def ++(producers: ElementProducer*): BSONDocument =
+    new BSONDocument {
+      val elements = BSONDocument.dedupProducers(
+        toLazy(self.elements) ++ toLazy(producers).flatMap(_.generate()))
+
+      lazy val fields = BSONDocument.toMap(elements)
+
+      val isEmpty = self.elements.isEmpty && producers.isEmpty
+      @inline def headOption = self.elements.headOption
+    }
+}
+
+/**
+ * [[BSONDocument]] factories & utilities.
+ *
+ * @define elementsFactoryDescr Creates a new [[BSONDocument]] containing the unique elements from the given collection (only one instance of a same element, same name & value, is kept).
+ *
+ * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the last is kept for a same name). Then append operations on such document will maintain element unicity by field name (see `BSONStrictDocument.++`).
+ */
 object BSONDocument {
   /**
    * Extracts the elements if `that`'s a [[BSONDocument]].
@@ -2004,7 +2218,7 @@ object BSONDocument {
   }
 
   /**
-   * Creates a new [[BSONDocument]] containing all the given elements.
+   * $elementsFactoryDescr
    *
    * {{{
    * reactivemongo.api.bson.BSONDocument(
@@ -2020,8 +2234,7 @@ object BSONDocument {
   }
 
   /**
-   * Creates a new [[BSONDocument]] containing all the elements
-   * in the given sequence.
+   * $elementsFactoryDescr
    *
    * {{{
    * import reactivemongo.api.bson._
@@ -2034,6 +2247,60 @@ object BSONDocument {
   def apply(elms: Iterable[(String, BSONValue)]): BSONDocument =
     new BSONDocument {
       val pairs = toLazy(elms).distinct
+      val elements = pairs.map {
+        case (k, v) => BSONElement(k, v)
+      }
+
+      lazy val fields = {
+        val m = MMap.empty[String, BSONValue]
+
+        pairs.foreach {
+          case (k, v) => m.put(k, v)
+        }
+
+        m.toMap
+      }
+
+      val isEmpty = elms.isEmpty
+
+      @inline def headOption = elements.headOption
+    }
+
+  /**
+   * '''EXPERIMENTAL:''' $strictFactoryDescr
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONDocument("foo" -> 1, "bar" -> 2, "foo" -> 3)
+   * // => { "foo": 1, "bar": 2 } : No "foo": 3
+   * }}}
+   */
+  def strict(elms: ElementProducer*): BSONDocument =
+    new BSONDocument with BSONStrictDocument {
+      val elements = dedupProducers(toLazy(elms))
+      lazy val fields = BSONDocument.toMap(elements)
+      val isEmpty = elms.isEmpty
+      @inline def headOption = elements.headOption
+    }
+
+  /**
+   * '''EXPERIMENTAL:''' $strictFactoryDescr
+   *
+   * {{{
+   * import reactivemongo.api.bson._
+   *
+   * BSONDocument.strict(Seq(
+   *   "foo" -> BSONInteger(1), "foo" -> BSONString("lorem")))
+   * // { 'foo': 1 }
+   * }}}
+   */
+  def strict(elms: Iterable[(String, BSONValue)]): BSONDocument =
+    new BSONDocument with BSONStrictDocument {
+      val pairs = {
+        val ns = MSet.empty[String]
+
+        toLazy(elms).reverse.filter { ns add _._1 }.reverse
+      }
+
       val elements = pairs.map {
         case (k, v) => BSONElement(k, v)
       }
@@ -2070,6 +2337,28 @@ object BSONDocument {
     @inline def headOption = elements.headOption
   }
 
+  /** Internal (optimized/eager) strict factory. */
+  private[bson] def strict(
+    elms: Seq[BSONElement],
+    fs: Map[String, BSONValue]): BSONDocument with BSONStrictDocument =
+    new BSONDocument with BSONStrictDocument {
+      val elements = elms
+      lazy val fields = fs
+      val isEmpty = elms.isEmpty
+      @inline def headOption = elements.headOption
+    }
+
+  /** An empty BSONDocument. */
+  val empty: BSONDocument = new BSONDocument {
+    val fields = HashMap.empty[String, BSONValue]
+    val elements = Seq.empty[BSONElement]
+    val isEmpty = true
+    override val size = 0
+    val headOption = Option.empty[BSONElement]
+  }
+
+  // ---
+
   private[bson] def toMap(seq: Iterable[ElementProducer]): Map[String, BSONValue] = {
     val m = MMap.empty[String, BSONValue]
 
@@ -2085,13 +2374,30 @@ object BSONDocument {
     m.toMap
   }
 
-  /** An empty BSONDocument. */
-  val empty: BSONDocument = new BSONDocument {
-    val fields = HashMap.empty[String, BSONValue]
-    val elements = Seq.empty[BSONElement]
-    val isEmpty = true
-    override val size = 0
-    val headOption = Option.empty[BSONElement]
+  private[bson] def dedupElements(in: Seq[BSONElement]): IndexedSeq[BSONElement] = {
+    var elms = scala.collection.mutable.IndexedSeq.empty[BSONElement]
+    val indexes = MMap.empty[String, Int]
+
+    var i = -1
+    in.foreach { elm =>
+      i += 1
+
+      val idx = indexes.getOrElseUpdate(elm.name, i)
+
+      if (idx == i) { // new field name
+        elms = elms.padTo(idx + 1, elm)
+      } else { // update field
+        elms.update(idx, elm)
+      }
+    }
+
+    elms.toIndexedSeq
+  }
+
+  private[bson] def dedupProducers(in: LinearSeq[ElementProducer]): LinearSeq[BSONElement] = {
+    val ns = MSet.empty[String]
+
+    in.flatMap(_.generate()).reverse.filter { ns add _.name }.reverse
   }
 }
 

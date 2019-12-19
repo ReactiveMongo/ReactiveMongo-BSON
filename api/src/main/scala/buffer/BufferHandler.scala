@@ -7,7 +7,7 @@ import scala.collection.immutable.IndexedSeq
 
 import reactivemongo.api.bson._
 
-private[reactivemongo] object DefaultBufferHandler {
+private[reactivemongo] trait BufferHandler {
   def serialize(bson: BSONValue, buffer: WritableBuffer): WritableBuffer =
     bson match {
       case BSONDouble(v) => buffer writeDouble v
@@ -37,7 +37,7 @@ private[reactivemongo] object DefaultBufferHandler {
         buffer // unchanged
     }
 
-  def deserialize(buffer: ReadableBuffer): Try[BSONValue] =
+  private[bson] def deserialize(buffer: ReadableBuffer): Try[BSONValue] =
     Try(readValue(buffer, code = buffer.readByte()))
 
   def writeArray(vs: IndexedSeq[BSONValue], buffer: WritableBuffer) = {
@@ -81,7 +81,7 @@ private[reactivemongo] object DefaultBufferHandler {
 
   // ---
 
-  private def readDouble(buffer: ReadableBuffer): BSONDouble =
+  protected def readDouble(buffer: ReadableBuffer): BSONDouble =
     BSONDouble(buffer.readDouble())
 
   private[bson] def readString(buffer: ReadableBuffer): BSONString =
@@ -92,35 +92,7 @@ private[reactivemongo] object DefaultBufferHandler {
    *
    * Note that the buffer's readerIndex must be set on the start of a document, or it will fail.
    */
-  private[bson] def readDocument(buffer: ReadableBuffer): BSONDocument = {
-    val _ = buffer.readInt() // length
-
-    // assert(length == b.size)
-
-    val elms = Seq.newBuilder[BSONElement]
-    val fields = MMap.empty[String, BSONValue]
-
-    @scala.annotation.tailrec
-    def read(): Unit = {
-      lazy val code = buffer.readByte()
-
-      if (buffer.readable() > 1 && code != (0x0: Byte)) {
-        // Last is 0 (see readDocument#write_1)
-
-        val name = buffer.readCString()
-        val v = readValue(buffer, code)
-
-        elms += BSONElement(name, v)
-        fields.put(name, v)
-
-        read()
-      }
-    }
-
-    read()
-
-    BSONDocument(elms.result(), fields.toMap)
-  }
+  private[bson] def readDocument(buffer: ReadableBuffer): BSONDocument
 
   private[bson] def readArray(buffer: ReadableBuffer): BSONArray = {
     val _ = buffer.readInt() // length
@@ -148,7 +120,7 @@ private[reactivemongo] object DefaultBufferHandler {
       writeByte(binary.subtype.value).
       writeBytes(binary.value.duplicate())
 
-  def readBinary(buffer: ReadableBuffer): BSONBinary = {
+  private[bson] def readBinary(buffer: ReadableBuffer): BSONBinary = {
     val readable = buffer.readInt()
     val subtype = Subtype(buffer.readByte())
     val (data, _) = buffer.splitAt(readable)
@@ -166,11 +138,11 @@ private[reactivemongo] object DefaultBufferHandler {
     }
   }
 
-  private def readBoolean(buffer: ReadableBuffer): BSONBoolean = {
+  protected def readBoolean(buffer: ReadableBuffer): BSONBoolean = {
     BSONBoolean(buffer.readByte() == (0x01: Byte))
   }
 
-  private def readDateTime(buffer: ReadableBuffer): BSONDateTime = {
+  protected def readDateTime(buffer: ReadableBuffer): BSONDateTime = {
     BSONDateTime(buffer.readLong())
   }
 
@@ -179,31 +151,31 @@ private[reactivemongo] object DefaultBufferHandler {
     buffer writeCString regex.flags
   }
 
-  private def readRegex(buffer: ReadableBuffer): BSONRegex = {
+  protected def readRegex(buffer: ReadableBuffer): BSONRegex = {
     BSONRegex(buffer.readCString(), buffer.readCString())
   }
 
-  private def readJavaScript(buffer: ReadableBuffer): BSONJavaScript = {
+  protected def readJavaScript(buffer: ReadableBuffer): BSONJavaScript = {
     BSONJavaScript(buffer.readBsonString())
   }
 
-  private def readSymbol(buffer: ReadableBuffer): BSONSymbol = {
+  protected def readSymbol(buffer: ReadableBuffer): BSONSymbol = {
     BSONSymbol(buffer.readBsonString())
   }
 
-  private def readJavaScriptWS(buffer: ReadableBuffer): BSONJavaScriptWS = {
+  protected def readJavaScriptWS(buffer: ReadableBuffer): BSONJavaScriptWS = {
     BSONJavaScriptWS(buffer.readBsonString(), readDocument(buffer))
   }
 
-  private def readInteger(buffer: ReadableBuffer): BSONInteger = {
+  protected def readInteger(buffer: ReadableBuffer): BSONInteger = {
     BSONInteger(buffer.readInt)
   }
 
-  private def readTimestamp(buffer: ReadableBuffer): BSONTimestamp = {
+  protected def readTimestamp(buffer: ReadableBuffer): BSONTimestamp = {
     BSONTimestamp(buffer.readLong)
   }
 
-  private def readLong(buffer: ReadableBuffer): BSONLong = {
+  protected def readLong(buffer: ReadableBuffer): BSONLong = {
     BSONLong(buffer.readLong)
   }
 
@@ -246,5 +218,69 @@ private[reactivemongo] object DefaultBufferHandler {
       throw new NoSuchElementException(
         "buffer can not be read, end of buffer reached")
     }
+  }
+}
+
+private[reactivemongo] trait PlainBufferHandler { _: BufferHandler =>
+  private[bson] def readDocument(buffer: ReadableBuffer): BSONDocument = {
+    val _ = buffer.readInt() // length
+
+    // assert(length == b.size)
+
+    val elms = Seq.newBuilder[BSONElement]
+    val fields = MMap.empty[String, BSONValue]
+
+    @scala.annotation.tailrec
+    def read(): Unit = {
+      lazy val code = buffer.readByte()
+
+      if (buffer.readable() > 1 && code != (0x0: Byte)) {
+        // Last is 0 (see readDocument#write_1)
+
+        val name = buffer.readCString()
+        val v = readValue(buffer, code)
+
+        elms += BSONElement(name, v)
+        fields.put(name, v)
+
+        read()
+      }
+    }
+
+    read()
+
+    BSONDocument(elms.result(), fields.toMap)
+  }
+}
+
+private[reactivemongo] trait StrictBufferHandler { _: BufferHandler =>
+  private[bson] def readDocument(buffer: ReadableBuffer): BSONDocument = {
+    val _ = buffer.readInt() // length
+
+    // assert(length == b.size)
+
+    val fields = MMap.empty[String, BSONValue]
+
+    @scala.annotation.tailrec
+    def read(): Unit = {
+      lazy val code = buffer.readByte()
+
+      if (buffer.readable() > 1 && code != (0x0: Byte)) {
+        // Last is 0 (see readDocument#write_1)
+
+        val name = buffer.readCString()
+        val v = readValue(buffer, code)
+
+        fields.put(name, v)
+
+        read()
+      }
+    }
+
+    read()
+
+    println(s"fields = ${fields}")
+
+    BSONDocument(fields.toMap)
   }
 }

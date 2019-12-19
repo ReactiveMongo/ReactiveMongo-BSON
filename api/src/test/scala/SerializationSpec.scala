@@ -89,76 +89,6 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
       }
     }
 
-    "serialize a whole document" in {
-      val buffer = WritableBuffer.empty
-
-      writeDocument(wholeDoc, buffer) must_=== buffer and {
-        val doc = readDocument(buffer.toReadableBuffer)
-
-        doc must_=== wholeDoc and {
-          doc.elements must_=== wholeDoc.elements // elements in same order
-        }
-      } and {
-        buffer.array must_=== expectedWholeDocumentBytes
-      }
-    }
-
-    "serialize a document containing a boolean" in {
-      val dbool = BSONDocument("boo" -> BSONBoolean(true))
-      val expected = Array[Byte](11, 0, 0, 0, 8, 98, 111, 111, 0, 1, 0)
-      val buffer = WritableBuffer.empty
-
-      writeDocument(dbool, buffer) must_=== buffer and {
-        buffer.array must_=== expected
-      } and {
-        readDocument(buffer.toReadableBuffer) must_=== dbool
-      }
-    }
-
-    "serialize a document containing a double" in {
-      val ddoub = BSONDocument("doo" -> BSONDouble(9))
-      val expected = Array[Byte](18, 0, 0, 0, 1, 100, 111, 111, 0, 0, 0, 0, 0, 0, 0, 34, 64, 0)
-      val buffer = WritableBuffer.empty
-
-      writeDocument(ddoub, buffer) must_=== buffer and {
-        buffer.array must_=== expected
-      }
-    }
-
-    "serialize a document containing an integer" in {
-      val dint = BSONDocument("int" -> BSONInteger(8))
-      val expected = Array[Byte](14, 0, 0, 0, 16, 105, 110, 116, 0, 8, 0, 0, 0, 0)
-      val buffer = WritableBuffer.empty
-
-      writeDocument(dint, buffer) must_=== (buffer) and {
-        buffer.array must_=== expected
-      }
-    }
-
-    "serialize a document containing a string" in {
-      val dstr = BSONDocument("str" -> BSONString("étoile du nord"))
-      val expected = Array[Byte](30, 0, 0, 0, 2, 115, 116, 114, 0, 16, 0, 0, 0, -61, -87, 116, 111, 105, 108, 101, 32, 100, 117, 32, 110, 111, 114, 100, 0, 0)
-      val buffer = WritableBuffer.empty
-
-      writeDocument(dstr, buffer) must_=== buffer and {
-        buffer.array must_=== expected
-      } and {
-        readDocument(buffer.toReadableBuffer) must_=== dstr
-      }
-    }
-
-    "serialize a document containing a binary and a double" in {
-      val bin = BSONBinary(
-        Array[Byte](4, 5, 6, 7, 8), Subtype.GenericBinarySubtype)
-
-      val doc = BSONDocument("blob" -> bin, "v" -> BSONDouble(1.23D))
-      val buffer = WritableBuffer.empty
-
-      writeDocument(doc, buffer) must_=== buffer and {
-        readDocument(buffer.toReadableBuffer) must_=== doc
-      }
-    }
-
     "serialize an array" in {
       val arr = BSONArray(
         Option.empty[String],
@@ -173,39 +103,130 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
       }
     }
 
-    "serialize a document containing a document containing a document" in {
-      val docdoc = BSONDocument("doc" -> BSONDocument("str" -> BSONString("strv")))
-      val expected = Array[Byte](29, 0, 0, 0, 3, 100, 111, 99, 0, 19, 0, 0, 0, 2, 115, 116, 114, 0, 5, 0, 0, 0, 115, 116, 114, 118, 0, 0, 0)
-      val buffer = WritableBuffer.empty
+    "serialize documents" >> {
+      "with complex structure" in {
+        val buffer = WritableBuffer.empty
 
-      writeDocument(docdoc, buffer) must_=== buffer and {
-        buffer.array must_=== expected
+        writeDocument(wholeDoc, buffer) must_=== buffer and {
+          val doc = readDocument(buffer.toReadableBuffer)
+
+          doc must_=== wholeDoc and {
+            doc.elements must_=== wholeDoc.elements // elements in same order
+          }
+        } and {
+          buffer.array must_=== expectedWholeDocumentBytes
+        }
       }
-    }
 
-    "serialize a document containing an array" in {
-      val docarray = BSONDocument("contact" -> BSONDocument(
-        "emails" -> BSONArray(
-          BSONString("james@example.org"),
-          BSONString("spamaddrjames@example.org")),
-        "address" -> BSONString("coucou")))
-      val expected = Array[Byte](110, 0, 0, 0, 3, 99, 111, 110, 116, 97, 99, 116, 0, 96, 0, 0, 0, 4, 101, 109, 97, 105, 108, 115, 0, 63, 0, 0, 0, 2, 48, 0, 18, 0, 0, 0, 106, 97, 109, 101, 115, 64, 101, 120, 97, 109, 112, 108, 101, 46, 111, 114, 103, 0, 2, 49, 0, 26, 0, 0, 0, 115, 112, 97, 109, 97, 100, 100, 114, 106, 97, 109, 101, 115, 64, 101, 120, 97, 109, 112, 108, 101, 46, 111, 114, 103, 0, 0, 2, 97, 100, 100, 114, 101, 115, 115, 0, 7, 0, 0, 0, 99, 111, 117, 99, 111, 117, 0, 0, 0)
-      val buffer = WritableBuffer.empty
+      "when containing a boolean" in {
+        val dbool = BSONDocument("boo" -> BSONBoolean(true))
+        val expected = Array[Byte](11, 0, 0, 0, 8, 98, 111, 111, 0, 1, 0)
+        val buffer = WritableBuffer.empty
 
-      writeDocument(docarray, buffer) must_=== (buffer) and {
-        buffer.array must_=== expected
-      } and {
-        readDocument(buffer.toReadableBuffer) must_=== docarray
+        writeDocument(dbool, buffer) must_=== buffer and {
+          buffer.array must_=== expected
+        } and {
+          readDocument(buffer.toReadableBuffer) must_=== dbool
+        }
       }
-    }
 
-    "serialize a document containing a long" in {
-      val dlong = BSONDocument("long" -> BSONLong(8888122134234L))
-      val expected = Array[Byte](19, 0, 0, 0, 18, 108, 111, 110, 103, 0, -38, -50, 92, 109, 21, 8, 0, 0, 0)
-      val buffer = WritableBuffer.empty
+      "when containing a double" in {
+        val ddoub = BSONDocument("doo" -> BSONDouble(9))
+        val expected = Array[Byte](18, 0, 0, 0, 1, 100, 111, 111, 0, 0, 0, 0, 0, 0, 0, 34, 64, 0)
+        val buffer = WritableBuffer.empty
 
-      writeDocument(dlong, buffer) must_=== (buffer) and {
-        buffer.array must_=== expected
+        writeDocument(ddoub, buffer) must_=== buffer and {
+          buffer.array must_=== expected
+        }
+      }
+
+      "when containing an integer" in {
+        val dint = BSONDocument("int" -> BSONInteger(8))
+        val expected = Array[Byte](14, 0, 0, 0, 16, 105, 110, 116, 0, 8, 0, 0, 0, 0)
+        val buffer = WritableBuffer.empty
+
+        writeDocument(dint, buffer) must_=== (buffer) and {
+          buffer.array must_=== expected
+        }
+      }
+
+      "when containing a long" in {
+        val dlong = BSONDocument("long" -> BSONLong(8888122134234L))
+        val expected = Array[Byte](19, 0, 0, 0, 18, 108, 111, 110, 103, 0, -38, -50, 92, 109, 21, 8, 0, 0, 0)
+        val buffer = WritableBuffer.empty
+
+        writeDocument(dlong, buffer) must_=== (buffer) and {
+          buffer.array must_=== expected
+        }
+      }
+
+      "when containing a string" in {
+        val dstr = BSONDocument("str" -> BSONString("étoile du nord"))
+        val expected = Array[Byte](30, 0, 0, 0, 2, 115, 116, 114, 0, 16, 0, 0, 0, -61, -87, 116, 111, 105, 108, 101, 32, 100, 117, 32, 110, 111, 114, 100, 0, 0)
+        val buffer = WritableBuffer.empty
+
+        writeDocument(dstr, buffer) must_=== buffer and {
+          buffer.array must_=== expected
+        } and {
+          readDocument(buffer.toReadableBuffer) must_=== dstr
+        }
+      }
+
+      "when containing a binary and a double" in {
+        val bin = BSONBinary(
+          Array[Byte](4, 5, 6, 7, 8), Subtype.GenericBinarySubtype)
+
+        val doc = BSONDocument("blob" -> bin, "v" -> BSONDouble(1.23D))
+        val buffer = WritableBuffer.empty
+
+        writeDocument(doc, buffer) must_=== buffer and {
+          readDocument(buffer.toReadableBuffer) must_=== doc
+        }
+      }
+
+      "when containing a document containing a document" in {
+        val docdoc = BSONDocument("doc" -> BSONDocument("str" -> BSONString("strv")))
+        val expected = Array[Byte](29, 0, 0, 0, 3, 100, 111, 99, 0, 19, 0, 0, 0, 2, 115, 116, 114, 0, 5, 0, 0, 0, 115, 116, 114, 118, 0, 0, 0)
+        val buffer = WritableBuffer.empty
+
+        writeDocument(docdoc, buffer) must_=== buffer and {
+          buffer.array must_=== expected
+        }
+      }
+
+      "when containing an array" in {
+        val docarray = BSONDocument("contact" -> BSONDocument(
+          "emails" -> BSONArray(
+            BSONString("james@example.org"),
+            BSONString("spamaddrjames@example.org")),
+          "address" -> BSONString("coucou")))
+        val expected = Array[Byte](110, 0, 0, 0, 3, 99, 111, 110, 116, 97, 99, 116, 0, 96, 0, 0, 0, 4, 101, 109, 97, 105, 108, 115, 0, 63, 0, 0, 0, 2, 48, 0, 18, 0, 0, 0, 106, 97, 109, 101, 115, 64, 101, 120, 97, 109, 112, 108, 101, 46, 111, 114, 103, 0, 2, 49, 0, 26, 0, 0, 0, 115, 112, 97, 109, 97, 100, 100, 114, 106, 97, 109, 101, 115, 64, 101, 120, 97, 109, 112, 108, 101, 46, 111, 114, 103, 0, 0, 2, 97, 100, 100, 114, 101, 115, 115, 0, 7, 0, 0, 0, 99, 111, 117, 99, 111, 117, 0, 0, 0)
+        val buffer = WritableBuffer.empty
+
+        writeDocument(docarray, buffer) must_=== (buffer) and {
+          buffer.array must_=== expected
+        } and {
+          readDocument(buffer.toReadableBuffer) must_=== docarray
+        }
+      }
+
+      "when duplicate in binary representation" >> {
+        val binRepr = Array[Byte](44, 0, 0, 0, 16, 108, 111, 114, 101, 109, 0, 1, 0, 0, 0, 2, 102, 111, 111, 0, 4, 0, 0, 0, 98, 97, 114, 0, 1, 108, 111, 114, 101, 109, 0, -102, -103, -103, -103, -103, -103, 11, 64, 0)
+
+        val doc = BSONDocument("lorem" -> 1, "foo" -> "bar", "lorem" -> 3.45D)
+        lazy val strictDoc = doc.asStrict
+
+        "with duplicate preserved using default handlers" in {
+          readDocument(ReadableBuffer(binRepr)) must_=== doc
+        }
+
+        "without duplicate field in document" in {
+          val strictHandlers = new BufferHandler with StrictBufferHandler
+          // See reactivemongo.api.bson.document.strict sys prop
+
+          strictHandlers.readDocument(
+            ReadableBuffer(binRepr)) must_=== strictDoc
+        }
       }
     }
   }
