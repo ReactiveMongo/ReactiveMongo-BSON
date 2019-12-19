@@ -1,6 +1,8 @@
 package reactivemongo.api
 
 /**
+ * BSON main API
+ *
  * {{{
  * import reactivemongo.api.bson._
  *
@@ -16,6 +18,13 @@ package reactivemongo.api
  *   "details" -> document(
  *     "salary" -> 12345L, "inventory" -> array("foo", 7.8, 0L, false)))
  * }}}
+ *
+ * '''System properties:'''
+ *
+ * The following properties can be set (e.g. using `-D` option).
+ *
+ *   - `reactivemongo.api.bson.bufferSizeBytes` (integer; default: `96`): Number of bytes used as initial size when allocating a new buffer.
+ *   - `reactivemongo.api.bson.document.strict` (boolean; default: `false`): Flag to enable strict reading of document (filter duplicate fields, see [[BSONDocument]]).
  */
 package object bson extends DefaultBSONHandlers with Aliases with Utils {
   // DSL helpers:

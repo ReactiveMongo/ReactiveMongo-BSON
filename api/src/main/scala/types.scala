@@ -256,9 +256,31 @@ final class BSONDouble private[bson] (val value: Double)
   override def toString: String = s"BSONDouble($value)"
 }
 
-/** [[BSONDouble]] factories */
+/**
+ * [[BSONDouble]] utilities
+ *
+ * {{{
+ * import reactivemongo.api.bson.BSONDouble
+ *
+ * BSONDouble(1.23D) match {
+ *   case BSONDouble(v) => assert(v == 1.23D)
+ *   case _ => ???
+ * }
+ * }}}
+ */
 object BSONDouble {
-  /** Extracts the double value if `that`'s a [[BSONDouble]]. */
+  /**
+   * Extracts the double value if `that`'s a [[BSONDouble]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDouble, BSONValue }
+   *
+   * def patMat(v: BSONValue): Boolean = v match {
+   *   case BSONDouble(v) => v > 0D
+   *   case _ => false
+   * }
+   * }}}
+   */
   def unapply(that: Any): Option[Double] = that match {
     case bson: BSONDouble => Some(bson.value)
     case _ => None
@@ -300,7 +322,18 @@ final class BSONString private[bson] (val value: String) extends BSONValue {
   override def toString: String = s"BSONString($value)"
 }
 
-/** [[BSONString]] factories */
+/**
+ * [[BSONString]] utilities
+ *
+ * {{{
+ * import reactivemongo.api.bson.BSONString
+ *
+ * BSONString("foo") match {
+ *   case BSONString(v) => v == "foo"
+ *   case _ => false
+ * }
+ * }}}
+ */
 object BSONString {
   /**
    * Extracts the string value if `that`'s a [[BSONString]].
@@ -518,7 +551,20 @@ sealed abstract class BSONArray extends BSONValue {
     }
 }
 
-/** See [[BSONArray]] */
+/**
+ * [[BSONArray]] utilities
+ *
+ * {{{
+ * import reactivemongo.api.bson.{ BSONArray, BSONString }
+ *
+ * BSONArray("foo", 1) match {
+ *   case BSONArray(BSONString(s) +: _) => s == "foo"
+ *   case _ => false
+ * }
+ * }}}
+ *
+ * @define factoryDescr Creates a new [[BSONArray]] containing all the `values`
+ */
 object BSONArray {
   /**
    * Extracts the values sequence if `that`'s a [[BSONArray]].
@@ -551,7 +597,14 @@ object BSONArray {
     case _ => None
   }
 
-  /** Creates a new [[BSONArray]] containing all the given `values`. */
+  /**
+   * $factoryDescr.
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONArray("foo", 1L)
+   * // [ 'foo', NumberLong(1) ]
+   * }}}
+   */
   def apply(values: Producer[BSONValue]*): BSONArray = {
     def init = {
       val vs = IndexedSeq.newBuilder[BSONValue]
@@ -569,8 +622,14 @@ object BSONArray {
   }
 
   /**
-   * Creates a new [[BSONArray]] containing all the `values`
-   * in the given `Iterable`.
+   * $factoryDescr in the given sequence.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONArray, BSONLong, BSONString }
+   *
+   * BSONArray(Seq(BSONString("foo"), BSONLong(1L)))
+   * // [ 'foo', NumberLong(1) ]
+   * }}}
    */
   def apply(values: IndexedSeq[BSONValue]): BSONArray = {
     def init = values
@@ -581,8 +640,14 @@ object BSONArray {
   }
 
   /**
-   * Creates a new [[BSONArray]] containing all the `values`
-   * in the given `Iterable`.
+   * $factoryDescr in the given `Iterable`.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONArray, BSONLong, BSONString }
+   *
+   * BSONArray(List(BSONString("foo"), BSONLong(1L)))
+   * // [ 'foo', NumberLong(1) ]
+   * }}}
    */
   def apply(values: BaseColl[BSONValue]): BSONArray = {
     def init = values.toIndexedSeq
@@ -592,11 +657,30 @@ object BSONArray {
     }
   }
 
-  /** Returns a String representing the given [[BSONArray]]. */
+  /**
+   * Returns a String representing the given [[BSONArray]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONArray
+   *
+   * BSONArray pretty BSONArray("foo", 1L)
+   * // "[ 'foo', NumberLong(1) ]"
+   * }}}
+   */
   def pretty(array: BSONArray): String =
     s"[\n${BSONIterator.pretty(0, array.values)}\n]"
 
-  /** An empty BSONArray. */
+  /**
+   * An empty BSONArray.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONArray, BSONString }
+   *
+   * val initial = BSONArray.empty // []
+   *
+   * initial ++ BSONString("lorem") // [ 'lorem' ]
+   * }}}
+   */
   val empty: BSONArray = BSONArray(IndexedSeq.empty[BSONValue])
 }
 
@@ -643,6 +727,7 @@ final class BSONBinary private[bson] (
     s"BSONBinary(${subtype}, size = ${value.readable})"
 }
 
+/** [[BSONBinary]] utilities */
 object BSONBinary {
   /** Extracts the [[Subtype]] if `that`'s a [[BSONBinary]]. */
   def unapply(that: Any): Option[Subtype] = that match {
@@ -693,7 +778,7 @@ object BSONUndefined extends BSONUndefined {
 }
 
 /**
- * BSON ObjectId value.
+ * [[https://docs.mongodb.com/manual/reference/bson-types/#objectid BSON ObjectId]] value.
  *
  * | Timestamp (seconds) | Machine identifier | Thread identifier | Increment
  * | ---                 | ---                | ---               | ---
@@ -733,6 +818,7 @@ sealed abstract class BSONObjectID extends BSONValue {
   override lazy val hashCode: Int = Arrays.hashCode(raw)
 }
 
+/** [[BSONObjectID]] utilities */
 object BSONObjectID {
   private val maxCounterValue = 16777216
   private val increment = new java.util.concurrent.atomic.AtomicInteger(

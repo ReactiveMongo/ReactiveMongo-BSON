@@ -222,6 +222,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
 
         "without duplicate field in document" in {
           val strictHandlers = new BufferHandler with StrictBufferHandler
+          // See reactivemongo.api.bson.document.strict sys prop
 
           strictHandlers.readDocument(
             ReadableBuffer(binRepr)) must_=== strictDoc
