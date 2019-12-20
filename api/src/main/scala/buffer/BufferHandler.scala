@@ -279,8 +279,6 @@ private[reactivemongo] trait StrictBufferHandler { _: BufferHandler =>
 
     read()
 
-    println(s"fields = ${fields}")
-
     BSONDocument(fields.toMap)
   }
 }
