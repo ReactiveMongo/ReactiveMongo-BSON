@@ -2274,7 +2274,7 @@ object BSONDocument {
    * // => { "foo": 1, "bar": 2 } : No "foo": 3
    * }}}
    */
-  def strict(elms: ElementProducer*): BSONDocument =
+  def strict(elms: ElementProducer*): BSONDocument with BSONStrictDocument =
     new BSONDocument with BSONStrictDocument {
       val elements = dedupProducers(toLazy(elms))
       lazy val fields = BSONDocument.toMap(elements)
@@ -2293,7 +2293,7 @@ object BSONDocument {
    * // { 'foo': 1 }
    * }}}
    */
-  def strict(elms: Iterable[(String, BSONValue)]): BSONDocument =
+  def strict(elms: Iterable[(String, BSONValue)]): BSONDocument with BSONStrictDocument =
     new BSONDocument with BSONStrictDocument {
       val pairs = {
         val ns = MSet.empty[String]
