@@ -2060,7 +2060,7 @@ private[bson] sealed trait BSONDocumentExperimental { self: BSONDocument =>
    * // { 'foo': 3, 'bar': 2 }
    * }}}
    */
-  def asStrict: BSONDocument with BSONStrictDocument = {
+  def asStrict: BSONDocument.Strict = {
     val ns = MSet.empty[String]
     val elms = self.elements.reverse.filter { ns add _.name }.reverse
 
@@ -2166,7 +2166,7 @@ sealed trait BSONStrictDocument
     val isEmpty = self.isEmpty && seq.isEmpty
   }
 
-  final override def --(keys: String*): BSONDocument =
+  final override def --(keys: String*): BSONDocument.Strict =
     new BSONDocument with BSONStrictDocument {
       val fields = self.fields -- keys
       lazy val elements = self.elements.filterNot { e => keys.contains(e.name) }
@@ -2174,11 +2174,11 @@ sealed trait BSONStrictDocument
       val isEmpty = fields.isEmpty
     }
 
-  final override val asStrict: BSONDocument with BSONStrictDocument = this
+  final override val asStrict: BSONDocument.Strict = this
 }
 
 private[bson] sealed trait BSONStrictDocumentLowPriority {
-  self: BSONDocument with BSONStrictDocument =>
+  self: BSONDocument.Strict =>
 
   final override def ++(producers: ElementProducer*): BSONDocument =
     new BSONDocument {
@@ -2274,7 +2274,7 @@ object BSONDocument {
    * // => { "foo": 1, "bar": 2 } : No "foo": 3
    * }}}
    */
-  def strict(elms: ElementProducer*): BSONDocument =
+  def strict(elms: ElementProducer*): BSONDocument.Strict =
     new BSONDocument with BSONStrictDocument {
       val elements = dedupProducers(toLazy(elms))
       lazy val fields = BSONDocument.toMap(elements)
@@ -2293,7 +2293,7 @@ object BSONDocument {
    * // { 'foo': 1 }
    * }}}
    */
-  def strict(elms: Iterable[(String, BSONValue)]): BSONDocument =
+  def strict(elms: Iterable[(String, BSONValue)]): BSONDocument.Strict =
     new BSONDocument with BSONStrictDocument {
       val pairs = {
         val ns = MSet.empty[String]
@@ -2327,6 +2327,9 @@ object BSONDocument {
    */
   def pretty(doc: BSONDocument): String = BSONIterator.pretty(doc.elements)
 
+  /** '''EXPERIMENTAL''' */
+  type Strict = BSONDocument with BSONStrictDocument
+
   /** Internal (optimized/eager) factory. */
   private[bson] def apply(
     elms: Seq[BSONElement],
@@ -2340,7 +2343,7 @@ object BSONDocument {
   /** Internal (optimized/eager) strict factory. */
   private[bson] def strict(
     elms: Seq[BSONElement],
-    fs: Map[String, BSONValue]): BSONDocument with BSONStrictDocument =
+    fs: Map[String, BSONValue]): BSONDocument.Strict =
     new BSONDocument with BSONStrictDocument {
       val elements = elms
       lazy val fields = fs
