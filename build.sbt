@@ -29,8 +29,16 @@ val commonSettings = Seq(
   }
 )
 
-val reactivemongoShaded = Def.setting[ModuleID] {
-  "org.reactivemongo" % "reactivemongo-shaded" % (version in ThisBuild).value
+val reactivemongoShaded = Def.setting[Seq[ModuleID]] {
+  val v = (version in ThisBuild).value
+
+  if (Common.useShaded.value) {
+    Seq("org.reactivemongo" % "reactivemongo-shaded" % v % Provided)
+  } else {
+    Seq(
+      "io.netty" % "netty-handler" % "4.1.43.Final" % Provided,
+      "org.reactivemongo" %% "reactivemongo-alias" % v % Provided)
+  }
 }
 
 val spireLaws = Def.setting[ModuleID] {
@@ -55,7 +63,7 @@ lazy val api = (project in file("api")).settings(
       spireLaws.value,
       "com.chuusai" %% "shapeless" % "2.3.3",
       "org.slf4j" % "slf4j-simple" % "1.7.30").map(_ % Test),
-    libraryDependencies ++= Seq(reactivemongoShaded.value % Provided)
+    libraryDependencies ++= reactivemongoShaded.value
   ))
 
 lazy val monocle = (project in file("monocle")).settings(
@@ -84,7 +92,7 @@ lazy val geo = (project in file("geo")).settings(
 
 lazy val benchmarks = (project in file("benchmarks")).
   enablePlugins(JmhPlugin).settings(
-    libraryDependencies ++= Seq(reactivemongoShaded.value),
+    libraryDependencies ++= reactivemongoShaded.value,
     publish := ({}),
     publishTo := None,
   ).dependsOn(api % "compile->test")

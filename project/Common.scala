@@ -8,9 +8,24 @@ object Common extends AutoPlugin {
   override def trigger = allRequirements
   override def requires = JvmPlugin
 
+  val useShaded = settingKey[Boolean](
+    "Use ReactiveMongo-Shaded (see system property 'reactivemongo.shaded')")
+
   override def projectSettings = Seq(
     organization := "org.reactivemongo",
     autoAPIMappings := true,
+    useShaded := sys.env.get("REACTIVEMONGO_SHADED").fold(true)(_.toBoolean),
+    version := { 
+      val ver = (version in ThisBuild).value
+      val suffix = {
+        if (useShaded.value) "" // default ~> no suffix
+        else "-noshaded"
+      }
+
+      ver.span(_ != '-') match {
+        case (a, b) => s"${a}${suffix}${b}"
+      }
+    },
     testFrameworks ~= { _.filterNot(_ == TestFrameworks.ScalaTest) },
     scalacOptions ++= {
       val v = scalaBinaryVersion.value
