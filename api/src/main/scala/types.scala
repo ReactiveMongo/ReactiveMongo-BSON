@@ -376,7 +376,7 @@ object BSONString {
  * BSONArray(BSONString("foo"), BSONDouble(1.2D))
  * }}}
  *
- * @define indexParam the index to be found in the array
+ * @define indexParam the index to be found in the array (`0` being the first)
  */
 sealed abstract class BSONArray extends BSONValue {
   /** The BSON values */
@@ -388,8 +388,13 @@ sealed abstract class BSONArray extends BSONValue {
   /**
    * Returns the [[BSONValue]] at the given `index`.
    *
-   * If there is no such `index`, or if the matching value
-   * cannot be deserialized returns `None`.
+   * If there is no such `index`, `None` is returned.
+   *
+   * {{{
+   * def secondAsString(
+   *   a: reactivemongo.api.bson.BSONArray): Option[String] =
+   *   a.get(1).flatMap(_.asOpt[String])
+   * }}}
    *
    * @param index $indexParam
    */
@@ -687,6 +692,12 @@ object BSONArray {
 /**
  * A BSON binary value.
  *
+ * {{{
+ * import reactivemongo.api.bson.{ BSONBinary, Subtype }
+ *
+ * BSONBinary("foo".getBytes("UTF-8"), Subtype.GenericBinarySubtype)
+ * }}}
+ *
  * @param value The binary content.
  * @param subtype The type of the binary content.
  */
@@ -727,7 +738,19 @@ final class BSONBinary private[bson] (
     s"BSONBinary(${subtype}, size = ${value.readable})"
 }
 
-/** [[BSONBinary]] utilities */
+/**
+ * [[BSONBinary]] utilities
+ *
+ * {{{
+ * import reactivemongo.api.bson.{ BSONBinary, Subtype }
+ *
+ * val bin1 = BSONBinary(
+ *   "foo".getBytes("UTF-8"), Subtype.GenericBinarySubtype)
+ *
+ * // See Subtype.UuidSubtype
+ * val uuid = BSONBinary(java.util.UUID.randomUUID())
+ * }}}
+ */
 object BSONBinary {
   /** Extracts the [[Subtype]] if `that`'s a [[BSONBinary]]. */
   def unapply(that: Any): Option[Subtype] = that match {
@@ -735,13 +758,25 @@ object BSONBinary {
     case _ => None
   }
 
-  /** Creates a [[BSONBinary]] with given `value` and [[Subtype]]. */
+  /**
+   * Creates a [[BSONBinary]] with given `value` and [[Subtype]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.Subtype
+   *
+   * reactivemongo.api.bson.BSONBinary(
+   *   "foo".getBytes("UTF-8"), Subtype.GenericBinarySubtype)
+   */
   def apply(value: Array[Byte], subtype: Subtype): BSONBinary =
     new BSONBinary(ReadableBuffer(value), subtype)
 
   /**
    * Creates a [[BSONBinary]] from the given UUID
    * (with [[Subtype.UuidSubtype]]).
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONBinary(java.util.UUID.randomUUID())
+   * }}}
    */
   def apply(id: java.util.UUID): BSONBinary = {
     val bytes = Array.ofDim[Byte](16)
@@ -773,12 +808,22 @@ sealed trait BSONUndefined extends BSONValue with BSONBooleanLike.Value {
   override def toString: String = "BSONUndefined"
 }
 
+/** Single value for [[BSONUndefined]] type */
 object BSONUndefined extends BSONUndefined {
   val pretty = "undefined"
 }
 
 /**
  * [[https://docs.mongodb.com/manual/reference/bson-types/#objectid BSON ObjectId]] value.
+ *
+ * {{{
+ * import scala.util.Try
+ * import reactivemongo.api.bson.BSONObjectID
+ *
+ * val oid: BSONObjectID = BSONObjectID.generate()
+ *
+ * val _: Try[BSONObjectID] = BSONObjectID.parse(oid.stringify)
+ * }}}
  *
  * | Timestamp (seconds) | Machine identifier | Thread identifier | Increment
  * | ---                 | ---                | ---               | ---
@@ -803,7 +848,18 @@ sealed abstract class BSONObjectID extends BSONValue {
   /** Returns the whole binary content as array. */
   final def byteArray: Array[Byte] = Arrays.copyOf(raw, byteSize)
 
-  /** ObjectId hexadecimal String representation */
+  /**
+   * The hexadecimal String representation.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONObjectID
+   *
+   * def foo(oid: BSONObjectID): scala.util.Try[BSONObjectID] = {
+   *   val repr: String = oid.stringify
+   *   BSONObjectID.parse(repr)
+   * }
+   * }}}
+   */
   lazy val stringify = Digest.hex2Str(raw)
 
   override def toString = s"BSONObjectID($stringify)"

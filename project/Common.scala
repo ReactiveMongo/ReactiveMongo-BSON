@@ -26,6 +26,10 @@ object Common extends AutoPlugin {
         case (a, b) => s"${a}${suffix}${b}"
       }
     },
+    target := {
+      if (useShaded.value) target.value / "shaded"
+      else target.value / "noshaded"
+    },
     testFrameworks ~= { _.filterNot(_ == TestFrameworks.ScalaTest) },
     scalacOptions ++= {
       val v = scalaBinaryVersion.value
