@@ -766,6 +766,7 @@ object BSONBinary {
    *
    * reactivemongo.api.bson.BSONBinary(
    *   "foo".getBytes("UTF-8"), Subtype.GenericBinarySubtype)
+   * }}}
    */
   def apply(value: Array[Byte], subtype: Subtype): BSONBinary =
     new BSONBinary(ReadableBuffer(value), subtype)
