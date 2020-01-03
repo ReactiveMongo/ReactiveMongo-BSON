@@ -10,15 +10,12 @@ cache:
 
 matrix:
   include:
-  - env: MONGO_VER=2_6
-    jdk: openjdk10
+  - jdk: openjdk10
     scala: 2.11.12
-  - env: MONGO_VER=4
-    jdk: openjdk8
-    scala: 2.12.8
-  - env: MONGO_VER=4 REACTIVEMONGO_SHADED=false
+  - jdk: openjdk8
+    scala: 2.12.10
+  - env: REACTIVEMONGO_SHADED=false
     jdk: openjdk9
     scala: 2.13.1
 
-before_install: ./.ci_scripts/beforeInstall.sh $TRAVIS_SCALA_VERSION
 script: ./.ci_scripts/validate.sh
