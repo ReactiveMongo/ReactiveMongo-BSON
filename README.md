@@ -107,6 +107,4 @@ To run the tests, use:
 
     sbt test
 
-> Integration tests in the `collection` module requires a local MongoDB instance on port 27017 .
-
 [Travis](https://travis-ci.org/ReactiveMongo/ReactiveMongo-BSON): ![Travis build status](https://travis-ci.org/ReactiveMongo/ReactiveMongo-BSON.png?branch=master)

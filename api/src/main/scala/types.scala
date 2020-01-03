@@ -2497,6 +2497,7 @@ sealed abstract class BSONElement extends ElementProducer {
   override final def toString = s"BSONElement($name -> $value)"
 }
 
+/** [[BSONElement]] factories and utilities. */
 object BSONElement extends BSONElementLowPriority {
   /**
    * Extracts the name and [[BSONValue]] if `that`'s a [[BSONElement]].
@@ -2575,6 +2576,7 @@ private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
 
 }
 
+/** See [[BSONDocument]] */
 sealed trait ElementProducer extends Producer[BSONElement]
 
 object ElementProducer extends ElementProducerLowPriority {
@@ -2693,7 +2695,26 @@ private[bson] sealed trait ElementProducerLowPriority {
   }
 }
 
-/** A BSON value that can be seen as a number. */
+/**
+ * A BSON value that can be seen as a number.
+ *
+ * Conversions:
+ *   - numeric BSON types ([[BSONDecimal]], [[BSONDouble]], [[BSONInteger]], [[BSONLong]])
+ *   - BSON date/time ~> long ([[BSONDateTime]]`.value`)
+ *   - BSON timestamp ~> long ([[BSONTimestamp.value]])
+ *
+ * {{{
+ * import scala.util.Success
+ * import reactivemongo.api.bson.{ BSONNumberLike, BSONDocument, BSONInteger }
+ *
+ * val bi = BSONInteger(1)
+ * assert(bi.asTry[BSONNumberLike].flatMap(_.toLong) == Success(1L))
+ *
+ * val doc = BSONDocument("field" -> bi)
+ * assert(doc.getAsTry[BSONNumberLike]("field").
+ *   flatMap(_.toDouble) == Success(1D))
+ * }}}
+ */
 sealed trait BSONNumberLike {
   /** Converts this number into an `Int`. */
   def toInt: Try[Int]
@@ -2710,6 +2731,7 @@ sealed trait BSONNumberLike {
   private[bson] def numberValue: BSONValue
 }
 
+/** [[BSONNumberLike]] utilities */
 object BSONNumberLike {
   implicit object Handler extends BSONReader[BSONNumberLike]
     with BSONWriter[BSONNumberLike] with SafeBSONWriter[BSONNumberLike] {
@@ -2746,6 +2768,18 @@ object BSONNumberLike {
  *   - `boolean`
  *   - `undefined ~> false`
  *   - `null ~> false`
+ *
+ * {{{
+ * import scala.util.Success
+ * import reactivemongo.api.bson.{ BSONBooleanLike, BSONDocument, BSONInteger }
+ *
+ * val bi = BSONInteger(1)
+ * assert(bi.asTry[BSONBooleanLike].flatMap(_.toBoolean) == Success(true))
+ *
+ * val doc = BSONDocument("field" -> bi)
+ * assert(doc.getAsTry[BSONBooleanLike]("field").
+ *   flatMap(_.toBoolean) == Success(true))
+ * }}}
  */
 sealed trait BSONBooleanLike {
   private[bson] def boolValue: BSONValue
@@ -2754,6 +2788,7 @@ sealed trait BSONBooleanLike {
   def toBoolean: Try[Boolean]
 }
 
+/** [[BSONBooleanLike]] utilities */
 object BSONBooleanLike {
   implicit object Handler extends BSONReader[BSONBooleanLike]
     with BSONWriter[BSONBooleanLike] with SafeBSONWriter[BSONBooleanLike] {
