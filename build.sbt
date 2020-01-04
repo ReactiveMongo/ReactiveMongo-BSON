@@ -66,6 +66,13 @@ lazy val api = (project in file("api")).settings(
     libraryDependencies ++= reactivemongoShaded.value
   ))
 
+lazy val specs2 = (project in file("specs2")).settings(
+  commonSettings ++ Seq(
+    name := s"${baseArtifact}-specs2",
+    description := "Specs2 utility for BSON",
+    libraryDependencies ++= specsDeps)
+).dependsOn(api)
+
 lazy val monocle = (project in file("monocle")).settings(
   commonSettings ++ Seq(
     name := s"${baseArtifact}-monocle",
@@ -85,8 +92,7 @@ lazy val geo = (project in file("geo")).settings(
     name := s"${baseArtifact}-geo",
     description := "GeoJSON support for the BSON API",
     fork in Test := true,
-    libraryDependencies ++= Seq(
-      slf4jApi % Test)
+    libraryDependencies += slf4jApi % Test
   )
 ).dependsOn(api, monocle % Test)
 
@@ -131,5 +137,6 @@ lazy val msbCompat = (project in file("msb-compat")).settings(
 lazy val root = (project in file(".")).settings(
   publish := ({}),
   publishTo := None
-).aggregate(api, benchmarks, msbCompat, geo, monocle)
+).aggregate(api, specs2, benchmarks, msbCompat, geo, monocle).
+  dependsOn(api, specs2/* for compiled code samples */)
 // !! Do not aggregate msbCompat as not 2.13

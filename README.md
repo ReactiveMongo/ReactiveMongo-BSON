@@ -8,8 +8,6 @@ These libraries are intended to replace (at some point after release 1.0) the BS
 
 It will fix some issues, bring multiple API and performance improvements (simpler & better).
 
-> TODO: Details & publish benchmarks
-
 ## Usage
 
 The main API library migrates both the BSON values types (with same names; see [example](api/src/test/scala/BSONValueFixtures.scala)) and the handler typeclasses (reader/writer; see [example](api/src/test/scala/HandlerSpec.scala)).
@@ -79,6 +77,36 @@ libraryDependencies += "org.reactivemongo" %% "reactivemongo-bson-geo" % VERSION
 
 - [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-geo_2.12/0.18.5/reactivemongo-bson-geo_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/geo/index.html)
 - [Examples](geo/src/test/scala/GeometrySpec.scala)
+
+**specs2:**
+
+The Specs2 library provides utilities to write tests using [specs2](https://etorreborre.github.io/specs2/) with BSON values.
+
+It can be configured in the `build.sbt` as below.
+
+```ocaml
+libraryDependencies += "org.reactivemongo" %% "reactivemongo-specs2" % VERSION
+```
+
+```scala
+import reactivemongo.api.bson.BSONDocument
+import reactivemongo.api.bson.specs2._
+
+final class MySpec extends org.specs2.mutable.Specification {
+  "Foo" title
+
+  "Bar" should {
+    "lorem" in {
+      BSONDocument("ipsum" -> 1) must_=== BSONDocument("dolor" -> 2)
+      // Use provided Diffable to display difference
+      // between actual and expected documents
+    }
+  }
+}
+```
+
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-geo_2.12/0.18.5/reactivemongo-bson-geo_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/geo/index.html)
+- [Examples](specs2/src/test/scala/DiffableSpec.scala)
 
 **monocle:** EXPERIMENTAL
 
