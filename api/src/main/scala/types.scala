@@ -2252,6 +2252,10 @@ private[bson] sealed trait BSONStrictDocumentLowPriority {
 /**
  * [[BSONDocument]] factories & utilities.
  *
+ * {{{
+ * reactivemongo.api.bson.BSONDocument("foo" -> 1, "bar" -> "lorem")
+ * }}}
+ *
  * @define elementsFactoryDescr Creates a new [[BSONDocument]] containing the unique elements from the given collection (only one instance of a same element, same name & value, is kept).
  *
  * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the last is kept for a same name). Then append operations on such document will maintain element unicity by field name (see `BSONStrictDocument.++`).
@@ -2379,6 +2383,12 @@ object BSONDocument {
 
   /**
    * Returns a String representing the given [[BSONDocument]].
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * def printDoc(doc: BSONDocument): String = BSONDocument.pretty(doc)
+   * }}}
    *
    * @see [[BSONValue$.pretty]]
    */
