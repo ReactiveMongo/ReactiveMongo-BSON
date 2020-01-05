@@ -30,6 +30,14 @@ object Macros {
    * $readerMacro.
    * $defaultCfg.
    *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentReader, Macros }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val reader: BSONDocumentReader[Foo] = Macros.reader
+   * }}}
+   *
    * $tparam
    */
   @SuppressWarnings(Array("NullParameter"))
@@ -38,6 +46,14 @@ object Macros {
   /**
    * $readerMacro.
    * $defaultCfg, with given additional options.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ Macros, MacroOptions }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val reader = Macros.readerOpts[Foo, MacroOptions.Verbose]
+   * }}}
    *
    * $tparam
    * $tparamOpts
@@ -49,6 +65,14 @@ object Macros {
    * $writerMacro.
    * $defaultCfg.
    *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentWriter, Macros }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val writer: BSONDocumentWriter[Foo] = Macros.writer
+   * }}}
+   *
    * $tparam
    */
   @SuppressWarnings(Array("NullParameter"))
@@ -57,6 +81,14 @@ object Macros {
   /**
    * $writerMacro.
    * $defaultCfg, with given additional options.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ Macros, MacroOptions }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val writer = Macros.writerOpts[Foo, MacroOptions.DisableWarnings]
+   * }}}
    *
    * $tparam
    * $tparamOpts
@@ -68,6 +100,14 @@ object Macros {
    * $handlerMacro.
    * $defaultCfg.
    *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentHandler, Macros }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val handler: BSONDocumentHandler[Foo] = Macros.handler
+   * }}}
+   *
    * $tparam
    */
   @SuppressWarnings(Array("NullParameter"))
@@ -76,6 +116,14 @@ object Macros {
   /**
    * $handlerMacro.
    * $defaultCfg, with given additional options.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ Macros, MacroOptions }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val handler = Macros.handlerOpts[Foo, MacroOptions.Default]
+   * }}}
    *
    * $tparam
    * $tparamOpts
