@@ -385,7 +385,7 @@ private[bson] trait LowPriority3BSONHandlers
 private[bson] trait LowPriority4BSONHandlers { _: DefaultBSONHandlers =>
   implicit def mapKeyWriter[K, V](
     implicit
-    ev: K => StringOps,
+    keyWriter: KeyWriter[K],
     valueWriter: BSONWriter[V]): BSONDocumentWriter[Map[K, V]] =
     new BSONDocumentWriter[Map[K, V]] {
       def writeTry(inputMap: Map[K, V]): Try[BSONDocument] = Try {
@@ -393,7 +393,8 @@ private[bson] trait LowPriority4BSONHandlers { _: DefaultBSONHandlers =>
 
         inputMap.foreach {
           case (k, v) =>
-            m += BSONElement(ev(k).mkString, valueWriter.writeTry(v).get)
+            m += BSONElement(
+              keyWriter.writeTry(k).get, valueWriter.writeTry(v).get)
         }
 
         BSONDocument(ElementProducer(m.result()))

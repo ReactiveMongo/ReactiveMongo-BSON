@@ -54,16 +54,31 @@ object GeoGeometry {
 /**
  * GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#point Point]]
  */
-final case class GeoPoint(
-  coordinates: GeoPosition) extends GeoGeometry {
+final class GeoPoint private[api] (
+  val coordinates: GeoPosition) extends GeoGeometry {
   type C = GeoPosition
 
   @inline def `type` = GeoPoint.`type`
+
+  override def equals(that: Any): Boolean = that match {
+    case other: GeoPoint =>
+      this.coordinates == other.coordinates
+
+    case _ =>
+      false
+  }
+
+  @inline override def hashCode: Int = coordinates.hashCode
+
+  override def toString = s"GeoPoint(${coordinates.toString})"
 }
 
 /** See [[GeoPoint]] */
 object GeoPoint {
   val `type` = "Point"
+
+  /** Creates a new point. */
+  def apply(coordinates: GeoPosition): GeoPoint = new GeoPoint(coordinates)
 
   /**
    * Convenient factory (See [[GeoPosition]];
@@ -77,6 +92,25 @@ object GeoPoint {
    * equivalent to `GeoPoint(GeoPosition(_1, _2, elevation))`).
    */
   @inline def apply(_1: Double, _2: Double, elevation: Option[Double]): GeoPoint = GeoPoint(GeoPosition(_1, _2, elevation))
+
+  /**
+   * Extracts the point coordinates.
+   *
+   * {{{
+   * import reactivemongo.api.bson.GeoPoint
+   *
+   * def elevation(pt: GeoPoint): Option[Double] = pt match {
+   *   case GeoPoint(a, b, elevation @ Some(_)) =>
+   *     println("_1: " + a + ", _2: " + b)
+   *     elevation
+   *
+   *   case _ =>
+   *     None
+   * }
+   * }}}
+   */
+  def unapply(point: GeoPoint): Option[(Double, Double, Option[Double])] =
+    Option(point).flatMap(p => GeoPosition.unapply(p.coordinates))
 
   implicit val reader: BSONDocumentReader[GeoPoint] =
     GeoGeometry.reader[GeoPoint] {
@@ -98,10 +132,10 @@ object GeoPoint {
 /**
  * GeoJSON [[https://tools.ietf.org/html/rfc7946#section-3.1.4 LineString]]
  */
-final case class GeoLineString(
-  _1: GeoPosition,
-  _2: GeoPosition,
-  more: Seq[GeoPosition]) extends GeoGeometry {
+final class GeoLineString private[api] (
+  val _1: GeoPosition,
+  val _2: GeoPosition,
+  val more: Seq[GeoPosition]) extends GeoGeometry {
   type C = Tuple3[GeoPosition, GeoPosition, Seq[GeoPosition]]
   @inline def `type` = GeoLineString.`type`
 
@@ -114,16 +148,37 @@ final case class GeoLineString(
    * import reactivemongo.api.bson.{ GeoLineString, GeoPosition }
    *
    * def equivalentTo(lineString: GeoLineString, positions: GeoPosition*) =
-   *   lineString.copy(more = lineString.more ++ positions)
+   *   GeoLineString(
+   *     _1 = lineString._1,
+   *     _2 = lineString._2,
+   *    more = lineString.more ++ positions)
    * }}}
    */
   @inline def ++(positions: GeoPosition*): GeoLineString =
-    copy(more = more ++ positions)
+    new GeoLineString(_1, _2, more ++ positions)
+
+  override def equals(that: Any): Boolean = that match {
+    case other: GeoLineString =>
+      this.coordinates == other.coordinates
+
+    case _ =>
+      false
+  }
+
+  override def hashCode: Int = coordinates.hashCode
+
+  override def toString = s"GeoLineString${coordinates.toString}"
 }
 
 /** See [[GeoLineString]] */
 object GeoLineString {
   val `type` = "LineString"
+
+  /** Creates a new line string. */
+  def apply(
+    _1: GeoPosition,
+    _2: GeoPosition,
+    more: Seq[GeoPosition]): GeoLineString = new GeoLineString(_1, _2, more)
 
   /**
    * Convenient factory
@@ -131,6 +186,9 @@ object GeoLineString {
    */
   @inline def apply(_1: GeoPosition, _2: GeoPosition): GeoLineString =
     GeoLineString(_1, _2, Seq.empty)
+
+  /** Extracts the line string coordinates. */
+  def unapply(lineString: GeoLineString): Option[(GeoPosition, GeoPosition, Seq[GeoPosition])] = Option(lineString).map(_.coordinates)
 
   private[bson] val readCoordinates: BSONValue => Try[GeoLineString] = {
     case BSONArray(Seq(
@@ -219,7 +277,10 @@ object GeoPolygon {
   def apply(exterior: GeoLinearRing, interior: GeoLinearRing*): GeoPolygon =
     new GeoPolygon(exterior, interior)
 
-  @inline def unapply(polygon: GeoPolygon): Option[(GeoLinearRing, Seq[GeoLinearRing])] = Option(polygon).map(_.tupled)
+  /**
+   * Extracts the ring properties.
+   */
+  def unapply(polygon: GeoPolygon): Option[(GeoLinearRing, Seq[GeoLinearRing])] = Option(polygon).map(_.tupled)
 
   private[bson] val readCoordinates: BSONValue => Try[GeoPolygon] = {
     case BSONArray(Seq(exterior @ BSONArray(_), interior @ _*)) =>
@@ -247,16 +308,39 @@ object GeoPolygon {
 }
 
 /** GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#multipoint MultiPoint]] (collection of [[GeoPosition]]) */
-case class GeoMultiPoint(
-  coordinates: Seq[GeoPosition]) extends GeoGeometry {
+final class GeoMultiPoint private[api] (
+  val coordinates: Seq[GeoPosition]) extends GeoGeometry {
   type C = Seq[GeoPosition]
 
   val `type`: String = GeoMultiPoint.`type`
+
+  override def equals(that: Any): Boolean = that match {
+    case other: GeoMultiPoint =>
+      this.coordinates == other.coordinates
+
+    case _ =>
+      false
+  }
+
+  @inline override def hashCode: Int = coordinates.hashCode
+
+  override def toString: String =
+    s"""GeoMultiPoint[${coordinates.mkString("[", ", ", "]")}]"""
 }
 
 /** See [[GeoMultiPoint]] */
 object GeoMultiPoint {
   val `type`: String = "MultiPoint"
+
+  /** Creates a new multi-point. */
+  def apply(coordinates: Seq[GeoPosition]): GeoMultiPoint =
+    new GeoMultiPoint(coordinates)
+
+  /**
+   * Extracts the coordinates.
+   */
+  def unapply(multiPoint: GeoMultiPoint): Option[Seq[GeoPosition]] =
+    Option(multiPoint).map(_.coordinates)
 
   implicit val reader: BSONDocumentReader[GeoMultiPoint] =
     GeoGeometry.reader[GeoMultiPoint] {
@@ -273,14 +357,40 @@ object GeoMultiPoint {
 }
 
 /** GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#multilinestring MultiLineString]] (collection of [[GeoLineString]]) */
-case class GeoMultiLineString(coordinates: Seq[GeoLineString]) extends GeoGeometry {
+final class GeoMultiLineString private[api] (
+  val coordinates: Seq[GeoLineString]) extends GeoGeometry {
+
   type C = Seq[GeoLineString]
   @inline def `type`: String = GeoMultiLineString.`type`
+
+  override def equals(that: Any): Boolean = that match {
+    case other: GeoMultiLineString =>
+      this.coordinates == other.coordinates
+
+    case _ =>
+      false
+  }
+
+  @inline override def hashCode: Int = coordinates.hashCode
+
+  override def toString: String =
+    s"""GeoMultiLineString[${coordinates.mkString("[", ", ", "]")}]"""
+
 }
 
 /** See [[GeoMultiLineString]] */
 object GeoMultiLineString {
   val `type`: String = "MultiLineString"
+
+  /** Creates a new multi-linestring. */
+  def apply(coordinates: Seq[GeoLineString]): GeoMultiLineString =
+    new GeoMultiLineString(coordinates)
+
+  /**
+   * Extracts the coordinates.
+   */
+  def unapply(multiLineString: GeoMultiLineString): Option[Seq[GeoLineString]] =
+    Option(multiLineString).map(_.coordinates)
 
   implicit val reader: BSONDocumentReader[GeoMultiLineString] = {
     @annotation.tailrec
@@ -318,14 +428,39 @@ object GeoMultiLineString {
 }
 
 /** GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#multipolygon MultiPolygon]] (collection of [[GeoPolygon]]) */
-case class GeoMultiPolygon(coordinates: Seq[GeoPolygon]) extends GeoGeometry {
+final class GeoMultiPolygon private[api] (
+  val coordinates: Seq[GeoPolygon]) extends GeoGeometry {
+
   type C = Seq[GeoPolygon]
   @inline def `type`: String = GeoMultiPolygon.`type`
+
+  override def equals(that: Any): Boolean = that match {
+    case other: GeoMultiPolygon =>
+      this.coordinates == other.coordinates
+
+    case _ =>
+      false
+  }
+
+  @inline override def hashCode: Int = coordinates.hashCode
+
+  override def toString: String =
+    s"""GeoMultiPolygon[${coordinates.mkString("[", ", ", "]")}]"""
 }
 
 /** See [[GeoMultiPolygon]] */
 object GeoMultiPolygon {
   val `type`: String = "MultiPolygon"
+
+  /** Creates a new multi-polygon. */
+  def apply(coordinates: Seq[GeoPolygon]): GeoMultiPolygon =
+    new GeoMultiPolygon(coordinates)
+
+  /**
+   * Extracts the coordinates.
+   */
+  def unapply(multiPolygon: GeoMultiPolygon): Option[Seq[GeoPolygon]] =
+    Option(multiPolygon).map(_.coordinates)
 
   implicit val reader: BSONDocumentReader[GeoMultiPolygon] = {
     @annotation.tailrec

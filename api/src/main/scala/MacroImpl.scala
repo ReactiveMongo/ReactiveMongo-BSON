@@ -134,7 +134,7 @@ private[bson] class MacroImpl(val c: Context) {
                 // No existing implicit, but can fallback to automatic mat
                 readBodyConstruct(typ, top = false)
               } else {
-                c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONReader[_]].getName}[_, ${typ.typeSymbol.fullName}]")
+                c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONReader[_]].getName}[${typ.typeSymbol.fullName}]")
               }
             }
 
@@ -182,7 +182,7 @@ private[bson] class MacroImpl(val c: Context) {
               // No existing implicit, but can fallback to automatic mat
               writeBodyConstruct(id, typ, top = false)
             } else {
-              c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONWriter[_]].getName}[_, ${typ.typeSymbol.fullName}]")
+              c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONWriter[_]].getName}[${typ.typeSymbol.fullName}]")
             }
           }
 
@@ -294,7 +294,7 @@ private[bson] class MacroImpl(val c: Context) {
           }
 
           if (reader.isEmpty) {
-            c.abort(c.enclosingPosition, s"Implicit not found for '$pname': ${classOf[BSONReader[_]].getName}[_, $sig]")
+            c.abort(c.enclosingPosition, s"Implicit not found for '$pname': ${classOf[BSONReader[_]].getName}[$sig]")
           }
 
           val get: Tree = {
@@ -437,7 +437,7 @@ private[bson] class MacroImpl(val c: Context) {
         val (writer, _) = resolve(tpe)
 
         if (writer.isEmpty) {
-          c.abort(c.enclosingPosition, s"Implicit not found for '$pname': ${classOf[BSONWriter[_]].getName}[$tpe, _]")
+          c.abort(c.enclosingPosition, s"Implicit not found for '$pname': ${classOf[BSONWriter[_]].getName}[$tpe]")
         }
 
         writer
@@ -763,7 +763,15 @@ private[bson] class MacroImpl(val c: Context) {
           None
         }
 
-        case s => Some(s.asMethod)
+        case s => {
+          val alt = s.asTerm.alternatives
+
+          if (alt.tail.nonEmpty) {
+            warn(s"""Multiple 'unapply' declared on '${tpe.typeSymbol.fullName}': ${alt.map(_.info).mkString("\n- ", "\n- ", "\n\n")}""")
+          }
+
+          alt.headOption.map(_.asMethod)
+        }
       }
 
     /* Deep check for type compatibility */
