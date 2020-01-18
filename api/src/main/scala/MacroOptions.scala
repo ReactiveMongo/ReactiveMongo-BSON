@@ -4,9 +4,21 @@ package reactivemongo.api.bson
  * Macros with 'Opts' suffix will take additional options in the form of
  * type parameters that will customize behaviour of
  * the macros during compilation.
+ *
+ * {{{
+ * import reactivemongo.api.bson.{ BSONDocumentWriter, Macros, MacroOptions }
+ *
+ * case class Bar(score: Float)
+ *
+ * val w: BSONDocumentWriter[Bar] =
+ *   Macros.using[MacroOptions.Default].writer[Bar]
+ * }}}
  */
 sealed trait MacroOptions
 
+/**
+ * [[MacroOptions]] factories & utilities.
+ */
 object MacroOptions {
   /**
    * The default options that are implied if invoking "non-Opts" method.
@@ -14,21 +26,47 @@ object MacroOptions {
    */
   trait Default extends MacroOptions
 
-  /** Print out generated code during compilation. */
+  /**
+   * The options to print out generated code during compilation.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentWriter, Macros, MacroOptions }
+   *
+   * case class Bar(score: Float)
+   *
+   * val w: BSONDocumentWriter[Bar] =
+   *   Macros.using[MacroOptions.Verbose].writer[Bar]
+   * }}}
+   */
   trait Verbose extends Default
 
-  /** Disable compilation warnings. */
+  /** The options to disable compilation warnings. */
   trait DisableWarnings extends Default
 
   /**
-   * Use type parameter `A` as static type but use pattern matching to handle
-   * different possible subtypes. This makes it easy to persist algebraic
-   * data types(pattern where you have a sealed trait and several implementing
-   * case classes). When writing a case class into BSON its dynamic type
-   * will be pattern matched, when reading from BSON the pattern matching
-   * will be done on the `className` string.
+   * This allows to restrict the handling of family
+   * to only some subtypes (not required to be sealed in this case).
    *
-   * @tparam Types to use in pattern matching. Listed in a "type list" \/
+   * {{{
+   * import reactivemongo.api.bson.{
+   *   BSONDocumentWriter, Macros, MacroOptions
+   * }, MacroOptions.\/
+   *
+   * trait Family
+   * case class TypeA(n: Int) extends Family
+   * case class TypeB(s: String) extends Family
+   * case class TypeC(f: Float) extends Family
+   *
+   * val writer: BSONDocumentWriter[Family] = {
+   *   implicit val a = Macros.writer[TypeA]
+   *   implicit val b = Macros.writer[TypeB]
+   *
+   *   Macros.using[MacroOptions.UnionType[TypeA \/ TypeB]].writer[Family]
+   * }
+   * }}}
+   *
+   * @tparam Types to restrict the subtypes to handle
+   * @see \/
    */
   trait UnionType[Types <: \/[_, _]] extends Default
 
@@ -39,6 +77,8 @@ object MacroOptions {
    * looks like a logical disjunction.
    *
    * `Foo \/ Bar \/ Baz` is interpreted as type Foo or type Bar or type Baz
+   *
+   * @see UnionType
    */
   @SuppressWarnings(Array("ClassNames"))
   trait \/[A, B]
@@ -49,7 +89,20 @@ object MacroOptions {
    * materialization of handlers for the member types.
    *
    * If used, make sure it cannot lead to type recursion issue
-   * (disabled by default).
+   * (reason why it's not disabled by default).
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentReader, Macros, MacroOptions }
+   *
+   * sealed trait Family
+   * case class TypeA(n: Int) extends Family
+   * case class TypeB(s: String) extends Family
+   * case class TypeC(f: Float) extends Family
+   *
+   * val reader: BSONDocumentReader[Family] =
+   *   Macros.using[MacroOptions.AutomaticMaterialization].reader[Family]
+   *   // Automatically/internally materializes the readers for Type{A,B,C}
+   * }}}
    */
   trait AutomaticMaterialization extends Default
 

@@ -1956,7 +1956,7 @@ sealed abstract class BSONDocument
   final def getAsTry[T](key: String)(implicit reader: BSONReader[T]): Try[T] =
     get(key) match {
       case None | Some(BSONNull) =>
-        Failure(exceptions.BSONValueNotFoundException(key, this))
+        Failure(BSONValueNotFoundException(key, this))
 
       case Some(v) => reader.readTry(v)
     }
@@ -2750,7 +2750,7 @@ object BSONNumberLike {
       case n: BSONNumberLike => Success(n)
 
       case _ => Failure(
-        exceptions.TypeDoesNotMatchException(
+        TypeDoesNotMatchException(
           "<number>", bson.getClass.getSimpleName))
     }
 
@@ -2806,7 +2806,7 @@ object BSONBooleanLike {
     def readTry(bson: BSONValue): Try[BSONBooleanLike] = bson match {
       case b: BSONBooleanLike => Success(b)
 
-      case _ => Failure(exceptions.TypeDoesNotMatchException(
+      case _ => Failure(TypeDoesNotMatchException(
         "<boolean>", bson.getClass.getSimpleName))
     }
 

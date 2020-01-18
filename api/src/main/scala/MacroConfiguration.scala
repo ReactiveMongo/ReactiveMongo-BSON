@@ -1,7 +1,26 @@
 package reactivemongo.api.bson
 
-/** Macro configuration */
-sealed trait MacroConfiguration {
+/**
+ * Macro configuration;
+ *
+ * It allows to configure compile time options,
+ * and behaviour to be retained at runtime (field & type naming).
+ *
+ * {{{
+ * import reactivemongo.api.bson.{
+ *   BSONDocumentReader, MacroConfiguration, Macros
+ * }
+ *
+ * case class Foo(name: String)
+ *
+ * val r1: BSONDocumentReader[Foo] = Macros.configured.reader[Foo]
+ *
+ * val r2: BSONDocumentReader[Foo] = Macros.configured(
+ *   MacroConfiguration.simpleTypeName).reader[Foo]
+ *
+ * }}}
+ */
+sealed trait MacroConfiguration { // TODO: Link to reactivemongo-site when BSON doc is up to date
   /** Compile-time options for the JSON macros */
   type Opts <: MacroOptions
 
@@ -18,25 +37,34 @@ sealed trait MacroConfiguration {
   def discriminator: String
 }
 
+/** [[MacroConfiguration]] factories and utilities */
 object MacroConfiguration {
   type Aux[O <: MacroOptions] = MacroConfiguration { type Opts = O }
 
+  /** `"className"` */
   val defaultDiscriminator = "className"
 
   /**
+   * {{{
+   * import reactivemongo.api.bson.MacroConfiguration
+   *
+   * val customCfg = MacroConfiguration(discriminator = "_type")
+   * }}}
+   *
    * @param naming the naming strategy
    * @param discriminator See [[MacroConfiguration.discriminator]]
    * @param typeNaming See [[MacroConfiguration.typeNaming]]
+   * @tparam Opts the compile time options (see [[MacroOptions]])
    */
   def apply[Opts <: MacroOptions](
     fieldNaming: FieldNaming = FieldNaming.Identity,
     discriminator: String = defaultDiscriminator,
     typeNaming: TypeNaming = TypeNaming.FullName)(implicit opts: MacroOptions.ValueOf[Opts]): MacroConfiguration.Aux[Opts] = new Impl(opts, fieldNaming, discriminator, typeNaming)
 
-  /** Default configuration instance */
+  /** The default configuration instance */
   implicit def default[Opts <: MacroOptions: MacroOptions.ValueOf]: MacroConfiguration.Aux[Opts] = apply()
 
-  /** Configuration using [[TypeNaming$.SimpleName]] */
+  /** A configuration using [[TypeNaming$.SimpleName]] */
   @inline def simpleTypeName[Opts <: MacroOptions: MacroOptions.ValueOf]: MacroConfiguration.Aux[Opts] = apply(typeNaming = TypeNaming.SimpleName)
 
   private final class Impl[O <: MacroOptions](
@@ -47,5 +75,5 @@ object MacroConfiguration {
     type Opts = O
   }
 
-  protected def default: MacroConfiguration.Aux[MacroOptions] = apply()
+  //protected def default: MacroConfiguration.Aux[MacroOptions] = apply()
 }

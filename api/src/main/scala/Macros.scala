@@ -242,7 +242,14 @@ object Macros {
      * @param key the desired key to use in BSON
      */
     @meta.param
-    case class Key(key: String) extends StaticAnnotation
+    final class Key(val key: String) extends StaticAnnotation {
+      override def equals(that: Any): Boolean = that match {
+        case other: Key => this.key == other.key
+        case _ => false
+      }
+
+      override def hashCode: Int = key.hashCode
+    }
 
     /** Ignores a field */
     @meta.param

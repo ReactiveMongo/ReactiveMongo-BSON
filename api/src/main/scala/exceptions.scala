@@ -26,25 +26,124 @@ final class BSONValueNotFoundException private[exceptions] (
 object BSONValueNotFoundException {
   import reactivemongo.api.bson.{ BSONArray, BSONDocument }
 
-  def apply(name: String, parent: BSONDocument): BSONValueNotFoundException = new BSONValueNotFoundException(name, s"The key '$name' could not be found in document ${BSONDocument pretty parent}")
+  private[api] def apply(name: String, parent: BSONDocument): BSONValueNotFoundException = new BSONValueNotFoundException(name, s"The key '$name' could not be found in document ${BSONDocument pretty parent}")
 
-  def apply(index: Int, parent: BSONArray): BSONValueNotFoundException = new BSONValueNotFoundException(index.toString, s"The key '#$index' could not be found in array ${BSONArray pretty parent}")
+  private[api] def apply(index: Int, parent: BSONArray): BSONValueNotFoundException = new BSONValueNotFoundException(index.toString, s"The key '#$index' could not be found in array ${BSONArray pretty parent}")
 
   /** Extract the not found key (either a field name or an index). */
-  def unapply(cause: Throwable): Option[String] = cause match {
+  private[api] def unapply(cause: Throwable): Option[String] = cause match {
     case notFound: BSONValueNotFoundException => Option(notFound.key)
     case _ => Option.empty[String]
   }
 }
 
-final case class TypeDoesNotMatchException(
-  expected: String,
-  actual: String) extends Exception with NoStackTrace {
+/**
+ * Indicates that the type of a read value doesn't match the expected one.
+ */
+final class TypeDoesNotMatchException private[api] (
+  val expected: String,
+  val actual: String) extends Exception with NoStackTrace {
   override val getMessage = s"$actual != $expected"
+
+  private[api] lazy val tupled = expected -> actual
+
+  override def equals(that: Any): Boolean = that match {
+    case other: TypeDoesNotMatchException =>
+      this.tupled == other.tupled
+
+    case _ =>
+      false
+  }
+
+  override def hashCode: Int = tupled.hashCode
+
+  override def toString: String = s"TypeDoesNotMatchException${tupled.toString}"
 }
 
-final case class ValueDoesNotMatchException(actual: String) extends Exception with NoStackTrace {
+/** [[TypeDoesNotMatchException]] factories */
+object TypeDoesNotMatchException {
+  /**
+   * Defines a type exception.
+   *
+   * @param expected the name of the expected type
+   * @param actual the name of the actual type
+   *
+   * {{{
+   * reactivemongo.api.bson.exceptions.
+   *   TypeDoesNotMatchException("LocalDate", "String")
+   * }}}
+   */
+  def apply(expected: String, actual: String): TypeDoesNotMatchException =
+    new TypeDoesNotMatchException(expected, actual)
+
+  /**
+   * Extracts expected and actual types from the type exception.
+   *
+   * {{{
+   * import reactivemongo.api.bson.exceptions.TypeDoesNotMatchException
+   *
+   * def foo(cause: Exception) = cause match {
+   *   case TypeDoesNotMatchException(expected, actual) =>
+   *     println(expected + " -> " + actual)
+   *
+   *   case _ =>
+   * }
+   * }}}
+   */
+  def unapply(exception: Exception): Option[(String, String)] =
+    exception match {
+      case x: TypeDoesNotMatchException => Some(x.expected -> x.actual)
+      case _ => None
+    }
+}
+
+/** Indicates that a read value doesn't match an expected one */
+final class ValueDoesNotMatchException private[api] (
+  val actual: String) extends Exception with NoStackTrace {
   override val getMessage = s"Value doesn't match: $actual"
+
+  override def equals(that: Any): Boolean = that match {
+    case other: ValueDoesNotMatchException =>
+      this.actual == other.actual
+
+    case _ =>
+      false
+  }
+
+  @inline override def hashCode: Int = actual.hashCode
+
+  override def toString = s"ValueDoesNotMatchException($actual)"
+}
+
+/** [[ValueDoesNotMatchException]] factories */
+object ValueDoesNotMatchException {
+  /**
+   * {{{
+   * reactivemongo.api.bson.exceptions.
+   *   ValueDoesNotMatchException("unsupported")
+   * }}}
+   */
+  def apply(actual: String): ValueDoesNotMatchException =
+    new ValueDoesNotMatchException(actual)
+
+  /**
+   * Extracts expected and actual types from the type exception.
+   *
+   * {{{
+   * import reactivemongo.api.bson.exceptions.ValueDoesNotMatchException
+   *
+   * def foo(cause: Exception) = cause match {
+   *   case ValueDoesNotMatchException(actual) =>
+   *     println(actual)
+   *
+   *   case _ =>
+   * }
+   * }}}
+   */
+  def unapply(exception: Exception): Option[String] = exception match {
+    case x: ValueDoesNotMatchException => Some(x.actual)
+    case _ => None
+  }
 }
 
 /** Exception from a BSON reader/writer. */

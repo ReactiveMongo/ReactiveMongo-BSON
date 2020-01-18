@@ -2,11 +2,32 @@ package reactivemongo.api.bson
 
 import scala.util.{ Success, Try }
 
-/** Mapping from a BSON string to `T` */
+/**
+ * Mapping from a BSON string to `T`.
+ *
+ * {{{
+ * final class Foo(val v: String) extends AnyVal
+ *
+ * val dict = Map[Foo, Int](
+ *   (new Foo("key") -> 1),
+ *   (new Foo("name") -> 2))
+ *
+ * import reactivemongo.api.bson.KeyWriter
+ *
+ * implicit def fooKeyWriter: KeyWriter[Foo] =
+ *   KeyWriter.safe[Foo] { foo =>
+ *     "foo:" + foo.v
+ *   }
+ *
+ * reactivemongo.api.bson.BSON.writeDocument(dict)
+ * // Success = {'foo:key': 1, 'foo:name': 2}
+ * }}}
+ */
 trait KeyWriter[T] {
   def writeTry(key: T): Try[String]
 }
 
+/** [[KeyWriter]] factories */
 object KeyWriter extends LowPriorityKeyWriter {
   /**
    * Creates a [[KeyWriter]] based on the given `write` function.

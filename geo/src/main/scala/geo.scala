@@ -9,17 +9,64 @@ import scala.util.{ Failure, Success, Try }
  * @param _2 either latitude (if `_1` is longitude) or northing
  * @param elevation the optional elevation value (altitude)
  */
-case class GeoPosition(
-  _1: Double,
-  _2: Double,
-  elevation: Option[Double])
+final class GeoPosition private[api] (
+  val _1: Double,
+  val _2: Double,
+  val elevation: Option[Double]) {
 
+  private[api] lazy val tupled = Tuple3(_1, _2, elevation)
+
+  override def equals(that: Any): Boolean = that match {
+    case other: GeoPosition =>
+      this.tupled == other.tupled
+
+    case _ =>
+      false
+  }
+
+  override def hashCode: Int = tupled.hashCode
+
+  override def toString = s"GeoPosition${tupled.toString}"
+}
+
+/** [[GeoPosition]] factories and utilities */
 object GeoPosition {
+  /**
+   * Creates a full-qualified position.
+   *
+   * {{{
+   * reactivemongo.api.bson.GeoPosition(12.3D, 4.56D, None)
+   * }}}
+   */
+  def apply(
+    _1: Double,
+    _2: Double,
+    elevation: Option[Double]): GeoPosition = new GeoPosition(_1, _2, elevation)
+
   /**
    * Convenient factory (equivalent to `GeoPosition(_1, _2, None)`).
    */
-  @inline def apply(_1: Double, _2: Double): GeoPosition =
-    GeoPosition(_1, _2, None)
+  def apply(_1: Double, _2: Double): GeoPosition = GeoPosition(_1, _2, None)
+
+  /**
+   * Extracts the position properties.
+   *
+   * {{{
+   * import reactivemongo.api.bson.GeoPosition
+   *
+   * def pos_1(pos: GeoPosition): Option[Double] = pos match {
+   *   case GeoPosition(a, b, elevation) => {
+   *     println("_1 = " + a + ", _2 = " + b + " / " + elevation)
+   *     Some(a)
+   *   }
+   *
+   *   case _ =>
+   *     None
+   * }
+   * }}}
+   */
+  def unapply(pos: GeoPosition): Option[(Double, Double, Option[Double])] =
+    Option(pos).map(_.tupled)
 
   implicit val reader: BSONReader[GeoPosition] =
     BSONReader.from[GeoPosition]({
@@ -209,10 +256,35 @@ object GeoLinearRing {
 /**
  * GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#geometrycollection GeometryCollection]] (collection of [[GeoGeometry]])
  */
-case class GeoGeometryCollection(geometries: Seq[GeoGeometry])
+final class GeoGeometryCollection private[api] (
+  val geometries: Seq[GeoGeometry]) {
+
+  override def equals(that: Any): Boolean = that match {
+    case other: GeoGeometryCollection =>
+      this.geometries == other.geometries
+
+    case _ =>
+      false
+  }
+
+  override def hashCode: Int = geometries.hashCode
+
+  override def toString =
+    s"""GeoGeometryCollection${geometries.mkString("[", ", ", "]")}"""
+}
 
 /** See [[GeoGeometryCollection]] */
 object GeoGeometryCollection {
+  /** Creates a new collection. */
+  def apply(geometries: Seq[GeoGeometry]): GeoGeometryCollection =
+    new GeoGeometryCollection(geometries)
+
+  /**
+   * Extracts the geometries from the collection.
+   */
+  def unapply(collection: GeoGeometryCollection): Option[Seq[GeoGeometry]] =
+    Option(collection).map(_.geometries)
+
   implicit val reader: BSONDocumentReader[GeoGeometryCollection] =
     Macros.reader[GeoGeometryCollection] // ignore 'type'
 
