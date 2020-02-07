@@ -25,7 +25,9 @@ import org.bson.{
 
 import org.bson.codecs._
 import org.bson.codecs.configuration.CodecRegistry
+import org.bson.json.JsonReader
 
+import reactivemongo.api.bson.BSONHandler
 import reactivemongo.api.bson.msb.HandlerConverters
 
 import org.specs2.specification.core.Fragment
@@ -65,6 +67,22 @@ final class HandlerConverterSpec
       case (cls, codec) => s"be resolved for ${cls.getSimpleName}" in {
         codecReg.get(cls).getClass must_== codec.getClass
       }
+    }
+  }
+
+  "Codec from Handler" should {
+    "not fail for simple types" in {
+      import HandlerConverters.DefaultCodecRegistry
+
+      val handler = implicitly[BSONHandler[Long]]
+      val codec = HandlerConverters.fromHandler(handler)
+
+      // https://docs.mongodb.com/manual/reference/mongodb-extended-json/#bson.Int64
+      val reader = new JsonReader("""{ "$numberLong": "42" }""")
+
+      val longValue = codec.decode(reader, DecoderContext.builder().build())
+
+      longValue === 42L
     }
   }
 }
