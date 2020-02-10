@@ -596,8 +596,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val codec: Codec[BSONMaxKey] = handler
         val dec: Decoder[BSONMaxKey] = reader
 
-        decode(new BsonMaxKey, dec) must beSuccessfulTry(BSONMaxKey) and {
-          decode(new BsonMaxKey, codec) must beSuccessfulTry(BSONMaxKey)
+        decode(new BsonMaxKey, dec) must beSuccessfulTry[BSONValue](BSONMaxKey) and {
+          decode(new BsonMaxKey, codec) must beSuccessfulTry[BSONValue](BSONMaxKey)
         }
       }
 
@@ -608,8 +608,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val codec: Codec[BSONMinKey] = handler
         val dec: Decoder[BSONMinKey] = reader
 
-        decode(new BsonMinKey, dec) must beSuccessfulTry(BSONMinKey) and {
-          decode(new BsonMinKey, codec) must beSuccessfulTry(BSONMinKey)
+        decode(new BsonMinKey, dec) must beSuccessfulTry[BSONValue](BSONMinKey) and {
+          decode(new BsonMinKey, codec) must beSuccessfulTry[BSONValue](BSONMinKey)
         }
       }
 
@@ -620,8 +620,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val codec: Codec[BSONNull] = handler
         val dec: Decoder[BSONNull] = reader
 
-        decode(new BsonNull, dec) must beSuccessfulTry(BSONNull) and {
-          decode(new BsonNull, codec) must beSuccessfulTry(BSONNull)
+        decode(new BsonNull, dec) must beSuccessfulTry[BSONValue](BSONNull) and {
+          decode(new BsonNull, codec) must beSuccessfulTry[BSONValue](BSONNull)
         }
       }
 
@@ -696,8 +696,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val codec: Codec[BSONUndefined] = handler
         val dec: Decoder[BSONUndefined] = reader
 
-        decode(new BsonUndefined, dec) must beSuccessfulTry(BSONUndefined) and {
-          decode(new BsonUndefined, codec) must beSuccessfulTry(BSONUndefined)
+        decode(new BsonUndefined, dec) must beSuccessfulTry[BSONValue](BSONUndefined) and {
+          decode(new BsonUndefined, codec) must beSuccessfulTry[BSONValue](BSONUndefined)
         }
       }
 
