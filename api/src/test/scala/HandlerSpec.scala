@@ -219,6 +219,15 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
 
         handler.readTry(input) must beSuccessfulTry(expectedResult)
       }
+
+      "fail" in {
+        val input = BSONDocument(
+          "a" -> BSONDocument("label" -> "foo", "count" -> 10),
+          "b" -> BSONDocument("wrong" -> "foo2"))
+        val handler = implicitly[BSONReader[Map[String, Foo]]]
+
+        handler.readTry(input) must beFailedTry
+      }
     }
   }
 
