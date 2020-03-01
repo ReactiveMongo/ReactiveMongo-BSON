@@ -199,7 +199,15 @@ private[msb] sealed trait BSONDecoder[T] extends Decoder[T] {
   protected def codecReg: CodecRegistry
 
   def decode(reader: BsonReader, ctx: DecoderContext): T = {
-    val v: BSONValue = reader.getCurrentBsonType match {
+    val current = reader.getCurrentBsonType
+
+    @SuppressWarnings(Array("NullParameter"))
+    def resolved = {
+      if (current != null) current
+      else reader.readBsonType()
+    }
+
+    val v: BSONValue = resolved match {
       case BsonType.ARRAY =>
         ValueConverters.toArray(
           codecReg.get(classOf[BsonArray]).decode(reader, ctx))
