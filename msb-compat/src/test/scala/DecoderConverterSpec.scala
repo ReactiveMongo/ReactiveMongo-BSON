@@ -54,7 +54,11 @@ import reactivemongo.api.bson.{
   BSONSymbol,
   BSONString,
   BSONTimestamp,
-  BSONUndefined
+  BSONUndefined,
+  minKey,
+  maxKey,
+  `null`,
+  undefined
 }
 import reactivemongo.api.bson.msb.HandlerConverters
 
@@ -294,8 +298,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val reader: BSONReader[BsonMaxKey] = dec
         val handler: BSONHandler[BsonMaxKey] = codec
 
-        reader.readTry(BSONMaxKey) must beSuccessfulTry(new BsonMaxKey) and {
-          handler.readTry(BSONMaxKey) must beSuccessfulTry(new BsonMaxKey)
+        reader.readTry(maxKey) must beSuccessfulTry(new BsonMaxKey) and {
+          handler.readTry(maxKey) must beSuccessfulTry(new BsonMaxKey)
         }
       }
 
@@ -306,8 +310,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val reader: BSONReader[BsonMinKey] = dec
         val handler: BSONHandler[BsonMinKey] = codec
 
-        reader.readTry(BSONMinKey) must beSuccessfulTry(new BsonMinKey) and {
-          handler.readTry(BSONMinKey) must beSuccessfulTry(new BsonMinKey)
+        reader.readTry(minKey) must beSuccessfulTry(new BsonMinKey) and {
+          handler.readTry(minKey) must beSuccessfulTry(new BsonMinKey)
         }
       }
 
@@ -318,8 +322,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val reader: BSONReader[BsonNull] = dec
         val handler: BSONHandler[BsonNull] = codec
 
-        reader.readTry(BSONNull) must beSuccessfulTry(new BsonNull) and {
-          handler.readTry(BSONNull) must beSuccessfulTry(new BsonNull)
+        reader.readTry(`null`) must beSuccessfulTry(new BsonNull) and {
+          handler.readTry(`null`) must beSuccessfulTry(new BsonNull)
         }
       }
 
@@ -395,9 +399,9 @@ private[reactivemongo] trait DecoderConverterSpec {
         val reader: BSONReader[BsonUndefined] = dec
         val handler: BSONHandler[BsonUndefined] = codec
 
-        reader.readTry(BSONUndefined).
+        reader.readTry(undefined).
           aka("undefined1") must beSuccessfulTry(new BsonUndefined) and {
-            handler.readTry(BSONUndefined).
+            handler.readTry(undefined).
               aka("undefined2") must beSuccessfulTry(new BsonUndefined)
           }
       }
@@ -596,8 +600,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val codec: Codec[BSONMaxKey] = handler
         val dec: Decoder[BSONMaxKey] = reader
 
-        decode(new BsonMaxKey, dec) must beSuccessfulTry[BSONValue](BSONMaxKey) and {
-          decode(new BsonMaxKey, codec) must beSuccessfulTry[BSONValue](BSONMaxKey)
+        decode(new BsonMaxKey, dec) must beSuccessfulTry(maxKey) and {
+          decode(new BsonMaxKey, codec) must beSuccessfulTry(maxKey)
         }
       }
 
@@ -608,8 +612,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val codec: Codec[BSONMinKey] = handler
         val dec: Decoder[BSONMinKey] = reader
 
-        decode(new BsonMinKey, dec) must beSuccessfulTry[BSONValue](BSONMinKey) and {
-          decode(new BsonMinKey, codec) must beSuccessfulTry[BSONValue](BSONMinKey)
+        decode(new BsonMinKey, dec) must beSuccessfulTry(minKey) and {
+          decode(new BsonMinKey, codec) must beSuccessfulTry(minKey)
         }
       }
 
@@ -620,8 +624,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val codec: Codec[BSONNull] = handler
         val dec: Decoder[BSONNull] = reader
 
-        decode(new BsonNull, dec) must beSuccessfulTry[BSONValue](BSONNull) and {
-          decode(new BsonNull, codec) must beSuccessfulTry[BSONValue](BSONNull)
+        decode(new BsonNull, dec) must beSuccessfulTry(`null`) and {
+          decode(new BsonNull, codec) must beSuccessfulTry(`null`)
         }
       }
 
@@ -696,8 +700,8 @@ private[reactivemongo] trait DecoderConverterSpec {
         val codec: Codec[BSONUndefined] = handler
         val dec: Decoder[BSONUndefined] = reader
 
-        decode(new BsonUndefined, dec) must beSuccessfulTry[BSONValue](BSONUndefined) and {
-          decode(new BsonUndefined, codec) must beSuccessfulTry[BSONValue](BSONUndefined)
+        decode(new BsonUndefined, dec) must beSuccessfulTry(undefined) and {
+          decode(new BsonUndefined, codec) must beSuccessfulTry(undefined)
         }
       }
 
