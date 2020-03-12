@@ -54,7 +54,11 @@ import reactivemongo.api.bson.{
   BSONString,
   BSONTimestamp,
   BSONUndefined,
-  BSONWriter
+  BSONWriter,
+  maxKey,
+  minKey,
+  `null`,
+  undefined
 }
 import reactivemongo.api.bson.msb.HandlerConverters
 
@@ -292,8 +296,8 @@ private[reactivemongo] trait EncoderConverterSpec {
         val writer: BSONWriter[BsonMaxKey] = enc
         val handler: BSONHandler[BsonMaxKey] = codec
 
-        writer.writeTry(new BsonMaxKey) must beSuccessfulTry(BSONMaxKey) and {
-          handler.writeTry(new BsonMaxKey) must beSuccessfulTry(BSONMaxKey)
+        writer.writeTry(new BsonMaxKey) must beSuccessfulTry(maxKey) and {
+          handler.writeTry(new BsonMaxKey) must beSuccessfulTry(maxKey)
         }
       }
 
@@ -304,8 +308,8 @@ private[reactivemongo] trait EncoderConverterSpec {
         val writer: BSONWriter[BsonMinKey] = enc
         val handler: BSONHandler[BsonMinKey] = codec
 
-        writer.writeTry(new BsonMinKey) must beSuccessfulTry(BSONMinKey) and {
-          handler.writeTry(new BsonMinKey) must beSuccessfulTry(BSONMinKey)
+        writer.writeTry(new BsonMinKey) must beSuccessfulTry(minKey) and {
+          handler.writeTry(new BsonMinKey) must beSuccessfulTry(minKey)
         }
       }
 
@@ -316,8 +320,8 @@ private[reactivemongo] trait EncoderConverterSpec {
         val writer: BSONWriter[BsonNull] = enc
         val handler: BSONHandler[BsonNull] = codec
 
-        writer.writeTry(new BsonNull) must beSuccessfulTry(BSONNull) and {
-          handler.writeTry(new BsonNull) must beSuccessfulTry(BSONNull)
+        writer.writeTry(new BsonNull) must beSuccessfulTry(`null`) and {
+          handler.writeTry(new BsonNull) must beSuccessfulTry(`null`)
         }
       }
 
@@ -397,9 +401,9 @@ private[reactivemongo] trait EncoderConverterSpec {
         val handler: BSONHandler[BsonUndefined] = codec
 
         writer.writeTry(new BsonUndefined).
-          aka("undefined1") must beSuccessfulTry(BSONUndefined) and {
+          aka("undefined1") must beSuccessfulTry(undefined) and {
             handler.writeTry(new BsonUndefined).
-              aka("undefined2") must beSuccessfulTry(BSONUndefined)
+              aka("undefined2") must beSuccessfulTry(undefined)
           }
       }
 

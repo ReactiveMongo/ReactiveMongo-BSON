@@ -59,7 +59,7 @@ lazy val api = (project in file("api")).settings(
     description := "New BSON API",
     libraryDependencies ++= Seq(
       "org.specs2" %% "specs2-scalacheck" % specsVer,
-      "org.typelevel" %% "discipline-specs2" % "1.0.0",
+      "org.typelevel" %% "discipline-specs2" % "1.1.0",
       spireLaws.value,
       "com.chuusai" %% "shapeless" % "2.3.3",
       "org.slf4j" % "slf4j-simple" % "1.7.30").map(_ % Test),
@@ -107,17 +107,10 @@ lazy val msbCompat = (project in file("msb-compat")).settings(
   commonSettings ++ Seq(
     name := s"${baseArtifact}-msb-compat",
     description := "Compatibility library with mongo-scala-bson",
-    sourceDirectory := {
-      // mongo-scala-bson no available for 2.13
-      if (scalaBinaryVersion.value == "2.13") new java.io.File("/no/sources")
-      else sourceDirectory.value
-    },
-    libraryDependencies ++= {
-      if (scalaBinaryVersion.value != "2.13") {
-        Seq("org.mongodb.scala" %% "mongo-scala-bson" % "4.0.0" % Provided)
-      } else {
-        Seq.empty
-      }
+    libraryDependencies += {
+      val v = if (scalaBinaryVersion.value != "2.13") "2.8.0" else "4.0.0"
+
+      "org.mongodb.scala" %% "mongo-scala-bson" % v % Provided
     },
     scalacOptions := (Def.taskDyn {
       val opts = scalacOptions.value
