@@ -76,6 +76,18 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
    */
   def array(values: Producer[BSONValue]*) = BSONArray(values: _*)
 
+  /** Returns a BSON MinKey value */
+  def minKey: BSONMinKey = BSONMinKey
+
+  /** Returns a BSON MaxKey value */
+  def maxKey: BSONMaxKey = BSONMaxKey
+
+  /** Returns a BSON Null value */
+  def `null`: BSONNull = BSONNull
+
+  /** Returns a BSON Undefined value */
+  def undefined: BSONUndefined = BSONUndefined
+
   /** Returns a newly generated object ID. */
   def generateId = BSONObjectID.generate()
 
