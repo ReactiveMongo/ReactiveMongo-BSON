@@ -1,7 +1,5 @@
 package reactivemongo
 
-import java.util.Date
-
 import org.bson.{
   BsonArray,
   BsonBinary,
@@ -55,9 +53,8 @@ import reactivemongo.api.bson.{
 trait ConverterFixtures {
   val time = System.currentTimeMillis()
 
-  @com.github.ghik.silencer.silent
-  val loid = new BsonObjectId(new ObjectId(new Date(time), 0, 0.toShort, 0))
   val boid = BSONObjectID.fromTime(time, true)
+  val loid = new BsonObjectId(new ObjectId(boid.stringify))
 
   val uuid = java.util.UUID.randomUUID
 
