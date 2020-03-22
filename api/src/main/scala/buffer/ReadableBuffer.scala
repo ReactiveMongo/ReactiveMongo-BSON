@@ -2,7 +2,7 @@ package reactivemongo.api.bson.buffer
 
 import java.nio.{ ByteBuffer, ByteOrder }
 
-import reactivemongo.io.netty.buffer.Unpooled
+import reactivemongo.io.netty.buffer.{ ByteBuf, Unpooled }
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
  *
  * @param buffer the underlying NIO buffer (must be little endian)
  */
-private[bson] final class ReadableBuffer private[bson] (
+private[reactivemongo] final class ReadableBuffer private[bson] (
   val buffer: ByteBuffer) extends AnyVal {
 
   /** Returns the buffer size. */
@@ -110,9 +110,20 @@ private[bson] final class ReadableBuffer private[bson] (
 }
 
 private[reactivemongo] object ReadableBuffer {
-  /** Returns an [[ReadableBuffer]] which source is the given `array`. */
+  /** Returns a [[ReadableBuffer]] which source is the given `array`. */
   def apply(bytes: Array[Byte]): ReadableBuffer = {
     val buf = ByteBuffer.wrap(bytes)
+    buf.order(ByteOrder.LITTLE_ENDIAN)
+
+    new ReadableBuffer(buf)
+  }
+
+  /**
+   * Returns an NIO [[ReadableBuffer]] which the same content
+   * as the given Netty buffer.
+   */
+  def apply(buffer: ByteBuf): ReadableBuffer = {
+    val buf = buffer.nioBuffer
     buf.order(ByteOrder.LITTLE_ENDIAN)
 
     new ReadableBuffer(buf)
