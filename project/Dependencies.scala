@@ -1,7 +1,7 @@
 import sbt._
 
 object Dependencies {
-  val specsVer = "4.9.2"
+  val specsVer = "4.9.3"
 
   val specsDeps = Seq(
     "org.specs2" %% "specs2-core" % specsVer,
