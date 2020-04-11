@@ -53,35 +53,6 @@ commands:
             - ~/.sbt
           key: d-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
 
-  publish_snapshot:
-    description: Publish artifact to Snapshots repository
-    parameters:
-      scala_version:
-        type: string
-        default: ""
-    steps:
-      - deploy:
-          name: Publish artifacts to Sonatype Snapshots
-          command: |
-                    if [ ! "${CIRCLE_BRANCH}" = "master" ]; then
-                      echo "Skipped on branch ${CIRCLE_BRANCH}"
-                      exit 0
-                    fi
-                    
-                    export PUBLISH_REPO_NAME="Sonatype Nexus Repository Manager"
-                    export PUBLISH_REPO_ID="oss.sonatype.org"
-                    export PUBLISH_REPO_URL="https://oss.sonatype.org/content/repositories/snapshots"
-                    
-                    if [ "x$PUBLISH_USER" = "x" -o "x$PUBLISH_PASS" = "x" ]; then
-                      echo "Missing publication credentials"
-                      exit 1
-                    fi
-                    
-                    V="<< parameters.scala_version >>"
-                    echo "Publishing artifacts for Scala $V"
-                    
-                    sbt ++$V publish
-
 jobs:
   scala211_jdk10:
     docker:
@@ -110,9 +81,6 @@ jobs:
       - store_test_results:
           path: test-reports
 
-      - publish_snapshot:
-          scala_version: 2.11.12
-
   scala212_jdk8:
     docker:
       - image: circleci/openjdk:8-jdk
@@ -139,9 +107,6 @@ jobs:
       - collect_test_reports
       - store_test_results:
           path: test-reports
-
-      - publish_snapshot:
-          scala_version: 2.12.10
 
   scala213_jdk9:
     docker:
@@ -170,8 +135,42 @@ jobs:
       - store_test_results:
           path: test-reports
 
-      - publish_snapshot:
-          scala_version: 2.13.1
+  publish_snapshots:
+    docker:
+      - image: circleci/openjdk:8-jdk
+
+    working_directory: ~/repo
+    
+    steps:
+      - checkout
+
+      - setup_sbt
+
+      - restore_cache:
+          keys:
+          - d-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
+          - tooling
+
+      - deploy:
+          name: Publish artifacts to Sonatype Snapshots
+          command: |
+                    if [ ! "${CIRCLE_BRANCH}" = "master" ]; then
+                      echo "Skipped on branch ${CIRCLE_BRANCH}"
+                      exit 0
+                    fi
+                    
+                    export PUBLISH_REPO_NAME="Sonatype Nexus Repository Manager"
+                    export PUBLISH_REPO_ID="oss.sonatype.org"
+                    export PUBLISH_REPO_URL="https://oss.sonatype.org/content/repositories/snapshots"
+                    
+                    if [ "x$PUBLISH_USER" = "x" -o "x$PUBLISH_PASS" = "x" ]; then
+                      echo "Missing publication credentials"
+                      exit 1
+                    fi
+                    
+                    sbt +publish
+
+      - update_cache
 
 workflows:
   version: 2
@@ -181,3 +180,8 @@ workflows:
       - scala211_jdk10
       - scala212_jdk8
       - scala213_jdk9
+      - publish_snapshots:
+          requires:
+            - scala211_jdk10
+            - scala212_jdk8
+            - scala213_jdk9
