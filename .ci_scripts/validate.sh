@@ -19,11 +19,13 @@ source "$SCRIPT_DIR/jvmopts.sh"
 export JVM_OPTS
 export SBT_OPTS
 
-TEST_ARGS=";mimaReportBinaryIssues"
+TEST_ARGS=";error ;test:compile ;mimaReportBinaryIssues"
 
 if [ ! `echo "n$SCALA_VERSION" | sed -e 's/2.13.*/o/'` = "no" ]; then
   TEST_ARGS=";scapegoat $TEST_ARGS"
 fi
+
+TEST_ARGS="$TEST_ARGS ;info"
 
 if [ "v$MONGO_VER" = "v2_6" ]; then
   TEST_ARGS="$TEST_ARGS ;testOnly -- exclude gt_mongo32"

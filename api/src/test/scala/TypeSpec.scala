@@ -102,12 +102,10 @@ final class TypeSpec extends org.specs2.mutable.Specification {
 
   "BSON string" should {
     "be pretty-printed" in {
-      BSONString.pretty(BSONString(
-        "foo 'bar'")) must_=== "'foo \\'bar\\''"
+      BSONString.pretty(BSONString("foo 'bar'")) must_=== "'foo \\'bar\\''"
     }
   }
 
-  /*
   "BSON timestamp" should {
     val timeMs = 1574884443000L
     val timeSec = 366
@@ -127,5 +125,4 @@ final class TypeSpec extends org.specs2.mutable.Specification {
       BSONTimestamp(timeSec, ordinal) must_=== BSONTimestamp(timeMs)
     }
   }
-   */
 }

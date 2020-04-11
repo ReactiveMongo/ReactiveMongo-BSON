@@ -217,7 +217,14 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         lazy val strictDoc = doc.asStrict
 
         "with duplicate preserved using default handlers" in {
-          readDocument(ReadableBuffer(binRepr)) must_=== doc
+          val buf1 = ReadableBuffer(binRepr)
+
+          val buf2 = ReadableBuffer( // Check Netty-NIO compat
+            reactivemongo.io.netty.buffer.Unpooled wrappedBuffer buf1.buffer)
+
+          readDocument(buf1) must_=== doc and {
+            readDocument(buf2) must_=== doc
+          }
         }
 
         "without duplicate field in document" in {

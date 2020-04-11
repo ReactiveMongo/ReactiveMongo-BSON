@@ -518,14 +518,14 @@ sealed abstract class BSONArray extends BSONValue {
    *
    * val arr = BSONArray(1, "foo")
    *
-   * arr.getAsUnflattendTry[Int](0) // Success(Some(1))
-   * arr.getAsUnflattendTry[Int](1) // Failure(BSONValueNotFoundException(..))
-   * arr.getAsUnflattendTry[Int](2) // Success(None) // no value at 2
+   * arr.getAsUnflattenedTry[Int](0) // Success(Some(1))
+   * arr.getAsUnflattenedTry[Int](1) // Failure(BSONValueNotFoundException(..))
+   * arr.getAsUnflattenedTry[Int](2) // Success(None) // no value at 2
    * }}}
    *
    * @param index $indexParam
    */
-  def getAsUnflattendTry[T](index: Int)(
+  def getAsUnflattenedTry[T](index: Int)(
     implicit
     reader: BSONReader[T]): Try[Option[T]] = get(index) match {
     case None | Some(BSONNull) =>
@@ -804,7 +804,7 @@ sealed trait BSONUndefined extends BSONValue with BSONBooleanLike.Value {
 
   override private[reactivemongo] val byteSize = 0
 
-  val toBoolean = Success(false)
+  override val toBoolean = Success(false)
 
   override def toString: String = "BSONUndefined"
 }
@@ -1150,7 +1150,7 @@ sealed trait BSONNull extends BSONValue with BSONBooleanLike.Value {
 
   override private[reactivemongo] val byteSize = 0
 
-  val toBoolean = Success(false)
+  override val toBoolean = Success(false)
 
   override def toString: String = "BSONNull"
 }
@@ -2053,9 +2053,13 @@ private[bson] sealed trait BSONDocumentExperimental { self: BSONDocument =>
    * $getFieldIf a boolean-like field
    * (numeric or boolean).
    */
-  def booleanLike(name: String): Option[Boolean] =
-    getAsTry[BSONBooleanLike](name)(BSONBooleanLike.Handler).
-      flatMap(_.toBoolean).toOption
+  def booleanLike(name: String): Option[Boolean] = get(name) match {
+    case Some(v) => // accept BSONNull
+      BSONBooleanLike.Handler.readTry(v).flatMap(_.toBoolean).toOption
+
+    case _ =>
+      None
+  }
 
   /**
    * $getFieldIf a nested document.

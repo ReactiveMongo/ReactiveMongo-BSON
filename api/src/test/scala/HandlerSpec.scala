@@ -70,7 +70,7 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         doc.getAsTry[BSONBooleanLike]("score").
           flatMap(_.toBoolean) must beSuccessfulTry(true)
       }
-    } tag "wip"
+    }
 
     "be read" in {
       val reader1 = BSONDocumentReader.from(_.getAsTry[String]("name"))
@@ -316,6 +316,26 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
       val bson = BSONTimestamp(time)
 
       reader.readOpt(bson).map(_.toLong) must beSome(Success(time))
+    }
+  }
+
+  "Boolean" should {
+    val reader = implicitly[BSONReader[BSONBooleanLike]]
+
+    "be read from BSON null" in {
+      val doc = BSONDocument(
+        "null" -> BSONNull,
+        "undefined" -> BSONUndefined)
+
+      reader.readOpt(BSONNull).map(
+        _.toBoolean) must beSome(Success(false)) and {
+          doc.booleanLike("null") must beSome(false)
+        } and {
+          reader.readOpt(BSONUndefined).map(
+            _.toBoolean) must beSome(Success(false))
+        } and {
+          doc.booleanLike("undefined") must beSome(false)
+        }
     }
   }
 
