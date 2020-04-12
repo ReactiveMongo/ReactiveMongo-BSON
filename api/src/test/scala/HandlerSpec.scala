@@ -563,6 +563,69 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
   }
 
+  "Reader" should {
+    "be created for a single value from an Option based function" in {
+      val r = BSONReader.option[String] {
+        case BSONInteger(0) => Some("zero")
+        case BSONInteger(1) => Some("one")
+        case _ => None
+      }
+
+      r.readTry(BSONInteger(0)) must beSuccessfulTry("zero") and {
+        r.readTry(BSONInteger(1)) must beSuccessfulTry("one")
+      } and {
+        r.readTry(BSONInteger(2)) must beFailedTry[String].
+          withThrowable[exceptions.ValueDoesNotMatchException]
+      } and {
+        r.readOpt(BSONInteger(0)) must beSome("zero")
+      } and {
+        r.readOpt(BSONInteger(1)) must beSome("one")
+      } and {
+        r.readOpt(BSONInteger(3)) must beNone
+      }
+    }
+
+    "be created for a document from an Option based function" in {
+      val r = BSONDocumentReader.option[(String, Int)] { doc =>
+        for {
+          s <- doc.string("a")
+          i <- doc.int("b")
+        } yield s -> i
+      }
+
+      r.readTry(BSONDocument(
+        "a" -> "A", "b" -> 1)) must beSuccessfulTry("A" -> 1) and {
+        // Missing 'b'
+        val doc = BSONDocument("a" -> "B")
+
+        r.readTry(doc) must beFailedTry[(String, Int)] and {
+          r.readOpt(doc) must beNone
+        }
+      } and {
+        // Missing 'a'
+        val doc = BSONDocument("b" -> 2)
+
+        r.readTry(doc) must beFailedTry[(String, Int)] and {
+          r.readOpt(doc) must beNone
+        }
+      } and {
+        // Wrong type for 'a'
+        val doc = BSONDocument("a" -> 3, "b" -> 4)
+
+        r.readTry(doc) must beFailedTry[(String, Int)] and {
+          r.readOpt(doc) must beNone
+        }
+      } and {
+        // Wrong type for 'b'
+        val doc = BSONDocument("a" -> "C", "b" -> 5.6D)
+
+        r.readTry(doc) must beFailedTry[(String, Int)] and {
+          r.readOpt(doc) must beNone
+        }
+      }
+    }
+  }
+
   // ---
 
   lazy val doc = {

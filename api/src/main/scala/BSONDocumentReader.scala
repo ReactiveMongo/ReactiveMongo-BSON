@@ -1,6 +1,7 @@
 package reactivemongo.api.bson
 
-import scala.util.{ Failure, Try }
+import scala.util.{ Failure, Success, Try }
+import scala.util.control.NonFatal
 
 trait BSONDocumentReader[T] extends BSONReader[T] { self =>
   final def readTry(bson: BSONValue): Try[T] = bson match {
@@ -29,6 +30,10 @@ object BSONDocumentReader {
     new FunctionalReader[T](read)
 
   /** Creates a [[BSONDocumentReader]] based on the given `read` function. */
+  def option[T](read: BSONDocument => Option[T]): BSONDocumentReader[T] =
+    new OptionalReader[T](read)
+
+  /** Creates a [[BSONDocumentReader]] based on the given `read` function. */
   def from[T](read: BSONDocument => Try[T]): BSONDocumentReader[T] =
     new DefaultReader[T](read)
 
@@ -45,6 +50,27 @@ object BSONDocumentReader {
     read: BSONDocument => Try[T]) extends BSONDocumentReader[T] {
 
     def readDocument(doc: BSONDocument): Try[T] = read(doc)
+  }
+
+  private class OptionalReader[T](
+    read: BSONDocument => Option[T]) extends BSONDocumentReader[T] {
+
+    override def readOpt(bson: BSONValue): Option[T] = bson match {
+      case doc: BSONDocument => try {
+        read(doc)
+      } catch {
+        case NonFatal(_) => None
+      }
+
+      case _ => None
+    }
+
+    def readDocument(doc: BSONDocument): Try[T] = Try(read(doc)).flatMap {
+      case Some(result) => Success(result)
+
+      case _ =>
+        Failure(exceptions.ValueDoesNotMatchException(BSONDocument pretty doc))
+    }
   }
 
   private class FunctionalReader[T](
