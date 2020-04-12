@@ -8,6 +8,10 @@ commands:
         type: string
         default: "1.3.9"
     steps:
+      - restore_cache:
+          keys:
+          - sbt-{{ checksum "project/build.properties" }}
+
       - run:
           name: Setup SBT
           command: |
@@ -16,6 +20,7 @@ commands:
                       curl --silent -L -o sbt.tgz https://piccolo.link/sbt-<< parameters.sbt_version >>.tgz
                       tar -xzvf sbt.tgz && rm -f sbt.tgz
                     fi
+
       - save_cache:
           paths:
             - ~/sbt
@@ -24,6 +29,10 @@ commands:
   build_n_tests:
     description: Build & Run tests
     steps:
+      - restore_cache:
+          keys:
+          - scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
+
       - run:
           name: Build & Run tests
           command: |
@@ -31,6 +40,13 @@ commands:
                     export USER=`basename $HOME`
                     
                     ./.ci_scripts/validate.sh
+
+      - save_cache:
+          paths:
+            - ~/.ivy2
+            - ~/.coursier/cache
+            - ~/.sbt
+          key: scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
 
   collect_test_reports:
     description: Collect test reports
@@ -42,16 +58,6 @@ commands:
                     find . -path '*/test-reports/*' -name '*.xml' \
                       -print -exec cp {} test-reports \;
           when: always
-
-  scala_cache:
-    description: Update cache
-    steps:
-      - save_cache:
-          paths:
-            - ~/.ivy2
-            - ~/.coursier/cache
-            - ~/.sbt
-          key: d-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
 
 
 jobs:
@@ -66,21 +72,8 @@ jobs:
     
     steps:
       - checkout
-
-      - restore_cache:
-          keys:
-          - sbt-{{ checksum "project/build.properties" }}
-
       - setup_sbt
-
-      - restore_cache:
-          keys:
-          - d-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
-
       - build_n_tests
-
-      - scala_cache
-
       - collect_test_reports
       - store_test_results:
           path: test-reports
@@ -96,21 +89,8 @@ jobs:
     
     steps:
       - checkout
-
-      - restore_cache:
-          keys:
-          - sbt-{{ checksum "project/build.properties" }}
-
       - setup_sbt
-
-      - restore_cache:
-          keys:
-          - d-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
-
       - build_n_tests
-
-      - scala_cache
-
       - collect_test_reports
       - store_test_results:
           path: test-reports
@@ -126,21 +106,8 @@ jobs:
     
     steps:
       - checkout
-
-      - restore_cache:
-          keys:
-          - sbt-{{ checksum "project/build.properties" }}
-
       - setup_sbt
-
-      - restore_cache:
-          keys:
-          - d-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
-
       - build_n_tests
-
-      - scala_cache
-
       - collect_test_reports
       - store_test_results:
           path: test-reports
@@ -153,16 +120,7 @@ jobs:
     
     steps:
       - checkout
-
-      - restore_cache:
-          keys:
-          - sbt-{{ checksum "project/build.properties" }}
-
       - setup_sbt
-
-      - restore_cache:
-          keys:
-          - d-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
 
       - deploy:
           name: Publish artifacts to Sonatype Snapshots
@@ -182,8 +140,6 @@ jobs:
                     fi
                     
                     sbt +publish
-
-      - scala_cache
 
 workflows:
   version: 2
