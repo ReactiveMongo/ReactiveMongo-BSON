@@ -226,8 +226,18 @@ final class BSONDouble private[bson] (val value: Double)
     }
   }
 
-  private[bson] override lazy val asLong: Try[Long] =
-    if (value.isWhole) Try(value.toLong) else super.asLong
+  private[bson] override lazy val asLong: Try[Long] = {
+    lazy val r = value.round
+
+    @SuppressWarnings(Array("ComparingFloatingPointTypes"))
+    def to = {
+      if (value.isWhole && r.toDouble == value) {
+        Success(r)
+      } else super.asLong
+    }
+
+    to
+  }
 
   @inline def toLong = Try(value.toLong)
 

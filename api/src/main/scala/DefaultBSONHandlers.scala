@@ -32,7 +32,8 @@ private[bson] trait DefaultBSONHandlers
   implicit object BSONLongHandler
     extends BSONHandler[Long] with SafeBSONWriter[Long] {
 
-    override def readOpt(bson: BSONValue): Option[Long] = BSONLong.unapply(bson)
+    // TODO: Remove
+    //override def readOpt(bson: BSONValue): Option[Long] = BSONLong.unapply(bson)
 
     @inline def readTry(bson: BSONValue): Try[Long] = bson.asLong
 

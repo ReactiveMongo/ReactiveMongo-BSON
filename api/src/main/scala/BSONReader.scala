@@ -1,6 +1,6 @@
 package reactivemongo.api.bson
 
-import scala.util.Try
+import scala.util.{ Failure, Success, Try }
 
 import scala.util.control.NonFatal
 
@@ -138,6 +138,32 @@ object BSONReader {
    * Creates a [[BSONReader]] based on the given `read` function.
    *
    * {{{
+   * import reactivemongo.api.bson.{ BSONReader, BSONInteger }
+   *
+   * val intToStrCodeReader = BSONReader.option[String] {
+   *   case BSONInteger(0) => Some("zero")
+   *   case BSONInteger(1) => Some("one")
+   *   case _ => None
+   * }
+   *
+   * intToStrCodeReader.readTry(BSONInteger(0)) // Success("zero")
+   * intToStrCodeReader.readTry(BSONInteger(1)) // Success("one")
+   *
+   * intToStrCodeReader.readTry(BSONInteger(2))
+   * // => Failure(ValueDoesNotMatchException(..))
+   *
+   * intToStrCodeReader.readOpt(BSONInteger(3)) // None (as failed)
+   * }}}
+   *
+   * @param read the safe function to read BSON values as `T`
+   */
+  def option[T](read: BSONValue => Option[T]): BSONReader[T] =
+    new OptionalReader[T](read)
+
+  /**
+   * Creates a [[BSONReader]] based on the given `read` function.
+   *
+   * {{{
    * import scala.util.{ Failure, Success }
    * import reactivemongo.api.bson.{ BSONReader, BSONInteger }
    *
@@ -196,6 +222,18 @@ object BSONReader {
   private class Default[T](
     read: BSONValue => Try[T]) extends BSONReader[T] {
     def readTry(bson: BSONValue): Try[T] = read(bson)
+  }
+
+  private class OptionalReader[T](
+    read: BSONValue => Option[T]) extends BSONReader[T] {
+    def readTry(bson: BSONValue): Try[T] = Try(read(bson)).flatMap {
+      case Some(result) => Success(result)
+
+      case _ =>
+        Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
+    }
+
+    override def readOpt(bson: BSONValue): Option[T] = read(bson)
   }
 
   private class FunctionalReader[T](
