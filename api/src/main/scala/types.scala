@@ -980,13 +980,12 @@ object BSONObjectID {
   def parse(id: String): Try[BSONObjectID] = {
     if (id.length != 24) Failure[BSONObjectID](
       new IllegalArgumentException(s"Wrong ObjectId (length != 24): '$id'"))
-    else for {
-      bytes <- Try(Digest str2Hex id) match {
-        case Failure(_: NumberFormatException) => Failure(new IllegalArgumentException(s"'$id' is not a valid hex string'"))
-        case t => t
-      }
-      res <- parse(bytes)
-    } yield res
+    else try {
+      Success(parse(Digest str2Hex id))
+    } catch {
+      case NonFatal(cause) => 
+        Failure(new IllegalArgumentException(s"Wrong ObjectId (not a valid hex string): '$id'", cause))
+    }
   }
 
   /** Tries to make a BSON ObjectId from a binary representation. */
