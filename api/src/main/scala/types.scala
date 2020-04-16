@@ -983,7 +983,7 @@ object BSONObjectID {
     else try {
       Success(parse(Digest str2Hex id))
     } catch {
-      case NonFatal(cause) => 
+      case NonFatal(cause) =>
         Failure(new IllegalArgumentException(s"Wrong ObjectId (not a valid hex string): '$id'", cause))
     }
   }
