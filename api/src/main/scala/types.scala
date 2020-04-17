@@ -981,7 +981,7 @@ object BSONObjectID {
     if (id.length != 24) Failure[BSONObjectID](
       new IllegalArgumentException(s"Wrong ObjectId (length != 24): '$id'"))
     else try {
-      Success(parse(Digest str2Hex id))
+      parse(Digest str2Hex id)
     } catch {
       case NonFatal(cause) =>
         Failure(new IllegalArgumentException(s"Wrong ObjectId (not a valid hex string): '$id'", cause))
