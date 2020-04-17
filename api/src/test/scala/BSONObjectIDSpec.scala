@@ -38,6 +38,12 @@ final class BSONObjectIDSpec extends org.specs2.mutable.Specification {
           case nextObjectID => objectID must not(beTypedEqualTo(nextObjectID))
         }
     }
+
+    "fail gracefully for illegal 24 character strings" in {
+      val shouldFail = List.fill(24)("z").mkString("")
+
+      BSONObjectID.parse(shouldFail) must beAFailedTry[BSONObjectID].withThrowable[IllegalArgumentException]
+    }
   }
 
   "Digest" should {

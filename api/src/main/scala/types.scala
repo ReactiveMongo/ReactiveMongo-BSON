@@ -980,7 +980,12 @@ object BSONObjectID {
   def parse(id: String): Try[BSONObjectID] = {
     if (id.length != 24) Failure[BSONObjectID](
       new IllegalArgumentException(s"Wrong ObjectId (length != 24): '$id'"))
-    else parse(Digest str2Hex id)
+    else try {
+      parse(Digest str2Hex id)
+    } catch {
+      case NonFatal(cause) =>
+        Failure(new IllegalArgumentException(s"Wrong ObjectId (not a valid hex string): '$id'", cause))
+    }
   }
 
   /** Tries to make a BSON ObjectId from a binary representation. */
