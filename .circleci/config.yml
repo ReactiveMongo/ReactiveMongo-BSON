@@ -10,7 +10,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-          - sbt-{{ checksum "project/build.properties" }}
+          - &sbt_cache_key sbt-{{ checksum "project/build.properties" }}
 
       - run:
           name: Setup SBT
@@ -24,14 +24,14 @@ commands:
       - save_cache:
           paths:
             - ~/sbt
-          key: sbt-{{ checksum "project/build.properties" }}
+          key: *sbt_cache_key
 
   build_n_tests:
     description: Build & Run tests
     steps:
       - restore_cache:
           keys:
-          - scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
+          - &scala_cache_key scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
 
       - run:
           name: Build & Run tests
@@ -46,7 +46,7 @@ commands:
             - ~/.ivy2
             - ~/.coursier/cache
             - ~/.sbt
-          key: scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
+          key: *scala_cache_key
 
   collect_test_reports:
     description: Collect test reports
@@ -85,7 +85,7 @@ jobs:
     working_directory: ~/repo
 
     environment:
-      SCALA_VERSION: 2.12.10
+      SCALA_VERSION: 2.12.11
     
     steps:
       - checkout

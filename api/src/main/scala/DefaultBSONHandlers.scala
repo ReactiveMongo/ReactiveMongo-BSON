@@ -2,6 +2,8 @@ package reactivemongo.api.bson
 
 import java.net.{ URI, URL }
 
+import java.util.UUID
+
 import java.time.{
   Instant,
   LocalDate,
@@ -219,12 +221,20 @@ private[bson] trait DefaultBSONHandlers
         "BSONString", bson.getClass.getSimpleName))
     }
 
-    override def readOpt(bson: BSONValue): Option[URI] = bson match {
-      case BSONString(repr) => Some(new URI(repr))
-      case _ => None
+    def safeWrite(url: URI) = BSONString(url.toString)
+  }
+
+  implicit object BSONUUIDHandler
+    extends BSONHandler[UUID] with SafeBSONWriter[UUID] {
+
+    def readTry(bson: BSONValue): Try[UUID] = bson match {
+      case BSONString(repr) => Try(UUID fromString repr)
+
+      case _ => Failure(TypeDoesNotMatchException(
+        "BSONString", bson.getClass.getSimpleName))
     }
 
-    def safeWrite(url: URI) = BSONString(url.toString)
+    def safeWrite(uuid: UUID) = BSONString(uuid.toString)
   }
 }
 

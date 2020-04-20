@@ -9,6 +9,8 @@ import java.time.{
   ZoneId
 }
 
+import java.util.UUID
+
 import java.net.{ URL, URI }
 
 import scala.util.{ Success, Try }
@@ -507,6 +509,12 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         asTry[URI] must beSuccessfulTry(new URI("http://reactivemongo.org"))
     }
 
+    "be read as UUID" in {
+      val uuid = UUID.randomUUID()
+
+      BSONString(uuid.toString).asTry[UUID] must beSuccessfulTry(uuid)
+    }
+
     val writer = BSONWriter { str: String => BSONString(str) }
 
     "be provided as safe writer" in {
@@ -535,6 +543,14 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
       implicitly[BSONWriter[URI]].writeTry(
         new URI("http://reactivemongo.org")) must beSuccessfulTry(
           BSONString("http://reactivemongo.org"))
+    }
+
+    "be written from UUID" in {
+      val uuid = UUID.randomUUID()
+
+      implicitly[BSONWriter[UUID]].writeTry(uuid) must beSuccessfulTry(
+        BSONString(uuid.toString))
+
     }
   }
 
