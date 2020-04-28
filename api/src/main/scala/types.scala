@@ -823,7 +823,7 @@ object BSONUndefined extends BSONUndefined {
  *
  * val oid: BSONObjectID = BSONObjectID.generate()
  *
- * val _: Try[BSONObjectID] = BSONObjectID.parse(oid.stringify)
+ * def foo: Try[BSONObjectID] = BSONObjectID.parse(oid.stringify)
  * }}}
  *
  * | Timestamp (seconds) | Machine identifier | Thread identifier | Increment
