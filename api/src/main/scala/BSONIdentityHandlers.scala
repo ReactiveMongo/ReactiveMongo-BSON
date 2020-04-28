@@ -7,27 +7,7 @@ private[bson] trait BSONIdentityHandlers
 
   import exceptions.TypeDoesNotMatchException
 
-  private[bson] sealed trait IdentityBSONHandler[B <: BSONValue]
-    extends BSONReader[B] with BSONWriter[B] {
-
-    protected def valueType: String
-
-    protected def unapply(bson: BSONValue): Option[B]
-
-    @inline final def writeTry(bson: B): Try[B] = Success(bson)
-
-    final def readTry(bson: BSONValue): Try[B] = unapply(bson) match {
-      case Some(v) => Success(v)
-
-      case _ =>
-        Failure(TypeDoesNotMatchException(
-          valueType, bson.getClass.getSimpleName))
-    }
-
-    final override def readOpt(bson: BSONValue): Option[B] = unapply(bson)
-  }
-
-  implicit object BSONStringIdentity extends IdentityBSONHandler[BSONString] {
+  private object BSONStringIdentity extends IdentityBSONHandler[BSONString] {
     protected val valueType = "BSONString"
 
     protected def unapply(bson: BSONValue): Option[BSONString] = bson match {
@@ -36,7 +16,16 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONSymbolIdentity extends IdentityBSONHandler[BSONSymbol] {
+  // Separately expose identity handler as reader & writer,
+  // to allow to override implicit (workaround)
+
+  @inline implicit def bsonStringReader: BSONReader[BSONString] =
+    BSONStringIdentity
+
+  @inline implicit def bsonStringWriter: BSONWriter[BSONString] =
+    BSONStringIdentity
+
+  private object BSONSymbolIdentity extends IdentityBSONHandler[BSONSymbol] {
     protected val valueType = "BSONSymbol"
 
     protected def unapply(bson: BSONValue): Option[BSONSymbol] = bson match {
@@ -45,7 +34,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONIntegerIdentity extends IdentityBSONHandler[BSONInteger] {
+  @inline implicit def bsonSymbolReader: BSONReader[BSONSymbol] =
+    BSONSymbolIdentity
+
+  @inline implicit def bsonSymbolWriter: BSONWriter[BSONSymbol] =
+    BSONSymbolIdentity
+
+  private object BSONIntegerIdentity extends IdentityBSONHandler[BSONInteger] {
     protected val valueType = "BSONInteger"
 
     protected def unapply(bson: BSONValue): Option[BSONInteger] = bson match {
@@ -54,7 +49,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONDecimalIdentity extends IdentityBSONHandler[BSONDecimal] {
+  @inline implicit def bsonIntegerReader: BSONReader[BSONInteger] =
+    BSONIntegerIdentity
+
+  @inline implicit def bsonIntegerWriter: BSONWriter[BSONInteger] =
+    BSONIntegerIdentity
+
+  private object BSONDecimalIdentity extends IdentityBSONHandler[BSONDecimal] {
     protected val valueType = "BSONDecimal"
 
     protected def unapply(bson: BSONValue): Option[BSONDecimal] = bson match {
@@ -63,7 +64,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONArrayIdentity extends IdentityBSONHandler[BSONArray] {
+  @inline implicit def bsonDecimalReader: BSONReader[BSONDecimal] =
+    BSONDecimalIdentity
+
+  @inline implicit def bsonDecimalWriter: BSONWriter[BSONDecimal] =
+    BSONDecimalIdentity
+
+  private object BSONArrayIdentity extends IdentityBSONHandler[BSONArray] {
     protected val valueType = "BSONArray"
 
     protected def unapply(bson: BSONValue): Option[BSONArray] = bson match {
@@ -72,7 +79,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONDocumentIdentity extends BSONDocumentReader[BSONDocument]
+  @inline implicit def bsonArrayReader: BSONReader[BSONArray] =
+    BSONArrayIdentity
+
+  @inline implicit def bsonArrayWriter: BSONWriter[BSONArray] =
+    BSONArrayIdentity
+
+  private object BSONDocumentIdentity extends BSONDocumentReader[BSONDocument]
     with BSONDocumentWriter[BSONDocument] {
 
     @inline def writeTry(doc: BSONDocument): Try[BSONDocument] =
@@ -82,7 +95,13 @@ private[bson] trait BSONIdentityHandlers
       Success(doc)
   }
 
-  implicit object BSONBooleanIdentity extends IdentityBSONHandler[BSONBoolean] {
+  @inline implicit def bsonDocumentReader: BSONDocumentReader[BSONDocument] =
+    BSONDocumentIdentity
+
+  @inline implicit def bsonDocumentWriter: BSONDocumentWriter[BSONDocument] =
+    BSONDocumentIdentity
+
+  private object BSONBooleanIdentity extends IdentityBSONHandler[BSONBoolean] {
     protected val valueType = "BSONBoolean"
 
     protected def unapply(bson: BSONValue): Option[BSONBoolean] = bson match {
@@ -91,7 +110,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONLongIdentity extends IdentityBSONHandler[BSONLong] {
+  @inline implicit def bsonBooleanReader: BSONReader[BSONBoolean] =
+    BSONBooleanIdentity
+
+  @inline implicit def bsonBooleanWriter: BSONWriter[BSONBoolean] =
+    BSONBooleanIdentity
+
+  private object BSONLongIdentity extends IdentityBSONHandler[BSONLong] {
     protected val valueType = "BSONLong"
 
     protected def unapply(bson: BSONValue): Option[BSONLong] = bson match {
@@ -100,7 +125,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONDoubleIdentity extends IdentityBSONHandler[BSONDouble] {
+  @inline implicit def bsonLongReader: BSONReader[BSONLong] =
+    BSONLongIdentity
+
+  @inline implicit def bsonLongWriter: BSONWriter[BSONLong] =
+    BSONLongIdentity
+
+  private object BSONDoubleIdentity extends IdentityBSONHandler[BSONDouble] {
     protected val valueType = "BSONDouble"
 
     protected def unapply(bson: BSONValue): Option[BSONDouble] = bson match {
@@ -109,7 +140,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONObjectIDIdentity
+  @inline implicit def bsonDoubleReader: BSONReader[BSONDouble] =
+    BSONDoubleIdentity
+
+  @inline implicit def bsonDoubleWriter: BSONWriter[BSONDouble] =
+    BSONDoubleIdentity
+
+  private object BSONObjectIDIdentity
     extends IdentityBSONHandler[BSONObjectID] {
 
     protected val valueType = "BSONObjectID"
@@ -120,7 +157,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONBinaryIdentity extends IdentityBSONHandler[BSONBinary] {
+  @inline implicit def bsonObjectIDReader: BSONReader[BSONObjectID] =
+    BSONObjectIDIdentity
+
+  @inline implicit def bsonObjectIDWriter: BSONWriter[BSONObjectID] =
+    BSONObjectIDIdentity
+
+  private object BSONBinaryIdentity extends IdentityBSONHandler[BSONBinary] {
     protected val valueType = "BSONBinary"
 
     protected def unapply(bson: BSONValue): Option[BSONBinary] = bson match {
@@ -129,7 +172,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONDateTimeIdentity
+  @inline implicit def bsonBinaryReader: BSONReader[BSONBinary] =
+    BSONBinaryIdentity
+
+  @inline implicit def bsonBinaryWriter: BSONWriter[BSONBinary] =
+    BSONBinaryIdentity
+
+  private object BSONDateTimeIdentity
     extends IdentityBSONHandler[BSONDateTime] {
 
     protected val valueType = "BSONDateTime"
@@ -140,7 +189,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONTimestampIdentity
+  @inline implicit def bsonDateTimeReader: BSONReader[BSONDateTime] =
+    BSONDateTimeIdentity
+
+  @inline implicit def bsonDateTimeWriter: BSONWriter[BSONDateTime] =
+    BSONDateTimeIdentity
+
+  private object BSONTimestampIdentity
     extends IdentityBSONHandler[BSONTimestamp] {
 
     protected val valueType = "BSONTimestamp"
@@ -151,9 +206,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONMaxKeyIdentity
-    extends IdentityBSONHandler[BSONMaxKey] {
+  @inline implicit def bsonTimestampReader: BSONReader[BSONTimestamp] =
+    BSONTimestampIdentity
 
+  @inline implicit def bsonTimestampWriter: BSONWriter[BSONTimestamp] =
+    BSONTimestampIdentity
+
+  private object BSONMaxKeyIdentity extends IdentityBSONHandler[BSONMaxKey] {
     protected val valueType = "BSONMaxKey"
 
     protected def unapply(bson: BSONValue): Option[BSONMaxKey] =
@@ -163,9 +222,13 @@ private[bson] trait BSONIdentityHandlers
       }
   }
 
-  implicit object BSONMinKeyIdentity
-    extends IdentityBSONHandler[BSONMinKey] {
+  @inline implicit def bsonMaxKeyReader: BSONReader[BSONMaxKey] =
+    BSONMaxKeyIdentity
 
+  @inline implicit def bsonMaxKeyWriter: BSONWriter[BSONMaxKey] =
+    BSONMaxKeyIdentity
+
+  private object BSONMinKeyIdentity extends IdentityBSONHandler[BSONMinKey] {
     protected val valueType = "BSONMinKey"
 
     protected def unapply(bson: BSONValue): Option[BSONMinKey] =
@@ -175,7 +238,13 @@ private[bson] trait BSONIdentityHandlers
       }
   }
 
-  implicit object BSONNullIdentity extends IdentityBSONHandler[BSONNull] {
+  @inline implicit def bsonMinKeyReader: BSONReader[BSONMinKey] =
+    BSONMinKeyIdentity
+
+  @inline implicit def bsonMinKeyWriter: BSONWriter[BSONMinKey] =
+    BSONMinKeyIdentity
+
+  private object BSONNullIdentity extends IdentityBSONHandler[BSONNull] {
     protected val valueType = "BSONNull"
 
     protected def unapply(bson: BSONValue): Option[BSONNull] = bson match {
@@ -184,7 +253,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONUndefinedIdentity
+  @inline implicit def bsonNullReader: BSONReader[BSONNull] =
+    BSONNullIdentity
+
+  @inline implicit def bsonNullWriter: BSONWriter[BSONNull] =
+    BSONNullIdentity
+
+  private object BSONUndefinedIdentity
     extends IdentityBSONHandler[BSONUndefined] {
 
     protected val valueType = "BSONUndefined"
@@ -196,7 +271,13 @@ private[bson] trait BSONIdentityHandlers
       }
   }
 
-  implicit object BSONRegexIdentity extends IdentityBSONHandler[BSONRegex] {
+  @inline implicit def bsonUndefinedReader: BSONReader[BSONUndefined] =
+    BSONUndefinedIdentity
+
+  @inline implicit def bsonUndefinedWriter: BSONWriter[BSONUndefined] =
+    BSONUndefinedIdentity
+
+  private object BSONRegexIdentity extends IdentityBSONHandler[BSONRegex] {
     protected val valueType = "BSONRegex"
 
     protected def unapply(bson: BSONValue): Option[BSONRegex] = bson match {
@@ -205,7 +286,13 @@ private[bson] trait BSONIdentityHandlers
     }
   }
 
-  implicit object BSONJavaScriptIdentity
+  @inline implicit def bsonRegexReader: BSONReader[BSONRegex] =
+    BSONRegexIdentity
+
+  @inline implicit def bsonRegexWriter: BSONWriter[BSONRegex] =
+    BSONRegexIdentity
+
+  private object BSONJavaScriptIdentity
     extends IdentityBSONHandler[BSONJavaScript] {
 
     protected val valueType = "BSONJavaScript"
@@ -217,7 +304,13 @@ private[bson] trait BSONIdentityHandlers
       }
   }
 
-  implicit object BSONJavaScriptWSIdentity
+  @inline implicit def bsonJavaScriptReader: BSONReader[BSONJavaScript] =
+    BSONJavaScriptIdentity
+
+  @inline implicit def bsonJavaScriptWriter: BSONWriter[BSONJavaScript] =
+    BSONJavaScriptIdentity
+
+  private object BSONJavaScriptWSIdentity
     extends IdentityBSONHandler[BSONJavaScriptWS] {
 
     protected val valueType = "BSONJavaScriptWS"
@@ -227,6 +320,34 @@ private[bson] trait BSONIdentityHandlers
         case js: BSONJavaScriptWS => Some(js)
         case _ => None
       }
+  }
+
+  @inline implicit def bsonJavaScriptWSReader: BSONReader[BSONJavaScriptWS] =
+    BSONJavaScriptWSIdentity
+
+  @inline implicit def bsonJavaScriptWSWriter: BSONWriter[BSONJavaScriptWS] =
+    BSONJavaScriptWSIdentity
+
+  // ---
+
+  private[bson] sealed trait IdentityBSONHandler[B <: BSONValue]
+    extends BSONReader[B] with BSONWriter[B] with SafeBSONWriter[B] {
+
+    protected def valueType: String
+
+    protected def unapply(bson: BSONValue): Option[B]
+
+    @inline final def safeWrite(bson: B) = bson
+
+    final def readTry(bson: BSONValue): Try[B] = unapply(bson) match {
+      case Some(v) => Success(v)
+
+      case _ =>
+        Failure(TypeDoesNotMatchException(
+          valueType, bson.getClass.getSimpleName))
+    }
+
+    final override def readOpt(bson: BSONValue): Option[B] = unapply(bson)
   }
 }
 
