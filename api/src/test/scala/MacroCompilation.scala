@@ -36,6 +36,8 @@ object MacroCompilation {
 [error]                                   ^
      */
 
-    val _ = BSONDocumentHandler.provided(reader, writer)
+    locally {
+      BSONDocumentHandler.provided(reader, writer)
+    }
   }
 }
