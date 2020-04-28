@@ -114,9 +114,12 @@ private[bson] class MacroImpl(val c: Context) {
     lazy val macroCfgInit =
       q"val $macroCfg: ${bsonPkg}.MacroConfiguration = ${config}"
 
+    private lazy val debugEnabled = hasOption[MacroOptions.Verbose]
+
     lazy val readBody: c.Expr[UTry[A]] = {
       val reader = unionTypes.map { types =>
-        val resolve = resolver(Map.empty, "BSONReader")(readerType)
+        val resolve = resolver(
+          Map.empty, "BSONReader", debugEnabled)(readerType)
 
         val preparedTypes = types.map { typ =>
           val cls = q"implicitly[$reflPkg.ClassTag[$typ]].runtimeClass"
@@ -163,7 +166,7 @@ private[bson] class MacroImpl(val c: Context) {
 
       val result = c.Expr[UTry[A]](reader)
 
-      if (hasOption[MacroOptions.Verbose]) {
+      if (debugEnabled) {
         c.echo(c.enclosingPosition, s"// Reader\n${show(reader)}")
       }
 
@@ -173,7 +176,9 @@ private[bson] class MacroImpl(val c: Context) {
     lazy val writeBody: c.Expr[UTry[BSONDocument]] = {
       val valNme = TermName("macroVal")
       val writer = unionTypes.map { types =>
-        val resolve = resolver(Map.empty, "BSONDocumentWriter")(writerType)
+        val resolve = resolver(
+          Map.empty, "BSONDocumentWriter", debugEnabled)(writerType)
+
         val cases = types.map { typ =>
           val nme = TermName(c.freshName("macroVal"))
           val id = Ident(nme)
@@ -201,7 +206,7 @@ private[bson] class MacroImpl(val c: Context) {
 
       val result = c.Expr[UTry[BSONDocument]](writer)
 
-      if (hasOption[MacroOptions.Verbose]) {
+      if (debugEnabled) {
         c.echo(c.enclosingPosition, s"// Writer\n${show(writer)}")
       }
 
@@ -256,8 +261,7 @@ private[bson] class MacroImpl(val c: Context) {
         bt.result()
       }
 
-      val resolve = resolver(boundTypes, "BSONReader")(readerType)
-
+      val resolve = resolver(boundTypes, "BSONReader", debugEnabled)(readerType)
       val bufErr = TermName(c.freshName("err"))
 
       val params: Seq[(Symbol, String, TermName, Type)] =
@@ -413,7 +417,7 @@ private[bson] class MacroImpl(val c: Context) {
         bt.result()
       }
 
-      val resolve = resolver(boundTypes, "BSONWriter")(writerType)
+      val resolve = resolver(boundTypes, "BSONWriter", debugEnabled)(writerType)
       val tupleName = TermName(c.freshName("tuple"))
 
       val (optional, required) =
@@ -937,7 +941,9 @@ private[bson] class MacroImpl(val c: Context) {
       }
     }
 
-    private def createImplicit(boundTypes: Map[String, Type])(tc: Type, ptype: Type, tx: Transformer): Implicit = {
+    private def createImplicit(
+      debugEnabled: Boolean,
+      boundTypes: Map[String, Type])(tc: Type, ptype: Type, tx: Transformer): Implicit = {
       val tpe = ptype
       val (ntpe, selfRef) = normalized(boundTypes)(tpe)
       val ptpe = boundTypes.getOrElse(ntpe.typeSymbol.fullName, ntpe)
@@ -950,6 +956,10 @@ private[bson] class MacroImpl(val c: Context) {
         // Reset the type attributes on the refactored tree for the implicit
         tx.transform(c.inferImplicitValue(neededImplicitType)))
 
+      if (debugEnabled) {
+        c.echo(c.enclosingPosition, s"// Resolve implicit ${tc} for ${ntpe} as ${neededImplicitType} (self? ${selfRef}) = ${neededImplicit}")
+      }
+
       neededImplicit -> selfRef
     }
 
@@ -961,9 +971,12 @@ private[bson] class MacroImpl(val c: Context) {
         case t => t.typeSymbol.fullName
       }
 
-    protected def resolver(boundTypes: Map[String, Type], forwardSuffix: String)(tc: Type): Type => Implicit = {
+    protected def resolver(
+      boundTypes: Map[String, Type],
+      forwardSuffix: String,
+      debugEnabled: Boolean)(tc: Type): Type => Implicit = {
       val tx = new ImplicitTransformer(boundTypes, forwardSuffix)
-      createImplicit(boundTypes)(tc, _: Type, tx)
+      createImplicit(debugEnabled, boundTypes)(tc, _: Type, tx)
     }
 
     type Implicit = (Tree, Boolean)
