@@ -31,7 +31,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-          - &scala_cache_key scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
+          - &scala_cache_key scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "version.sbt" }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
 
       - run:
           name: Build & Run tests
@@ -58,6 +58,34 @@ commands:
                     find . -path '*/test-reports/*' -name '*.xml' \
                       -print -exec cp {} test-reports \;
           when: always
+
+  publish_snapshots:
+    description: Publish snapshot artifacts to Sonatype repository
+    parameters:
+      shaded:
+        type: boolean
+        default: true
+    steps:
+      - deploy:
+          name: Publish artifacts to Sonatype Snapshots
+          command: |
+                    if [ ! "${CIRCLE_BRANCH}" = "master" ]; then
+                      echo "Skipped on branch ${CIRCLE_BRANCH}"
+                      exit 0
+                    fi
+
+                    export REACTIVEMONGO_SHADED="<< parameters.shaded >>"
+                    
+                    export PUBLISH_REPO_NAME="Sonatype Nexus Repository Manager"
+                    export PUBLISH_REPO_ID="oss.sonatype.org"
+                    export PUBLISH_REPO_URL="https://oss.sonatype.org/content/repositories/snapshots"
+                    
+                    if [ "x$PUBLISH_USER" = "x" -o "x$PUBLISH_PASS" = "x" ]; then
+                      echo "Missing publication credentials"
+                      exit 1
+                    fi
+                    
+                    sbt +publish
 
 
 jobs:
@@ -118,11 +146,11 @@ jobs:
 
     working_directory: ~/repo
     
-    steps:
+    steps: # HERE
       - checkout
       - setup_sbt
 
-      - deploy:
+      - deploy: #REACTIVEMONGO_SHADED
           name: Publish artifacts to Sonatype Snapshots
           command: |
                     if [ ! "${CIRCLE_BRANCH}" = "master" ]; then
@@ -140,7 +168,6 @@ jobs:
                     fi
                     
                     sbt +publish
-
 
   trigger_dependent_builds:
     docker:
