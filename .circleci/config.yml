@@ -87,7 +87,6 @@ commands:
                     
                     sbt +publish
 
-
 jobs:
   scala211_jdk10:
     docker:
@@ -146,28 +145,14 @@ jobs:
 
     working_directory: ~/repo
     
-    steps: # HERE
+    steps:
       - checkout
       - setup_sbt
 
-      - deploy: #REACTIVEMONGO_SHADED
-          name: Publish artifacts to Sonatype Snapshots
-          command: |
-                    if [ ! "${CIRCLE_BRANCH}" = "master" ]; then
-                      echo "Skipped on branch ${CIRCLE_BRANCH}"
-                      exit 0
-                    fi
-                    
-                    export PUBLISH_REPO_NAME="Sonatype Nexus Repository Manager"
-                    export PUBLISH_REPO_ID="oss.sonatype.org"
-                    export PUBLISH_REPO_URL="https://oss.sonatype.org/content/repositories/snapshots"
-                    
-                    if [ "x$PUBLISH_USER" = "x" -o "x$PUBLISH_PASS" = "x" ]; then
-                      echo "Missing publication credentials"
-                      exit 1
-                    fi
-                    
-                    sbt +publish
+      - publish_snapshots
+
+      - publish_snapshots:
+          shaded: false
 
   trigger_dependent_builds:
     docker:
