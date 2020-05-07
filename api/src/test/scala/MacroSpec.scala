@@ -652,6 +652,27 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
   }
 
+  "DocumentClass" should {
+    import reactivemongo.api.bson.DocumentClass
+
+    shapeless.test.illTyped("implicitly[DocumentClass[Int]]")
+    shapeless.test.illTyped("implicitly[DocumentClass[BSONValue]]")
+    shapeless.test.illTyped("implicitly[DocumentClass[BSONDateTime]]")
+    shapeless.test.illTyped("implicitly[DocumentClass[BSONLong]]")
+
+    "be proved for case class Person" in {
+      implicitly[DocumentClass[Person]] must not(beNull)
+    }
+
+    "be proved for sealed trait UT" in {
+      implicitly[DocumentClass[Union.UT]] must not(beNull)
+    }
+
+    "be proved for BSONDocument" in {
+      implicitly[DocumentClass[BSONDocument]] must not(beNull)
+    }
+  }
+
   // ---
 
   def roundtrip[A](original: A)(implicit reader: BSONReader[A], writer: BSONWriter[A]): MatchResult[Any] = {

@@ -23,6 +23,33 @@ private[bson] class MacroImpl(val c: Context) {
 
   def configuredHandler[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentHandler[A]] = handlerWithConfig[A, Opts](withOptionsConfig)
 
+  def documentClass[A: c.WeakTypeTag]: c.Expr[DocumentClass[A]] = {
+    val aTpe = c.weakTypeOf[A].dealias
+    val tpeSym = aTpe.typeSymbol.asClass
+    val bsonValueTpe = c.typeOf[BSONValue]
+    val bsonDocTpe = c.typeOf[BSONDocument]
+
+    if (aTpe <:< bsonValueTpe) {
+      if (aTpe <:< bsonDocTpe) {
+        reify(DocumentClass.unchecked[A])
+      } else {
+        c.abort(
+          c.enclosingPosition,
+          s"Type ${tpeSym.fullName} is not a document one")
+      }
+    } else if (tpeSym.isSealed && tpeSym.isAbstract) { // sealed trait
+      reify(DocumentClass.unchecked[A])
+    } else tpeSym.companion.typeSignature.decl(TermName("unapply")) match {
+      case NoSymbol =>
+        c.abort(
+          c.enclosingPosition,
+          s"Type ${tpeSym.fullName} is not a document one")
+
+      case _ =>
+        reify(DocumentClass.unchecked[A])
+    }
+  }
+
   // ---
 
   private def readerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](config: c.Expr[MacroConfiguration]): c.Expr[BSONDocumentReader[A]] = reify(new BSONDocumentReader[A] {
