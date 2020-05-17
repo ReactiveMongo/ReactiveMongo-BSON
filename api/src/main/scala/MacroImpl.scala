@@ -6,7 +6,6 @@ import scala.collection.immutable.Set
 
 import scala.reflect.macros.blackbox.Context
 
-// TODO: Handle default values https://github.com/playframework/play-json/blob/master/play-json/shared/src/test/scala/play/api/libs/json/MacroSpec.scala#L329
 private[bson] class MacroImpl(val c: Context) {
   import c.universe._
 
@@ -267,6 +266,18 @@ private[bson] class MacroImpl(val c: Context) {
       q"${utilPkg}.Success(${Ident(TermName(sym.name.toString))})"
     }
 
+    private type ReadableProperty = Tuple4[Symbol, String, TermName, Type]
+
+    private object ReadableProperty {
+      def apply(
+        symbol: Symbol,
+        name: String,
+        term: TermName,
+        tpe: Type): ReadableProperty = Tuple4(symbol, name, term, tpe)
+
+      def unapply(p: ReadableProperty) = Some(p)
+    }
+
     /*
      * @param top $topParam
      */
@@ -292,7 +303,7 @@ private[bson] class MacroImpl(val c: Context) {
       val resolve = resolver(boundTypes, "BSONReader", debugEnabled)(readerType)
       val bufErr = TermName(c.freshName("err"))
 
-      val params: Seq[(Symbol, String, TermName, Type)] =
+      val params: Seq[ReadableProperty] =
         /* TODO:
             val defaultValues = params.map(_.asTerm).zipWithIndex.map {
               case (p, i) =>
@@ -304,19 +315,20 @@ private[bson] class MacroImpl(val c: Context) {
             }
          */
 
-        constructor.paramLists.headOption.toSeq.flatten.map { param =>
-          val pname = paramName(param)
-          val sig = param.typeSignature.map { st =>
-            boundTypes.getOrElse(st.typeSymbol.fullName, st)
-          }
+        constructor.paramLists.headOption.toSeq.flatten.zipWithIndex.map {
+          case (param, _ /*index*/ ) =>
+            val pname = paramName(param)
+            val sig = param.typeSignature.map { st =>
+              boundTypes.getOrElse(st.typeSymbol.fullName, st)
+            }
 
-          Tuple4(param, pname, TermName(c.freshName(pname)), sig)
+            ReadableProperty(param, pname, TermName(c.freshName(pname)), sig)
         }
 
       val decls = q"""val ${bufErr} = 
         ${colPkg}.Seq.newBuilder[${exceptionsPkg}.HandlerException]""" +: (
         params.map {
-          case (_, _, vt, sig) =>
+          case ReadableProperty(_, _, vt, sig) =>
             q"val ${vt} = new ${bsonPkg}.Macros.LocalVar[${sig}]"
         })
 
@@ -324,7 +336,7 @@ private[bson] class MacroImpl(val c: Context) {
       val errName = TermName(c.freshName("cause"))
 
       val values = params.map {
-        case (param, pname, vt, sig) =>
+        case ReadableProperty(param, pname, vt, sig) =>
           val (reader, _) = sig match {
             case OptionTypeParameter(ot) => resolve(sig) match {
               case d @ (r, _) if r.nonEmpty =>
@@ -375,7 +387,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val applyArgs = params.map {
-        case (_, _, vt, _) => q"${vt}.value"
+        case ReadableProperty(_, _, vt, _) => q"${vt}.value"
       }
 
       val accName = TermName(c.freshName("acc"))
