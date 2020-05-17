@@ -12,6 +12,7 @@ import reactivemongo.api.bson.{
   BSONHandler,
   BSONNull,
   BSONReader,
+  BSONString,
   BSONValue,
   BSONWriter,
   FieldNaming,
@@ -20,7 +21,10 @@ import reactivemongo.api.bson.{
   MacroOptions,
   TypeNaming
 }
-import reactivemongo.api.bson.exceptions.TypeDoesNotMatchException
+import reactivemongo.api.bson.exceptions.{
+  HandlerException,
+  TypeDoesNotMatchException
+}
 
 import org.specs2.matcher.MatchResult
 
@@ -574,6 +578,43 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         }
       }
     }
+
+    "support @Reader & @Writer annotations" in {
+      val reader1 = Macros.reader[PerField1[String]]
+      val writer = Macros.writer[PerField1[String]]
+
+      val expectedVal = PerField1[String](
+        id = 1L,
+        status = "on",
+        score = 2.35F,
+        description = Some("foo"),
+        range = Range(3, 5),
+        foo = "1")
+
+      val expectedDoc =
+        BSONDocument(
+          "id" -> 1L,
+          "status" -> "on",
+          "score" -> "2.35",
+          "description" -> "foo",
+          "range" -> Seq(3, 5),
+          "foo" -> "1")
+
+      writer.writeTry(expectedVal) must beSuccessfulTry(expectedDoc) and {
+        reader1.readTry(expectedDoc) must beFailedTry.
+          withThrowable[HandlerException]( // As status is asymetric ...
+            // ... with just a custom @Writer but no corresponding @Reader
+            "Fails\\ to\\ handle\\ score:\\ BSONString\\ !=\\ <float>")
+      } and {
+        // Define a BSONReader for 'score: Float' corresponding to @Writer
+        implicit def floatReader = BSONReader.collect[Float] {
+          case BSONString(f) => f.toFloat
+        }
+        val reader2 = Macros.reader[PerField1[String]]
+
+        reader2.readTry(expectedDoc) must beSuccessfulTry(expectedVal)
+      }
+    }
   }
 
   "Reader" should {
@@ -675,6 +716,44 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         }
       }
     }
+
+    "support @Reader annotation" in {
+      val reader = Macros.readerOpts[PerField1[Int], MacroOptions.Verbose]
+
+      reader.readTry(
+        BSONDocument(
+          "id" -> 1L,
+          "status" -> 1,
+          "score" -> 2.34F,
+          "description" -> "foo",
+          "range" -> Seq(3, 5),
+          "foo" -> 1)) must beSuccessfulTry(
+          PerField1[Int](
+            id = 1L,
+            status = "on",
+            score = 2.34F,
+            description = Some("foo"),
+            range = Range(3, 5),
+            foo = 1)) and {
+            reader.readTry(
+              BSONDocument(
+                "id" -> 2L,
+                "status" -> 0,
+                "score" -> 45.6F,
+                "description" -> 0,
+                "range" -> Seq(7, 11),
+                "foo" -> 2)) must beSuccessfulTry(
+                PerField1[Int](
+                  id = 2L,
+                  status = "off",
+                  score = 45.6F,
+                  description = None,
+                  range = Range(7, 11),
+                  foo = 2))
+          } and {
+            typecheck("Macros.reader[PerField2]") must failWith("Invalid\\ annotation\\ @Reader.*\\ for\\ 'name':\\ Reader\\[String\\]")
+          }
+    }
   }
 
   "Writer" should {
@@ -712,6 +791,44 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           w.writeTry(lr) must beSuccessfulTry(doc)
         }
     }
+
+    "support @Writer annotation" in {
+      val writer = Macros.writer[PerField1[String]]
+
+      writer.writeTry(
+        PerField1[String](
+          id = 1L,
+          status = "on",
+          score = 2.34F,
+          description = Some("foo"),
+          range = Range(3, 5),
+          foo = "1")) must beSuccessfulTry(
+          BSONDocument(
+            "id" -> 1L,
+            "status" -> "on",
+            "score" -> "2.34",
+            "description" -> "foo",
+            "range" -> Seq(3, 5),
+            "foo" -> "1")) and {
+            writer.writeTry(
+              PerField1[String](
+                id = 2L,
+                status = "off",
+                score = 45.6F,
+                description = None,
+                range = Range(7, 11),
+                foo = "2")) must beSuccessfulTry(
+                BSONDocument(
+                  "id" -> 2L,
+                  "status" -> "off",
+                  "score" -> "45.6",
+                  "range" -> Seq(7, 11),
+                  "foo" -> "2"))
+
+          } and {
+            typecheck("Macros.writer[PerField2]") must failWith("Invalid\\ annotation\\ @Writer.*\\ for\\ 'name':\\ Writer\\[String\\]")
+          }
+    }
   }
 
   "DocumentClass" should {
@@ -733,15 +850,15 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       "Int" in {
         typecheck("implicitly[DocumentClass[Int]]") must failWith(
           "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[Int\\]")
-      } tag "wip"
+      }
 
       "BSONValue" in {
         typecheck("implicitly[DocumentClass[BSONValue]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONValue\\]")
-      } tag "wip"
+      }
 
       "BSONDateTime" in {
         typecheck("implicitly[DocumentClass[reactivemongo.api.bson.BSONDateTime]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONDateTime\\]")
-      } tag "wip"
+      }
 
       "BSONLong" in {
         typecheck("implicitly[DocumentClass[reactivemongo.api.bson.BSONLong]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONLong\\]")
