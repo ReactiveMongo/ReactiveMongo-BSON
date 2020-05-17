@@ -10,6 +10,7 @@ import reactivemongo.api.bson.{
   MacroOptions
 }
 import reactivemongo.api.bson.Macros.Annotations.{
+  DefaultValue,
   Flatten,
   Ignore,
   Key,
@@ -213,4 +214,20 @@ object MacroTest {
     @Flatten parent: InvalidRecursive)
 
   case class InvalidNonDoc(@Flatten name: String)
+
+  case class WithDefaultValues1(
+    id: Int,
+    title: String = "default1",
+    score: Option[Float] = Some(1.23F),
+    range: Range = Range(3, 5))
+
+  case class WithDefaultValues2(
+    id: Int,
+    @DefaultValue("default2") title: String,
+    @DefaultValue(Some(45.6F)) score: Option[Float],
+    @DefaultValue(Range(7, 11)) range: Range)
+
+  case class WithDefaultValues3(
+    @DefaultValue(1 /* type mismatch */ ) name: String)
+
 }

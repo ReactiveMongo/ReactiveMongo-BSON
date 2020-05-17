@@ -9,7 +9,13 @@ import scala.reflect.macros.blackbox.Context
 private[bson] class MacroImpl(val c: Context) {
   import c.universe._
 
-  import Macros.Annotations, Annotations.{ Flatten, Ignore, Key, NoneAsNull }
+  import Macros.Annotations, Annotations.{
+    DefaultValue,
+    Flatten,
+    Ignore,
+    Key,
+    NoneAsNull
+  }
 
   def reader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] = readerWithConfig[A, Opts](implicitOptionsConfig)
 
@@ -122,6 +128,7 @@ private[bson] class MacroImpl(val c: Context) {
     private val reflPkg = q"_root_.scala.reflect"
 
     private val optionTpe = c.typeOf[Option[_]]
+    private val defaultValueAnnotationTpe = c.typeOf[DefaultValue[_]]
 
     protected def aTpe: Type
     protected def optsTpe: Type
@@ -266,6 +273,19 @@ private[bson] class MacroImpl(val c: Context) {
       q"${utilPkg}.Success(${Ident(TermName(sym.name.toString))})"
     }
 
+    private type ReadableProperty = Tuple5[Symbol, String, TermName, Type, Option[Tree]]
+
+    private object ReadableProperty {
+      def apply(
+        symbol: Symbol,
+        name: String,
+        term: TermName,
+        tpe: Type,
+        default: Option[Tree]): ReadableProperty = Tuple5(symbol, name, term, tpe, default)
+
+      def unapply(p: ReadableProperty) = Some(p)
+    }
+
     /*
      * @param top $topParam
      */
@@ -291,20 +311,61 @@ private[bson] class MacroImpl(val c: Context) {
       val resolve = resolver(boundTypes, "BSONReader", debugEnabled)(readerType)
       val bufErr = TermName(c.freshName("err"))
 
-      val params: Seq[(Symbol, String, TermName, Type)] =
-        constructor.paramLists.headOption.toSeq.flatten.map { param =>
-          val pname = paramName(param)
-          val sig = param.typeSignature.map { st =>
-            boundTypes.getOrElse(st.typeSymbol.fullName, st)
+      val companionObject = tpe.typeSymbol.companion
+      val params: Seq[ReadableProperty] =
+        constructor.paramLists.headOption.toSeq.flatten.
+          map(_.asTerm).zipWithIndex.map {
+            case (param, index) =>
+              val pname = paramName(param)
+              val sig = param.typeSignature.map { st =>
+                boundTypes.getOrElse(st.typeSymbol.fullName, st)
+              }
+
+              val defaultFromAnn = param.annotations.flatMap {
+                case ann if ann.tree.tpe <:< defaultValueAnnotationTpe => {
+                  ann.tree.children.tail.flatMap {
+                    case v if v.tpe <:< sig =>
+                      Seq(v)
+
+                    case invalid =>
+                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '$pname': $sig value expected")
+                  }
+                }
+
+                case _ =>
+                  Seq.empty[Tree]
+              }
+
+              val default: Option[Tree] = {
+                if (param.isParamWithDefault) {
+                  val getter = TermName(f"apply$$default$$" + (index + 1))
+                  Some(q"$companionObject.$getter")
+                } else defaultFromAnn match {
+                  case dv +: other => {
+                    if (other.nonEmpty) {
+                      warn("Exactly one @DefaultValue must be provided for each property; Ignoring invalid annotations")
+                    }
+
+                    Some(dv)
+                  }
+
+                  case _ =>
+                    None
+                }
+              }
+
+              ReadableProperty(
+                symbol = param,
+                name = pname,
+                term = TermName(c.freshName(pname)),
+                tpe = sig,
+                default = default)
           }
 
-          Tuple4(param, pname, TermName(c.freshName(pname)), sig)
-        }
-
-      val decls = q"""val ${bufErr} = 
+      val decls = q"""val ${bufErr} =
         ${colPkg}.Seq.newBuilder[${exceptionsPkg}.HandlerException]""" +: (
         params.map {
-          case (_, _, vt, sig) =>
+          case ReadableProperty(_, _, vt, sig, _) =>
             q"val ${vt} = new ${bsonPkg}.Macros.LocalVar[${sig}]"
         })
 
@@ -312,7 +373,7 @@ private[bson] class MacroImpl(val c: Context) {
       val errName = TermName(c.freshName("cause"))
 
       val values = params.map {
-        case (param, pname, vt, sig) =>
+        case ReadableProperty(param, pname, vt, sig, default) =>
           val (reader, _) = sig match {
             case OptionTypeParameter(ot) => resolve(sig) match {
               case d @ (r, _) if r.nonEmpty =>
@@ -328,6 +389,18 @@ private[bson] class MacroImpl(val c: Context) {
             c.abort(c.enclosingPosition, s"Implicit not found for '$pname': ${classOf[BSONReader[_]].getName}[$sig]")
           }
 
+          def tryWithDefault(`try`: Tree, dv: Tree) = q"""${`try`} match {
+            case readSuccess @ ${utilPkg}.Success(_) => 
+              readSuccess
+
+            case ${utilPkg}.Failure(
+              _: ${exceptionsPkg}.BSONValueNotFoundException) =>
+              ${utilPkg}.Success(${dv})
+
+            case readFailure @ ${utilPkg}.Failure(_) =>
+              readFailure
+          }"""
+
           val get: Tree = {
             if (param.annotations.exists(_.tree.tpe =:= typeOf[Flatten])) {
               if (reader.toString == "forwardBSONReader") {
@@ -340,16 +413,31 @@ private[bson] class MacroImpl(val c: Context) {
                 c.abort(c.enclosingPosition, s"Cannot flatten reader '$reader': doesn't conform BSONDocumentReader")
               }
 
-              q"${reader}.readTry(macroDoc)"
+              val readTry = q"${reader}.readTry(macroDoc)"
+
+              default.fold(readTry) { dv => tryWithDefault(readTry, dv) }
             } else {
               val field = q"$macroCfg.fieldNaming($pname)"
 
               OptionTypeParameter.unapply(sig) match {
-                case Some(_) =>
-                  q"macroDoc.getAsUnflattenedTry($field)($reader)"
+                case Some(_) => {
+                  val getAsUnflattenedTry =
+                    q"macroDoc.getAsUnflattenedTry($field)($reader)"
 
-                case _ =>
-                  q"macroDoc.getAsTry($field)($reader)"
+                  default match {
+                    case Some(dv) =>
+                      q"${getAsUnflattenedTry}.map(_.orElse(${dv}))"
+
+                    case _ =>
+                      getAsUnflattenedTry
+                  }
+                }
+
+                case _ => {
+                  val getAsTry = q"macroDoc.getAsTry($field)($reader)"
+
+                  default.fold(getAsTry) { dv => tryWithDefault(getAsTry, dv) }
+                }
               }
             }
           }
@@ -363,7 +451,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val applyArgs = params.map {
-        case (_, _, vt, _) => q"${vt}.value"
+        case ReadableProperty(_, _, vt, _, _) => q"${vt}.value"
       }
 
       val accName = TermName(c.freshName("acc"))
@@ -760,7 +848,14 @@ private[bson] class MacroImpl(val c: Context) {
       param.annotations.collect {
         case ann if ann.tree.tpe =:= typeOf[Key] =>
           ann.tree.children.tail.collect {
-            case l: Literal => l.value.value
+            case l: Literal =>
+              l.value.value
+
+            case _ =>
+              c.abort(
+                c.enclosingPosition,
+                "Annotation @Key must be provided with a pure/literal value")
+
           }.collect {
             case value: String => value
           }

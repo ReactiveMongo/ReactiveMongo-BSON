@@ -24,6 +24,9 @@ import reactivemongo.api.bson.exceptions.TypeDoesNotMatchException
 
 import org.specs2.matcher.MatchResult
 
+import org.specs2.execute._, Typecheck._
+import org.specs2.matcher.TypecheckMatchers._
+
 final class MacroSpec extends org.specs2.mutable.Specification {
   "Macros" title
 
@@ -375,8 +378,10 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       import MacroOptions._
       import Union._
 
-      // when no implicit for sub-type (w/o auto-materialization)
-      shapeless.test.illTyped("Macros.handler[UT]")
+      "but fail when the subtype is not provided with implicit instance" in {
+        typecheck("Macros.handler[UT]") must failWith(
+          "Implicit\\ not\\ found\\ for\\ 'U")
+      }
 
       "with auto-materialization & default configuration" in {
         implicit val format = Macros.handlerOpts[UT, AutomaticMaterialization with DisableWarnings /* disabled: Cannot handle object MacroTest\\.Union\\.UE */ ]
@@ -528,12 +533,15 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "support @Flatten annotation" in {
-      shapeless.test.illTyped("Macros.handler[InvalidRecursive]")
-      shapeless.test.illTyped("Macros.handler[InvalidNonDoc]")
-
-      roundtrip(
-        LabelledRange("range1", Range(start = 2, end = 5)),
-        Macros.handler[LabelledRange])
+      typecheck("Macros.handler[InvalidRecursive]") must failWith(
+        "Cannot\\ flatten\\ reader\\ for\\ 'parent':\\ recursive\\ type") and {
+          typecheck("Macros.handler[InvalidNonDoc]") must failWith(
+            "doesn't\\ conform\\ BSONDocumentReader")
+        } and {
+          roundtrip(
+            LabelledRange("range1", Range(start = 2, end = 5)),
+            Macros.handler[LabelledRange])
+        }
     }
 
     "handle case class with implicits" >> {
@@ -595,7 +603,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         "lorem" -> "ipsum")) must beSuccessfulTry(Foo(Single(big), "ipsum"))
     }
 
-    "be generated for class class with self reference" in {
+    "be generated for case class with self reference" in {
       val r = Macros.reader[Bar]
       val bar1 = Bar("bar1", None)
       val doc1 = BSONDocument("name" -> "bar1")
@@ -607,14 +615,65 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "be generated with @Flatten annotation" in {
-      shapeless.test.illTyped("Macros.reader[InvalidRecursive]")
-      shapeless.test.illTyped("Macros.reader[InvalidNonDoc]")
+      typecheck("Macros.reader[InvalidRecursive]") must failWith(
+        "Cannot\\ flatten\\ reader\\ for\\ 'parent':\\ recursive\\ type") and {
+          typecheck("Macros.reader[InvalidNonDoc]") must failWith(
+            "doesn't\\ conform\\ BSONDocumentReader")
+        } and {
+          val r = Macros.reader[LabelledRange]
+          val doc = BSONDocument("name" -> "range1", "start" -> 2, "end" -> 5)
+          val lr = LabelledRange("range1", Range(start = 2, end = 5))
 
-      val r = Macros.reader[LabelledRange]
-      val doc = BSONDocument("name" -> "range1", "start" -> 2, "end" -> 5)
-      val lr = LabelledRange("range1", Range(start = 2, end = 5))
+          r.readTry(doc) must beSuccessfulTry(lr)
+        }
+    }
 
-      r.readTry(doc) must beSuccessfulTry(lr)
+    "be generated for case class with default values" >> {
+      "using class defaults" in {
+        val r1: BSONDocumentReader[WithDefaultValues1] =
+          Macros.using[MacroOptions.ReadDefaultValues].
+            reader[WithDefaultValues1]
+
+        val r2: BSONDocumentReader[WithDefaultValues1] = {
+          implicit val cfg =
+            MacroConfiguration[MacroOptions.ReadDefaultValues]()
+
+          Macros.reader[WithDefaultValues1]
+        }
+
+        val minimalDoc = BSONDocument("id" -> 1)
+        val expected = WithDefaultValues1(id = 1)
+
+        r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
+          r2.readTry(minimalDoc) must beSuccessfulTry(expected)
+        }
+      }
+
+      "using annotation @DefaultValue" in {
+        val r1: BSONDocumentReader[WithDefaultValues2] =
+          Macros.using[MacroOptions.ReadDefaultValues].
+            reader[WithDefaultValues2]
+
+        val r2: BSONDocumentReader[WithDefaultValues2] = {
+          implicit val cfg =
+            MacroConfiguration[MacroOptions.ReadDefaultValues]()
+
+          Macros.reader[WithDefaultValues2]
+        }
+
+        val minimalDoc = BSONDocument("id" -> 1)
+        val expected = WithDefaultValues2(
+          id = 1,
+          title = "default2",
+          score = Some(45.6F),
+          range = Range(7, 11))
+
+        r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
+          r2.readTry(minimalDoc) must beSuccessfulTry(expected)
+        } and {
+          typecheck("Macros.reader[WithDefaultValues3]") must failWith("Invalid\\ annotation\\ @DefaultValue\\(1\\)\\ for\\ 'name':\\ String\\ value\\ expected")
+        }
+      }
     }
   }
 
@@ -641,24 +700,22 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "be generated with @Flatten annotation" in {
-      shapeless.test.illTyped("Macros.writer[InvalidRecursive]")
-      shapeless.test.illTyped("Macros.writer[InvalidNonDoc]")
+      typecheck("Macros.writer[InvalidRecursive]") must failWith(
+        "Cannot\\ flatten\\ writer\\ for\\ 'parent':\\ recursive\\ type") and {
+          typecheck("Macros.writer[InvalidNonDoc]") must failWith(
+            "doesn't\\ conform\\ BSONDocumentWriter")
+        } and {
+          val w = Macros.writer[LabelledRange]
+          val lr = LabelledRange("range2", Range(start = 1, end = 3))
+          val doc = BSONDocument("name" -> "range2", "start" -> 1, "end" -> 3)
 
-      val w = Macros.writer[LabelledRange]
-      val lr = LabelledRange("range2", Range(start = 1, end = 3))
-      val doc = BSONDocument("name" -> "range2", "start" -> 1, "end" -> 3)
-
-      w.writeTry(lr) must beSuccessfulTry(doc)
+          w.writeTry(lr) must beSuccessfulTry(doc)
+        }
     }
   }
 
   "DocumentClass" should {
     import reactivemongo.api.bson.DocumentClass
-
-    shapeless.test.illTyped("implicitly[DocumentClass[Int]]")
-    shapeless.test.illTyped("implicitly[DocumentClass[BSONValue]]")
-    shapeless.test.illTyped("implicitly[DocumentClass[BSONDateTime]]")
-    shapeless.test.illTyped("implicitly[DocumentClass[BSONLong]]")
 
     "be proved for case class Person" in {
       implicitly[DocumentClass[Person]] must not(beNull)
@@ -670,6 +727,25 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
     "be proved for BSONDocument" in {
       implicitly[DocumentClass[BSONDocument]] must not(beNull)
+    }
+
+    "not be proved for" >> {
+      "Int" in {
+        typecheck("implicitly[DocumentClass[Int]]") must failWith(
+          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[Int\\]")
+      } tag "wip"
+
+      "BSONValue" in {
+        typecheck("implicitly[DocumentClass[BSONValue]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONValue\\]")
+      } tag "wip"
+
+      "BSONDateTime" in {
+        typecheck("implicitly[DocumentClass[reactivemongo.api.bson.BSONDateTime]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONDateTime\\]")
+      } tag "wip"
+
+      "BSONLong" in {
+        typecheck("implicitly[DocumentClass[reactivemongo.api.bson.BSONLong]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONLong\\]")
+      }
     }
   }
 

@@ -251,7 +251,10 @@ object Macros {
       override def hashCode: Int = key.hashCode
     }
 
-    /** Ignores a field */
+    /**
+     * Indicates that the annotated field must be serialized to BSON.
+     * Annotation `@transient` can also be used to achieve the same purpose.
+     */
     @meta.param
     final class Ignore extends StaticAnnotation {
       override def hashCode: Int = 1278101060
@@ -312,6 +315,41 @@ object Macros {
 
       override def equals(that: Any): Boolean = that match {
         case _: NoneAsNull => true
+        case _ => false
+      }
+    }
+
+    /**
+     * Indicates a default value for a class property,
+     * when there is no corresponding BSON value when reading.
+     *
+     * It enables a behaviour similar to [[MacroOptions.ReadDefaultValues]],
+     * without requiring the define a global default value for the property.
+     *
+     * {{{
+     * import reactivemongo.api.bson.BSONDocument
+     * import reactivemongo.api.bson.Macros,
+     *   Macros.Annotations.DefaultValue
+     *
+     * case class Foo(
+     *   title: String,
+     *   @DefaultValue(1.23D) score: Double)
+     *
+     * val reader = Macros.reader[Foo]
+     *
+     * reader.readTry(BSONDocument("title" -> "Bar")) // No BSON 'score'
+     * // Success: Foo(title = "Bar", score = 1.23D)
+     * }}}
+     */
+    @meta.param
+    final class DefaultValue[T](val value: T) extends StaticAnnotation {
+      @inline override def hashCode: Int = value.hashCode
+
+      @SuppressWarnings(Array("ComparingUnrelatedTypes"))
+      override def equals(that: Any): Boolean = that match {
+        case other: DefaultValue[_] =>
+          this.value == other.value
+
         case _ => false
       }
     }
