@@ -227,4 +227,7 @@ object MacroTest {
     @DefaultValue(Some(45.6F)) score: Option[Float],
     @DefaultValue(Range(7, 11)) range: Range)
 
+  case class WithDefaultValues3(
+    @DefaultValue(1 /* type mismatch */ ) name: String)
+
 }

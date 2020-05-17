@@ -251,7 +251,10 @@ object Macros {
       override def hashCode: Int = key.hashCode
     }
 
-    /** Ignores a field */
+    /**
+     * Indicates that the annotated field must be serialized to BSON.
+     * Annotation `@transient` can also be used to achieve the same purpose.
+     */
     @meta.param
     final class Ignore extends StaticAnnotation {
       override def hashCode: Int = 1278101060

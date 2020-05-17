@@ -9,7 +9,13 @@ import scala.reflect.macros.blackbox.Context
 private[bson] class MacroImpl(val c: Context) {
   import c.universe._
 
-  import Macros.Annotations, Annotations.{ Flatten, Ignore, Key, NoneAsNull }
+  import Macros.Annotations, Annotations.{
+    DefaultValue,
+    Flatten,
+    Ignore,
+    Key,
+    NoneAsNull
+  }
 
   def reader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] = readerWithConfig[A, Opts](implicitOptionsConfig)
 
@@ -122,6 +128,7 @@ private[bson] class MacroImpl(val c: Context) {
     private val reflPkg = q"_root_.scala.reflect"
 
     private val optionTpe = c.typeOf[Option[_]]
+    private val defaultValueAnnotationTpe = c.typeOf[DefaultValue[_]]
 
     protected def aTpe: Type
     protected def optsTpe: Type
@@ -314,13 +321,36 @@ private[bson] class MacroImpl(val c: Context) {
                 boundTypes.getOrElse(st.typeSymbol.fullName, st)
               }
 
-              // TODO: Allow to provide default value with annotation?
+              val defaultFromAnn = param.annotations.flatMap {
+                case ann if ann.tree.tpe <:< defaultValueAnnotationTpe => {
+                  ann.tree.children.tail.flatMap {
+                    case v if v.tpe <:< sig =>
+                      Seq(v)
+
+                    case invalid =>
+                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '$pname': $sig value expected")
+                  }
+                }
+
+                case _ =>
+                  Seq.empty[Tree]
+              }
+
               val default: Option[Tree] = {
                 if (param.isParamWithDefault) {
                   val getter = TermName("apply$default$" + (index + 1))
                   Some(q"$companionObject.$getter")
-                } else {
-                  None
+                } else defaultFromAnn match {
+                  case dv +: other => {
+                    if (other.nonEmpty) {
+                      warn("Exactly one @DefaultValue must be provided for each property; Ignoring invalid annotations")
+                    }
+
+                    Some(dv)
+                  }
+
+                  case _ =>
+                    None
                 }
               }
 
@@ -359,6 +389,18 @@ private[bson] class MacroImpl(val c: Context) {
             c.abort(c.enclosingPosition, s"Implicit not found for '$pname': ${classOf[BSONReader[_]].getName}[$sig]")
           }
 
+          def tryWithDefault(`try`: Tree, dv: Tree) = q"""${`try`} match {
+            case readSuccess @ ${utilPkg}.Success(_) => 
+              readSuccess
+
+            case ${utilPkg}.Failure(
+              _: ${exceptionsPkg}.BSONValueNotFoundException) =>
+              ${utilPkg}.Success(${dv})
+
+            case readFailure @ ${utilPkg}.Failure(_) =>
+              readFailure
+          }"""
+
           val get: Tree = {
             if (param.annotations.exists(_.tree.tpe =:= typeOf[Flatten])) {
               if (reader.toString == "forwardBSONReader") {
@@ -373,23 +415,7 @@ private[bson] class MacroImpl(val c: Context) {
 
               val readTry = q"${reader}.readTry(macroDoc)"
 
-              default match {
-                case Some(dv) =>
-                  q"""${readTry} match {
-                        case readSuccess @ ${utilPkg}.Success(_) => 
-                          readSuccess
-
-                        case ${utilPkg}.Failure(
-                          _: ${exceptionsPkg}.BSONValueNotFoundException) =>
-                          ${utilPkg}.Success(${dv})
-
-                        case readFailure @ ${utilPkg}.Failure(_) =>
-                          readFailure
-                      }"""
-
-                case _ =>
-                  readTry
-              }
+              default.fold(readTry) { dv => tryWithDefault(readTry, dv) }
             } else {
               val field = q"$macroCfg.fieldNaming($pname)"
 
@@ -409,26 +435,8 @@ private[bson] class MacroImpl(val c: Context) {
 
                 case _ => {
                   val getAsTry = q"macroDoc.getAsTry($field)($reader)"
-                  // TODO: Refactor with common code with readTry upper
 
-                  default match {
-                    case Some(dv) =>
-                      q"""${getAsTry} match {
-                            case readSuccess @ ${utilPkg}.Success(_) => 
-                              readSuccess
-
-                            case ${utilPkg}.Failure(
-                              _: ${exceptionsPkg}.BSONValueNotFoundException) =>
-                              ${utilPkg}.Success(${dv})
-
-                            case readFailure @ ${utilPkg}.Failure(_) =>
-                              readFailure
-
-                          }"""
-
-                    case _ =>
-                      getAsTry
-                  }
+                  default.fold(getAsTry) { dv => tryWithDefault(getAsTry, dv) }
                 }
               }
             }
@@ -840,7 +848,14 @@ private[bson] class MacroImpl(val c: Context) {
       param.annotations.collect {
         case ann if ann.tree.tpe =:= typeOf[Key] =>
           ann.tree.children.tail.collect {
-            case l: Literal => l.value.value
+            case l: Literal =>
+              l.value.value
+
+            case _ =>
+              c.abort(
+                c.enclosingPosition,
+                s"Annotation @Key must be provided with a pure/literal value")
+
           }.collect {
             case value: String => value
           }
