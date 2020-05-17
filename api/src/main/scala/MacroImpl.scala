@@ -338,7 +338,7 @@ private[bson] class MacroImpl(val c: Context) {
 
               val default: Option[Tree] = {
                 if (param.isParamWithDefault) {
-                  val getter = TermName("apply$default$" + (index + 1))
+                  val getter = TermName(f"apply$$default$$" + (index + 1))
                   Some(q"$companionObject.$getter")
                 } else defaultFromAnn match {
                   case dv +: other => {
@@ -854,7 +854,7 @@ private[bson] class MacroImpl(val c: Context) {
             case _ =>
               c.abort(
                 c.enclosingPosition,
-                s"Annotation @Key must be provided with a pure/literal value")
+                "Annotation @Key must be provided with a pure/literal value")
 
           }.collect {
             case value: String => value

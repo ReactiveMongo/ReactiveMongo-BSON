@@ -345,6 +345,7 @@ object Macros {
     final class DefaultValue[T](val value: T) extends StaticAnnotation {
       @inline override def hashCode: Int = value.hashCode
 
+      @SuppressWarnings(Array("ComparingUnrelatedTypes"))
       override def equals(that: Any): Boolean = that match {
         case other: DefaultValue[_] =>
           this.value == other.value
