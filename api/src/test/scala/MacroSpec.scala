@@ -617,21 +617,49 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       r.readTry(doc) must beSuccessfulTry(lr)
     }
 
-    "be generated for case class with default values" in {
-      val r1: BSONDocumentReader[WithDefaultValues] =
-        Macros.using[MacroOptions.ReadDefaultValues].reader[WithDefaultValues]
+    "be generated for case class with default values" >> {
+      "using class defaults" in {
+        val r1: BSONDocumentReader[WithDefaultValues1] =
+          Macros.using[MacroOptions.ReadDefaultValues].
+            reader[WithDefaultValues1]
 
-      val r2: BSONDocumentReader[WithDefaultValues] = {
-        implicit val cfg = MacroConfiguration[MacroOptions.ReadDefaultValues]()
+        val r2: BSONDocumentReader[WithDefaultValues1] = {
+          implicit val cfg =
+            MacroConfiguration[MacroOptions.ReadDefaultValues]()
 
-        Macros.reader[WithDefaultValues]
+          Macros.reader[WithDefaultValues1]
+        }
+
+        val minimalDoc = BSONDocument("id" -> 1)
+        val expected = WithDefaultValues1(id = 1)
+
+        r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
+          r2.readTry(minimalDoc) must beSuccessfulTry(expected)
+        }
       }
 
-      val minimalDoc = BSONDocument("id" -> 1)
-      val expected = WithDefaultValues(id = 1)
+      "using annotation @DefaultValue" in {
+        val r1: BSONDocumentReader[WithDefaultValues2] =
+          Macros.using[MacroOptions.ReadDefaultValues].
+            reader[WithDefaultValues2]
 
-      r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
-        r2.readTry(minimalDoc) must beSuccessfulTry(expected)
+        val r2: BSONDocumentReader[WithDefaultValues2] = {
+          implicit val cfg =
+            MacroConfiguration[MacroOptions.ReadDefaultValues]()
+
+          Macros.reader[WithDefaultValues2]
+        }
+
+        val minimalDoc = BSONDocument("id" -> 1)
+        val expected = WithDefaultValues2(
+          id = 1,
+          title = "default2",
+          score = Some(45.6F),
+          range = Range(7, 11))
+
+        r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
+          r2.readTry(minimalDoc) must beSuccessfulTry(expected)
+        }
       }
     }
   }
