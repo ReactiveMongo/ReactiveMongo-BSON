@@ -213,4 +213,10 @@ object MacroTest {
     @Flatten parent: InvalidRecursive)
 
   case class InvalidNonDoc(@Flatten name: String)
+
+  case class WithDefaultValues(
+    id: Int,
+    title: String = "default",
+    score: Option[Float] = Some(1.23F),
+    range: Range = Range(3, 5))
 }

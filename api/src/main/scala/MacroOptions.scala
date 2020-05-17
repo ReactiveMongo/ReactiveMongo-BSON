@@ -106,6 +106,27 @@ object MacroOptions {
    */
   trait AutomaticMaterialization extends Default
 
+  /**
+   * Considering a class property with a default value,
+   * when reading the class from BSON if there is no BSON value
+   * corresponding to the property, then the default value is used.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{
+   *   BSONDocument, BSONDocumentReader, Macros, MacroOptions
+   * }
+   *
+   * case class Foo(id: Int, title: String = "default")
+   *
+   * val reader: BSONDocumentReader[Foo] =
+   *   Macros.using[MacroOptions.ReadDefaultValues].reader[Foo]
+   *
+   * reader.readTry(BSONDocument("id" -> 1))
+   * // => Success: Foo(id = 1, title = "default")
+   * }}}
+   */
+  trait ReadDefaultValues extends Default
+
   // ---
 
   trait ValueOf[O <: MacroOptions]

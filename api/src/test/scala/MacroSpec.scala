@@ -595,7 +595,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         "lorem" -> "ipsum")) must beSuccessfulTry(Foo(Single(big), "ipsum"))
     }
 
-    "be generated for class class with self reference" in {
+    "be generated for case class with self reference" in {
       val r = Macros.reader[Bar]
       val bar1 = Bar("bar1", None)
       val doc1 = BSONDocument("name" -> "bar1")
@@ -616,6 +616,24 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
       r.readTry(doc) must beSuccessfulTry(lr)
     }
+
+    "be generated for case class with default values" in {
+      val r1: BSONDocumentReader[WithDefaultValues] =
+        Macros.using[MacroOptions.ReadDefaultValues].reader[WithDefaultValues]
+
+      val r2: BSONDocumentReader[WithDefaultValues] = {
+        implicit val cfg = MacroConfiguration[MacroOptions.ReadDefaultValues]()
+
+        Macros.reader[WithDefaultValues]
+      }
+
+      val minimalDoc = BSONDocument("id" -> 1)
+      val expected = WithDefaultValues(id = 1)
+
+      r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
+        r2.readTry(minimalDoc) must beSuccessfulTry(expected)
+      }
+    } tag "wip"
   }
 
   "Writer" should {

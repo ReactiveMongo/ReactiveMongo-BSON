@@ -6,6 +6,7 @@ import scala.collection.immutable.Set
 
 import scala.reflect.macros.blackbox.Context
 
+// TODO: Handle default values https://github.com/playframework/play-json/blob/master/play-json/shared/src/test/scala/play/api/libs/json/MacroSpec.scala#L329
 private[bson] class MacroImpl(val c: Context) {
   import c.universe._
 
@@ -292,6 +293,17 @@ private[bson] class MacroImpl(val c: Context) {
       val bufErr = TermName(c.freshName("err"))
 
       val params: Seq[(Symbol, String, TermName, Type)] =
+        /* TODO:
+            val defaultValues = params.map(_.asTerm).zipWithIndex.map {
+              case (p, i) =>
+                if (!p.isParamWithDefault) None
+                else {
+                  val getter = TermName("apply$default$" + (i + 1))
+                  Some(q"$companionObject.$getter")
+                }
+            }
+         */
+
         constructor.paramLists.headOption.toSeq.flatten.map { param =>
           val pname = paramName(param)
           val sig = param.typeSignature.map { st =>
