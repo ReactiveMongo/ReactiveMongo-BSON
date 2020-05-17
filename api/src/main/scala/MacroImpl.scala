@@ -266,14 +266,15 @@ private[bson] class MacroImpl(val c: Context) {
       q"${utilPkg}.Success(${Ident(TermName(sym.name.toString))})"
     }
 
-    private type ReadableProperty = Tuple4[Symbol, String, TermName, Type]
+    private type ReadableProperty = Tuple5[Symbol, String, TermName, Type, Option[Tree]]
 
     private object ReadableProperty {
       def apply(
         symbol: Symbol,
         name: String,
         term: TermName,
-        tpe: Type): ReadableProperty = Tuple4(symbol, name, term, tpe)
+        tpe: Type,
+        default: Option[Tree]): ReadableProperty = Tuple5(symbol, name, term, tpe, default)
 
       def unapply(p: ReadableProperty) = Some(p)
     }
@@ -303,32 +304,38 @@ private[bson] class MacroImpl(val c: Context) {
       val resolve = resolver(boundTypes, "BSONReader", debugEnabled)(readerType)
       val bufErr = TermName(c.freshName("err"))
 
+      val companionObject = tpe.typeSymbol.companion
       val params: Seq[ReadableProperty] =
-        /* TODO:
-            val defaultValues = params.map(_.asTerm).zipWithIndex.map {
-              case (p, i) =>
-                if (!p.isParamWithDefault) None
-                else {
-                  val getter = TermName("apply$default$" + (i + 1))
+        constructor.paramLists.headOption.toSeq.flatten.
+          map(_.asTerm).zipWithIndex.map {
+            case (param, index) =>
+              val pname = paramName(param)
+              val sig = param.typeSignature.map { st =>
+                boundTypes.getOrElse(st.typeSymbol.fullName, st)
+              }
+
+              // TODO: Allow to provide default value with annotation?
+              val default: Option[Tree] = {
+                if (param.isParamWithDefault) {
+                  val getter = TermName("apply$default$" + (index + 1))
                   Some(q"$companionObject.$getter")
+                } else {
+                  None
                 }
-            }
-         */
+              }
 
-        constructor.paramLists.headOption.toSeq.flatten.zipWithIndex.map {
-          case (param, _ /*index*/ ) =>
-            val pname = paramName(param)
-            val sig = param.typeSignature.map { st =>
-              boundTypes.getOrElse(st.typeSymbol.fullName, st)
-            }
+              ReadableProperty(
+                symbol = param,
+                name = pname,
+                term = TermName(c.freshName(pname)),
+                tpe = sig,
+                default = default)
+          }
 
-            ReadableProperty(param, pname, TermName(c.freshName(pname)), sig)
-        }
-
-      val decls = q"""val ${bufErr} = 
+      val decls = q"""val ${bufErr} =
         ${colPkg}.Seq.newBuilder[${exceptionsPkg}.HandlerException]""" +: (
         params.map {
-          case ReadableProperty(_, _, vt, sig) =>
+          case ReadableProperty(_, _, vt, sig, _) =>
             q"val ${vt} = new ${bsonPkg}.Macros.LocalVar[${sig}]"
         })
 
@@ -336,7 +343,7 @@ private[bson] class MacroImpl(val c: Context) {
       val errName = TermName(c.freshName("cause"))
 
       val values = params.map {
-        case ReadableProperty(param, pname, vt, sig) =>
+        case ReadableProperty(param, pname, vt, sig, default) =>
           val (reader, _) = sig match {
             case OptionTypeParameter(ot) => resolve(sig) match {
               case d @ (r, _) if r.nonEmpty =>
@@ -364,16 +371,65 @@ private[bson] class MacroImpl(val c: Context) {
                 c.abort(c.enclosingPosition, s"Cannot flatten reader '$reader': doesn't conform BSONDocumentReader")
               }
 
-              q"${reader}.readTry(macroDoc)"
+              val readTry = q"${reader}.readTry(macroDoc)"
+
+              default match {
+                case Some(dv) =>
+                  q"""${readTry} match {
+                        case readSuccess @ ${utilPkg}.Success(_) => 
+                          readSuccess
+
+                        case ${utilPkg}.Failure(
+                          _: ${exceptionsPkg}.BSONValueNotFoundException) =>
+                          ${utilPkg}.Success(${dv})
+
+                        case readFailure @ ${utilPkg}.Failure(_) =>
+                          readFailure
+                      }"""
+
+                case _ =>
+                  readTry
+              }
             } else {
               val field = q"$macroCfg.fieldNaming($pname)"
 
               OptionTypeParameter.unapply(sig) match {
-                case Some(_) =>
-                  q"macroDoc.getAsUnflattenedTry($field)($reader)"
+                case Some(_) => {
+                  val getAsUnflattenedTry =
+                    q"macroDoc.getAsUnflattenedTry($field)($reader)"
 
-                case _ =>
-                  q"macroDoc.getAsTry($field)($reader)"
+                  default match {
+                    case Some(dv) =>
+                      q"${getAsUnflattenedTry}.map(_.orElse(${dv}))"
+
+                    case _ =>
+                      getAsUnflattenedTry
+                  }
+                }
+
+                case _ => {
+                  val getAsTry = q"macroDoc.getAsTry($field)($reader)"
+                  // TODO: Refactor with common code with readTry upper
+
+                  default match {
+                    case Some(dv) =>
+                      q"""${getAsTry} match {
+                            case readSuccess @ ${utilPkg}.Success(_) => 
+                              readSuccess
+
+                            case ${utilPkg}.Failure(
+                              _: ${exceptionsPkg}.BSONValueNotFoundException) =>
+                              ${utilPkg}.Success(${dv})
+
+                            case readFailure @ ${utilPkg}.Failure(_) =>
+                              readFailure
+
+                          }"""
+
+                    case _ =>
+                      getAsTry
+                  }
+                }
               }
             }
           }
@@ -387,7 +443,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val applyArgs = params.map {
-        case ReadableProperty(_, _, vt, _) => q"${vt}.value"
+        case ReadableProperty(_, _, vt, _, _) => q"${vt}.value"
       }
 
       val accName = TermName(c.freshName("acc"))

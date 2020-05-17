@@ -633,7 +633,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
         r2.readTry(minimalDoc) must beSuccessfulTry(expected)
       }
-    } tag "wip"
+    }
   }
 
   "Writer" should {
