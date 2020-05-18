@@ -15,7 +15,8 @@ private[bson] class MacroImpl(val c: Context) {
     Ignore,
     Key,
     NoneAsNull,
-    Reader
+    Reader,
+    Writer
   }
 
   def reader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] = readerWithConfig[A, Opts](implicitOptionsConfig)
@@ -131,6 +132,7 @@ private[bson] class MacroImpl(val c: Context) {
     private val optionTpe = c.typeOf[Option[_]]
     private val defaultValueAnnotationTpe = c.typeOf[DefaultValue[_]]
     private val readerAnnotationTpe = c.typeOf[Reader[_]]
+    private val writerAnnotationTpe = c.typeOf[Writer[_]]
 
     protected def aTpe: Type
     protected def optsTpe: Type
@@ -538,6 +540,15 @@ private[bson] class MacroImpl(val c: Context) {
         q"${utilPkg}.Success(${bsonPkg}.BSONDocument(${discriminator}))"
       } getOrElse q"${utilPkg}.Success(${bsonPkg}.BSONDocument.empty)"
 
+    private type WritableProperty = Tuple3[Symbol, Int, Type]
+
+    private object WritableProperty {
+      def apply(symbol: Symbol, index: Int, tpe: Type) =
+        Tuple3(symbol, index, tpe)
+
+      def unapply(property: WritableProperty) = Some(property)
+    }
+
     private def writeBodyConstructClass(
       id: Ident,
       tpe: Type,
@@ -574,15 +585,17 @@ private[bson] class MacroImpl(val c: Context) {
               o.substituteTypes(List(st.typeSymbol), List(t))
             }
 
-            (sym -> i) -> sig
+            WritableProperty(sym, i, sig)
           }
 
-          case ((sym, i), st) if !ignoreField(sym) => {
-            //val sig = boundTypes.getOrElse(st.typeSymbol.fullName, st)
+          case ((sym, i), sig) if !ignoreField(sym) => {
+            val writerAnnTpe = appliedType(writerAnnotationTpe, List(sig))
 
-            (sym -> i) -> st //sig
+            println(s"XXXX=> ${writerAnnTpe}")
+
+            WritableProperty(sym, i, sig)
           }
-        }.partition(t => isOptionalType(t._2))
+        }.partition(t => isOptionalType(t._3))
 
       def resolveWriter(pname: String, tpe: Type) = {
         val (writer, _) = resolve(tpe)
@@ -626,7 +639,7 @@ private[bson] class MacroImpl(val c: Context) {
       val errName = TermName(c.freshName("cause"))
 
       val values = required.map {
-        case ((param, i), sig) =>
+        case WritableProperty(param, i, sig) =>
           val pname = paramName(param)
           val writer = resolveWriter(pname, sig)
 
@@ -655,7 +668,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val extra = optional.collect {
-        case ((param, i), optType @ OptionTypeParameter(sig)) =>
+        case WritableProperty(param, i, optType @ OptionTypeParameter(sig)) =>
           val pname = paramName(param)
 
           val writer = resolve(optType) match {
