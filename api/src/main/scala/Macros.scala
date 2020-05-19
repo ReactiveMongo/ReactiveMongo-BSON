@@ -353,6 +353,40 @@ object Macros {
         case _ => false
       }
     }
+
+    /**
+     * Indicates a BSON reader to be used for a specific property,
+     * possibly overriding the default one from the implicit scope.
+     */
+    @meta.param
+    final class Reader[T](val reader: BSONReader[T]) extends StaticAnnotation {
+      @inline override def hashCode: Int = reader.hashCode
+
+      @SuppressWarnings(Array("ComparingUnrelatedTypes"))
+      override def equals(that: Any): Boolean = that match {
+        case other: Reader[_] =>
+          this.reader == other.reader
+
+        case _ => false
+      }
+    }
+
+    /**
+     * Indicates a BSON writer to be used for a specific property,
+     * possibly overriding the default one from the implicit scope.
+     */
+    @meta.param
+    final class Writer[T](val writer: BSONWriter[T]) extends StaticAnnotation {
+      @inline override def hashCode: Int = writer.hashCode
+
+      @SuppressWarnings(Array("ComparingUnrelatedTypes"))
+      override def equals(that: Any): Boolean = that match {
+        case other: Writer[_] =>
+          this.writer == other.writer
+
+        case _ => false
+      }
+    }
   }
 
   // --- Internal

@@ -1,11 +1,16 @@
-import scala.util.Try
+import scala.util.{ Failure, Success, Try }
 
 import reactivemongo.api.bson.{
+  BSONArray,
   BSONDocument,
   BSONDocumentReader,
   BSONDocumentWriter,
   BSONHandler,
+  BSONInteger,
+  BSONReader,
+  BSONString,
   BSONObjectID,
+  BSONWriter,
   Macros,
   MacroOptions
 }
@@ -14,7 +19,9 @@ import reactivemongo.api.bson.Macros.Annotations.{
   Flatten,
   Ignore,
   Key,
-  NoneAsNull
+  NoneAsNull,
+  Reader,
+  Writer
 }
 
 object MacroTest {
@@ -215,6 +222,8 @@ object MacroTest {
 
   case class InvalidNonDoc(@Flatten name: String)
 
+  // ---
+
   case class WithDefaultValues1(
     id: Int,
     title: String = "default1",
@@ -230,4 +239,50 @@ object MacroTest {
   case class WithDefaultValues3(
     @DefaultValue(1 /* type mismatch */ ) name: String)
 
+  // ---
+
+  val strStatusReader = BSONReader.collect[String] {
+    case BSONInteger(1) => "on"
+    case BSONInteger(0) => "off"
+    case BSONString(st) => st
+  }
+
+  val scoreWriter = BSONWriter[Float] { f =>
+    BSONString(f.toString)
+  }
+
+  val descrReader = BSONReader.collect[Option[String]] {
+    case BSONInteger(0) => None
+    case BSONString(st) => Some(st)
+  }
+
+  val descrWriter = BSONWriter[Option[String]] {
+    case Some(str) => BSONString(str)
+    case _ => BSONInteger(0)
+  }
+
+  val rangeSeqReader = BSONDocumentReader.from[Range] { doc =>
+    doc.getAsTry[Seq[Int]]("range").flatMap {
+      case start +: end +: _ =>
+        Success(Range(start, end))
+
+      case _ =>
+        Failure(new IllegalArgumentException())
+    }
+  }
+
+  val rangeSeqWriter = BSONDocumentWriter[Range] { range =>
+    BSONDocument("range" -> BSONArray(range.start, range.end))
+  }
+
+  case class PerField1[T](
+    id: Long,
+    @Reader(strStatusReader) status: String,
+    @Writer(scoreWriter) score: Float,
+    @Writer(descrWriter)@Reader(descrReader) description: Option[String],
+    @Flatten @Writer(rangeSeqWriter)@Reader(rangeSeqReader) range: Range,
+    foo: T)
+
+  case class PerField2(
+    @Reader(implicitly[BSONReader[Int]])@Writer(descrWriter) name: String)
 }

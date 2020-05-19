@@ -14,7 +14,9 @@ private[bson] class MacroImpl(val c: Context) {
     Flatten,
     Ignore,
     Key,
-    NoneAsNull
+    NoneAsNull,
+    Reader,
+    Writer
   }
 
   def reader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] = readerWithConfig[A, Opts](implicitOptionsConfig)
@@ -129,6 +131,8 @@ private[bson] class MacroImpl(val c: Context) {
 
     private val optionTpe = c.typeOf[Option[_]]
     private val defaultValueAnnotationTpe = c.typeOf[DefaultValue[_]]
+    private val readerAnnotationTpe = c.typeOf[Reader[_]]
+    private val writerAnnotationTpe = c.typeOf[Writer[_]]
 
     protected def aTpe: Type
     protected def optsTpe: Type
@@ -273,7 +277,7 @@ private[bson] class MacroImpl(val c: Context) {
       q"${utilPkg}.Success(${Ident(TermName(sym.name.toString))})"
     }
 
-    private type ReadableProperty = Tuple5[Symbol, String, TermName, Type, Option[Tree]]
+    private type ReadableProperty = Tuple6[Symbol, String, TermName, Type, /*default:*/ Option[Tree], /*reader:*/ Option[Tree]]
 
     private object ReadableProperty {
       def apply(
@@ -281,7 +285,8 @@ private[bson] class MacroImpl(val c: Context) {
         name: String,
         term: TermName,
         tpe: Type,
-        default: Option[Tree]): ReadableProperty = Tuple5(symbol, name, term, tpe, default)
+        default: Option[Tree],
+        reader: Option[Tree]): ReadableProperty = Tuple6(symbol, name, term, tpe, default, reader)
 
       def unapply(p: ReadableProperty) = Some(p)
     }
@@ -321,26 +326,50 @@ private[bson] class MacroImpl(val c: Context) {
                 boundTypes.getOrElse(st.typeSymbol.fullName, st)
               }
 
-              val defaultFromAnn = param.annotations.flatMap {
+              val readerAnnTpe = appliedType(readerAnnotationTpe, List(sig))
+              val defaultFromAnn = Seq.newBuilder[Tree]
+              val readerAnns = Seq.newBuilder[Tree]
+
+              param.annotations.foreach {
                 case ann if ann.tree.tpe <:< defaultValueAnnotationTpe => {
-                  ann.tree.children.tail.flatMap {
+                  defaultFromAnn ++= ann.tree.children.tail.flatMap {
                     case v if v.tpe <:< sig =>
                       Seq(v)
 
                     case invalid =>
-                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '$pname': $sig value expected")
+                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '$pname': $sig value expected") // TODO: abort
                   }
                 }
 
+                case ann if ann.tree.tpe <:< readerAnnotationTpe => {
+                  if (!(ann.tree.tpe <:< readerAnnTpe)) {
+                    abort(s"Invalid annotation @Reader(${show(ann.tree)}) for '$pname': Reader[${sig}]")
+                  }
+
+                  readerAnns ++= ann.tree.children.tail
+                }
+
                 case _ =>
-                  Seq.empty[Tree]
+              }
+
+              val readerFromAnn: Option[Tree] = readerAnns.result() match {
+                case r +: other => {
+                  if (other.nonEmpty) {
+                    warn(s"Exactly one @Reader must be provided for each property; Ignoring invalid annotations for '${pname}'")
+                  }
+
+                  Some(r)
+                }
+
+                case _ =>
+                  None
               }
 
               val default: Option[Tree] = {
                 if (param.isParamWithDefault) {
                   val getter = TermName(f"apply$$default$$" + (index + 1))
                   Some(q"$companionObject.$getter")
-                } else defaultFromAnn match {
+                } else defaultFromAnn.result() match {
                   case dv +: other => {
                     if (other.nonEmpty) {
                       warn("Exactly one @DefaultValue must be provided for each property; Ignoring invalid annotations")
@@ -359,13 +388,14 @@ private[bson] class MacroImpl(val c: Context) {
                 name = pname,
                 term = TermName(c.freshName(pname)),
                 tpe = sig,
-                default = default)
+                default = default,
+                reader = readerFromAnn)
           }
 
       val decls = q"""val ${bufErr} =
         ${colPkg}.Seq.newBuilder[${exceptionsPkg}.HandlerException]""" +: (
         params.map {
-          case ReadableProperty(_, _, vt, sig, _) =>
+          case ReadableProperty(_, _, vt, sig, _, _) =>
             q"val ${vt} = new ${bsonPkg}.Macros.LocalVar[${sig}]"
         })
 
@@ -373,16 +403,20 @@ private[bson] class MacroImpl(val c: Context) {
       val errName = TermName(c.freshName("cause"))
 
       val values = params.map {
-        case ReadableProperty(param, pname, vt, sig, default) =>
-          val (reader, _) = sig match {
-            case OptionTypeParameter(ot) => resolve(sig) match {
-              case d @ (r, _) if r.nonEmpty =>
-                d // a reader explicitly defined for an Option[x]
+        case ReadableProperty(param, pname, vt, sig, default, fieldReader) =>
+          val reader: Tree = fieldReader match {
+            case Some(r) => r
 
-              case _ => resolve(ot)
+            case _ => sig match {
+              case OptionTypeParameter(ot) => resolve(sig) match {
+                case (r, _) if r.nonEmpty =>
+                  r // a reader explicitly defined for an Option[x]
+
+                case _ => resolve(ot)._1
+              }
+
+              case _ => resolve(sig)._1
             }
-
-            case _ => resolve(sig)
           }
 
           if (reader.isEmpty) {
@@ -420,7 +454,7 @@ private[bson] class MacroImpl(val c: Context) {
               val field = q"$macroCfg.fieldNaming($pname)"
 
               OptionTypeParameter.unapply(sig) match {
-                case Some(_) => {
+                case Some(_) if fieldReader.isEmpty => {
                   val getAsUnflattenedTry =
                     q"macroDoc.getAsUnflattenedTry($field)($reader)"
 
@@ -451,7 +485,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val applyArgs = params.map {
-        case ReadableProperty(_, _, vt, _, _) => q"${vt}.value"
+        case ReadableProperty(_, _, vt, _, _, _) => q"${vt}.value"
       }
 
       val accName = TermName(c.freshName("acc"))
@@ -506,6 +540,15 @@ private[bson] class MacroImpl(val c: Context) {
         q"${utilPkg}.Success(${bsonPkg}.BSONDocument(${discriminator}))"
       } getOrElse q"${utilPkg}.Success(${bsonPkg}.BSONDocument.empty)"
 
+    private type WritableProperty = Tuple4[Symbol, Int, Type, Option[Tree]]
+
+    private object WritableProperty {
+      def apply(symbol: Symbol, index: Int, tpe: Type, writer: Option[Tree]) =
+        Tuple4(symbol, index, tpe, writer)
+
+      def unapply(property: WritableProperty) = Some(property)
+    }
+
     private def writeBodyConstructClass(
       id: Ident,
       tpe: Type,
@@ -542,15 +585,44 @@ private[bson] class MacroImpl(val c: Context) {
               o.substituteTypes(List(st.typeSymbol), List(t))
             }
 
-            (sym -> i) -> sig
+            Tuple3(sym, i, sig)
           }
 
-          case ((sym, i), st) if !ignoreField(sym) => {
-            //val sig = boundTypes.getOrElse(st.typeSymbol.fullName, st)
+          case ((sym, i), sig) if !ignoreField(sym) =>
+            Tuple3(sym, i, sig)
 
-            (sym -> i) -> st //sig
-          }
-        }.partition(t => isOptionalType(t._2))
+        }.map {
+          case (sym, i, sig) =>
+            val writerAnnTpe = appliedType(writerAnnotationTpe, List(sig))
+
+            val writerAnns = sym.annotations.flatMap {
+              case ann if ann.tree.tpe <:< writerAnnotationTpe => {
+                if (!(ann.tree.tpe <:< writerAnnTpe)) {
+                  abort(s"Invalid annotation @Writer(${show(ann.tree)}) for '${paramName(sym)}': Writer[${sig}]")
+                }
+
+                ann.tree.children.tail
+              }
+
+              case _ =>
+                Seq.empty[Tree]
+            }
+
+            val writerFromAnn: Option[Tree] = writerAnns match {
+              case w +: other => {
+                if (other.nonEmpty) {
+                  warn(s"Exactly one @Writer must be provided for each property; Ignoring invalid annotations for '${paramName(sym)}'")
+                }
+
+                Some(w)
+              }
+
+              case _ =>
+                None
+            }
+
+            WritableProperty(sym, i, sig, writerFromAnn)
+        }.partition(t => isOptionalType(t._3))
 
       def resolveWriter(pname: String, tpe: Type) = {
         val (writer, _) = resolve(tpe)
@@ -594,9 +666,9 @@ private[bson] class MacroImpl(val c: Context) {
       val errName = TermName(c.freshName("cause"))
 
       val values = required.map {
-        case ((param, i), sig) =>
+        case WritableProperty(param, i, sig, writerFromAnn) =>
           val pname = paramName(param)
-          val writer = resolveWriter(pname, sig)
+          val writer = writerFromAnn getOrElse resolveWriter(pname, sig)
 
           val writeCall = q"$writer.writeTry(${tupleElement(i)}): ${utilPkg}.Try[${bsonPkg}.BSONValue]"
 
@@ -623,7 +695,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val extra = optional.collect {
-        case ((param, i), optType @ OptionTypeParameter(sig)) =>
+        case WritableProperty(param, i, optType @ OptionTypeParameter(sig), _ /*TODO*/ ) =>
           val pname = paramName(param)
 
           val writer = resolve(optType) match {
@@ -978,6 +1050,9 @@ private[bson] class MacroImpl(val c: Context) {
         c.warning(c.enclosingPosition, msg)
       }
     }
+
+    @inline private def abort(msg: String): Unit =
+      c.abort(c.enclosingPosition, msg)
   }
 
   sealed trait ImplicitResolver[C <: Context] {
