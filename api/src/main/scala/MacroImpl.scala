@@ -337,7 +337,7 @@ private[bson] class MacroImpl(val c: Context) {
                       Seq(v)
 
                     case invalid =>
-                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '$pname': $sig value expected")
+                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '$pname': $sig value expected") // TODO: abort
                   }
                 }
 
@@ -355,7 +355,7 @@ private[bson] class MacroImpl(val c: Context) {
               val readerFromAnn: Option[Tree] = readerAnns.result() match {
                 case r +: other => {
                   if (other.nonEmpty) {
-                    warn("Exactly one @Reader must be provided for each property; Ignoring invalid annotations")
+                    warn(s"Exactly one @Reader must be provided for each property; Ignoring invalid annotations for '${pname}'")
                   }
 
                   Some(r)
@@ -540,11 +540,11 @@ private[bson] class MacroImpl(val c: Context) {
         q"${utilPkg}.Success(${bsonPkg}.BSONDocument(${discriminator}))"
       } getOrElse q"${utilPkg}.Success(${bsonPkg}.BSONDocument.empty)"
 
-    private type WritableProperty = Tuple3[Symbol, Int, Type]
+    private type WritableProperty = Tuple4[Symbol, Int, Type, Option[Tree]]
 
     private object WritableProperty {
-      def apply(symbol: Symbol, index: Int, tpe: Type) =
-        Tuple3(symbol, index, tpe)
+      def apply(symbol: Symbol, index: Int, tpe: Type, writer: Option[Tree]) =
+        Tuple4(symbol, index, tpe, writer)
 
       def unapply(property: WritableProperty) = Some(property)
     }
@@ -585,16 +585,43 @@ private[bson] class MacroImpl(val c: Context) {
               o.substituteTypes(List(st.typeSymbol), List(t))
             }
 
-            WritableProperty(sym, i, sig)
+            Tuple3(sym, i, sig)
           }
 
-          case ((sym, i), sig) if !ignoreField(sym) => {
+          case ((sym, i), sig) if !ignoreField(sym) =>
+            Tuple3(sym, i, sig)
+
+        }.map {
+          case (sym, i, sig) =>
             val writerAnnTpe = appliedType(writerAnnotationTpe, List(sig))
 
-            println(s"XXXX=> ${writerAnnTpe}")
+            val writerAnns = sym.annotations.flatMap {
+              case ann if ann.tree.tpe <:< writerAnnotationTpe => {
+                if (!(ann.tree.tpe <:< writerAnnTpe)) {
+                  abort(s"Invalid annotation @Writer(${show(ann.tree)}) for '${paramName(sym)}': Writer[${sig}]")
+                }
 
-            WritableProperty(sym, i, sig)
-          }
+                ann.tree.children.tail
+              }
+
+              case _ =>
+                Seq.empty[Tree]
+            }
+
+            val writerFromAnn: Option[Tree] = writerAnns match {
+              case w +: other => {
+                if (other.nonEmpty) {
+                  warn(s"Exactly one @Writer must be provided for each property; Ignoring invalid annotations for '${paramName(sym)}'")
+                }
+
+                Some(w)
+              }
+
+              case _ =>
+                None
+            }
+
+            WritableProperty(sym, i, sig, writerFromAnn)
         }.partition(t => isOptionalType(t._3))
 
       def resolveWriter(pname: String, tpe: Type) = {
@@ -639,9 +666,9 @@ private[bson] class MacroImpl(val c: Context) {
       val errName = TermName(c.freshName("cause"))
 
       val values = required.map {
-        case WritableProperty(param, i, sig) =>
+        case WritableProperty(param, i, sig, writerFromAnn) =>
           val pname = paramName(param)
-          val writer = resolveWriter(pname, sig)
+          val writer = writerFromAnn getOrElse resolveWriter(pname, sig)
 
           val writeCall = q"$writer.writeTry(${tupleElement(i)}): ${utilPkg}.Try[${bsonPkg}.BSONValue]"
 
@@ -668,7 +695,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val extra = optional.collect {
-        case WritableProperty(param, i, optType @ OptionTypeParameter(sig)) =>
+        case WritableProperty(param, i, optType @ OptionTypeParameter(sig), _ /*TODO*/ ) =>
           val pname = paramName(param)
 
           val writer = resolve(optType) match {
