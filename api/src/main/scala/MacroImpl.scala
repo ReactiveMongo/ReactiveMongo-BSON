@@ -62,22 +62,26 @@ private[bson] class MacroImpl(val c: Context) {
   def migrationRequired[A: c.WeakTypeTag](
     details: c.Expr[String]): c.Expr[A] = {
 
-    val msg: String = details.tree match {
-      case Literal(Constant(str: String)) =>
-        s"Migration required: $str"
+    if (!sys.props.get("reactivemongo.api.migrationRequired.nonFatal").exists {
+      v => v.toLowerCase == "true" || v.toLowerCase == "yes"
+    }) {
+      val msg: String = details.tree match {
+        case Literal(Constant(str: String)) =>
+          s"Migration required: $str"
 
-      case v => {
-        c.warning(
-          c.enclosingPosition,
-          s"Invalid 'details' parameter for 'migrationRequired': ${show(v)}")
+        case v => {
+          c.warning(
+            c.enclosingPosition,
+            s"Invalid 'details' parameter for 'migrationRequired': ${show(v)}")
 
-        "Migration required"
+          "Migration required"
+        }
       }
+
+      c.abort(c.enclosingPosition, msg)
     }
 
-    c.abort(c.enclosingPosition, msg)
-
-    c.Expr[A](q"???: A")
+    c.Expr[A](q"scala.Predef.`???`")
   }
 
   // ---

@@ -131,10 +131,6 @@ object Macros {
   @SuppressWarnings(Array("NullParameter"))
   def handlerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, Opts]
 
-  /** Keep a `A` statement but raise a migration error at compile-time. */
-  @SuppressWarnings(Array("NullParameter", "UnusedMethodParameter"))
-  def migrationRequired[A](details: String): A = macro MacroImpl.migrationRequired[A]
-
   // ---
 
   /**

@@ -868,8 +868,10 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
   "Utility macros" should {
     "provide 'migrationRequired' compilation error" in {
+      import reactivemongo.api.bson.migrationRequired
+
       typecheck(
-        """Macros.migrationRequired[String]("Foo"): String""") must failWith(
+        """migrationRequired[String]("Foo"): String""") must failWith(
           "Migration\\ required:\\ Foo")
 
     }
