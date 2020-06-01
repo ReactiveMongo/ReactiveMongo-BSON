@@ -85,7 +85,7 @@ The Specs2 library provides utilities to write tests using [specs2](https://etor
 It can be configured in the `build.sbt` as below.
 
 ```ocaml
-libraryDependencies += "org.reactivemongo" %% "reactivemongo-specs2" % VERSION
+libraryDependencies += "org.reactivemongo" %% "reactivemongo-bson-specs2" % VERSION
 ```
 
 ```scala

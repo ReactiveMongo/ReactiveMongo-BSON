@@ -866,6 +866,15 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
   }
 
+  "Utility macros" should {
+    "provide 'migrationRequired' compilation error" in {
+      typecheck(
+        """Macros.migrationRequired[String]("Foo"): String""") must failWith(
+          "Migration\\ required:\\ Foo")
+
+    }
+  }
+
   // ---
 
   def roundtrip[A](original: A)(implicit reader: BSONReader[A], writer: BSONWriter[A]): MatchResult[Any] = {
