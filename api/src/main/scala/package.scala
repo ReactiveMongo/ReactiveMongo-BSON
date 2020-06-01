@@ -148,4 +148,18 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
     @SuppressWarnings(Array("NullParameter"))
     implicit def evidence[T]: DocumentClass[T] = macro MacroImpl.documentClass[T]
   }
+
+  // ---
+
+  import language.experimental.macros
+
+  /**
+   * Keeps a `A` statement but raise a migration error at compile-time.
+   *
+   * The compilation error can be disabled by setting the system property
+   * `reactivemongo.api.migrationRequired.nonFatal` to `true`.
+   */
+  @SuppressWarnings(Array("NullParameter", "UnusedMethodParameter"))
+  def migrationRequired[A](details: String): A = macro reactivemongo.api.bson.
+    MacroImpl.migrationRequired[A]
 }
