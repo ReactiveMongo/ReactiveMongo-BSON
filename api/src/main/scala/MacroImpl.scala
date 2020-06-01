@@ -58,6 +58,28 @@ private[bson] class MacroImpl(val c: Context) {
     }
   }
 
+  @com.github.ghik.silencer.silent("dead\\ code")
+  def migrationRequired[A: c.WeakTypeTag](
+    details: c.Expr[String]): c.Expr[A] = {
+
+    val msg: String = details.tree match {
+      case Literal(Constant(str: String)) =>
+        s"Migration required: $str"
+
+      case v => {
+        c.warning(
+          c.enclosingPosition,
+          s"Invalid 'details' parameter for 'migrationRequired': ${show(v)}")
+
+        "Migration required"
+      }
+    }
+
+    c.abort(c.enclosingPosition, msg)
+
+    c.Expr[A](q"???: A")
+  }
+
   // ---
 
   private def readerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](config: c.Expr[MacroConfiguration]): c.Expr[BSONDocumentReader[A]] = reify(new BSONDocumentReader[A] {

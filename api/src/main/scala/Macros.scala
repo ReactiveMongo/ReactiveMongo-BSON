@@ -131,6 +131,10 @@ object Macros {
   @SuppressWarnings(Array("NullParameter"))
   def handlerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, Opts]
 
+  /** Keep a `A` statement but raise a migration error at compile-time. */
+  @SuppressWarnings(Array("NullParameter", "UnusedMethodParameter"))
+  def migrationRequired[A](details: String): A = macro MacroImpl.migrationRequired[A]
+
   // ---
 
   /**
@@ -357,6 +361,31 @@ object Macros {
     /**
      * Indicates a BSON reader to be used for a specific property,
      * possibly overriding the default one from the implicit scope.
+     *
+     * {{{
+     * import reactivemongo.api.bson.{
+     *   BSONDocument, BSONDouble, BSONString, BSONReader
+     * }
+     * import reactivemongo.api.bson.Macros,
+     *   Macros.Annotations.Reader
+     *
+     * val scoreReader: BSONReader[Double] = BSONReader.collect[Double] {
+     *   case BSONString(v) => v.toDouble
+     *   case BSONDouble(b) => b
+     * }
+     *
+     * case class Foo(
+     *   title: String,
+     *   @Reader(scoreReader) score: Double)
+     *
+     * val reader = Macros.reader[Foo]
+     *
+     * reader.readTry(BSONDocument(
+     *   "title" -> "Bar",
+     *   "score" -> "1.23" // accepted by annotated scoreReader
+     * ))
+     * // Success: Foo(title = "Bar", score = 1.23D)
+     * }}}
      */
     @meta.param
     final class Reader[T](val reader: BSONReader[T]) extends StaticAnnotation {
@@ -374,6 +403,25 @@ object Macros {
     /**
      * Indicates a BSON writer to be used for a specific property,
      * possibly overriding the default one from the implicit scope.
+     *
+     * {{{
+     * import reactivemongo.api.bson.{ BSONString, BSONWriter }
+     * import reactivemongo.api.bson.Macros,
+     *   Macros.Annotations.Writer
+     *
+     * val scoreWriter: BSONWriter[Double] = BSONWriter[Double] { d =>
+     *   BSONString(d.toString) // write double as string
+     * }
+     *
+     * case class Foo(
+     *   title: String,
+     *   @Writer(scoreWriter) score: Double)
+     *
+     * val writer = Macros.writer[Foo]
+     *
+     * writer.writeTry(Foo(title = "Bar", score = 1.23D))
+     * // Success: BSONDocument("title" -> "Bar", "score" -> "1.23")
+     * }}}
      */
     @meta.param
     final class Writer[T](val writer: BSONWriter[T]) extends StaticAnnotation {
