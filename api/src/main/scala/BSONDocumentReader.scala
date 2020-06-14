@@ -65,6 +65,17 @@ object BSONDocumentReader {
       case _ => None
     }
 
+    override def readOrElse(bson: BSONValue, default: => T): T =
+      bson match {
+        case doc: BSONDocument => try {
+          read(doc).getOrElse(default)
+        } catch {
+          case NonFatal(_) => default
+        }
+
+        case _ => default
+      }
+
     def readDocument(doc: BSONDocument): Try[T] = Try(read(doc)).flatMap {
       case Some(result) => Success(result)
 

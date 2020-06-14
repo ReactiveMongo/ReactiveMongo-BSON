@@ -517,6 +517,32 @@ sealed abstract class BSONArray extends BSONValue {
     }
 
   /**
+   * Returns the [[BSONValue]] at the given `index`,
+   * and converts it with the given implicit [[BSONReader]].
+   *
+   * If there is no matching value, or the value could not be deserialized,
+   * or converted, returns the `default` value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONArray
+   *
+   * val arr = BSONArray(1, "foo")
+   *
+   * arr.getOrElse[Int](0, -1) // 1
+   * arr.getOrElse[Int](1, -1) // -1; "foo" not int
+   * }}}
+   *
+   * @param index $indexParam
+   */
+  def getOrElse[T](index: Int, default: => T)(
+    implicit
+    reader: BSONReader[T]): T = get(index) match {
+    case Some(BSONNull) => default
+    case Some(value) => reader.readOrElse(value, default)
+    case _ => default
+  }
+
+  /**
    * Gets the [[BSONValue]] at the given `index`,
    * and converts it with the given implicit [[BSONReader]].
    *
@@ -1975,6 +2001,37 @@ sealed abstract class BSONDocument
 
       case Some(v) => reader.readTry(v)
     }
+
+  /**
+   * Returns the [[BSONValue]] associated with the given `key`,
+   * and converts it with the given implicit [[BSONReader]].
+   *
+   * If there is no matching value (or value is a [[BSONNull]]),
+   * or the value could not be deserialized, or converted,
+   * returns the `default` value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONNull }
+   *
+   * val doc = BSONDocument("foo" -> 1, "bar" -> BSONNull)
+   *
+   * doc.getOrElse[Int]("foo", -1) // 1
+   * doc.getOrElse[String]("foo", "default") // 'default', as not a string
+   * doc.getOrElse[Int]("lorem", -1) // -1, no 'lorem' key
+   * doc.getOrElse[Int]("bar", -1) // -1, as `BSONNull`
+   * }}}
+   *
+   * @param key $keyParam
+   *
+   * @note When implementing a [[http://reactivemongo.org/releases/latest/documentation/bson/typeclasses.html custom reader]], [[getAsTry]] must be preferred.
+   */
+  final def getOrElse[T](key: String, default: => T)(
+    implicit
+    reader: BSONReader[T]): T = get(key) match {
+    case Some(BSONNull) => default
+    case Some(value) => reader.readOrElse(value, default)
+    case _ => default
+  }
 
   /**
    * Gets the [[BSONValue]] at the given `key`,

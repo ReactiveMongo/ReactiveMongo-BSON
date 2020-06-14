@@ -34,9 +34,6 @@ private[bson] trait DefaultBSONHandlers
   implicit object BSONLongHandler
     extends BSONHandler[Long] with SafeBSONWriter[Long] {
 
-    // TODO: Remove
-    //override def readOpt(bson: BSONValue): Option[Long] = BSONLong.unapply(bson)
-
     @inline def readTry(bson: BSONValue): Try[Long] = bson.asLong
 
     @inline def safeWrite(long: Long) = BSONLong(long)
@@ -96,6 +93,13 @@ private[bson] trait DefaultBSONHandlers
       case bin: BSONBinary => Some(bin.byteArray)
       case _ => None
     }
+
+    override def readOrElse(
+      bson: BSONValue, default: => Array[Byte]): Array[Byte] =
+      bson match {
+        case bin: BSONBinary => bin.byteArray
+        case _ => default
+      }
 
     def safeWrite(xs: Array[Byte]): BSONBinary =
       BSONBinary(xs, Subtype.GenericBinarySubtype)
@@ -169,6 +173,12 @@ private[bson] trait DefaultBSONHandlers
       case BSONString(repr) => Some(new URL(repr))
       case _ => None
     }
+
+    override def readOrElse(bson: BSONValue, default: => URL): URL =
+      bson match {
+        case BSONString(repr) => new URL(repr)
+        case _ => default
+      }
 
     def safeWrite(url: URL) = BSONString(url.toString)
   }
@@ -413,7 +423,7 @@ private[bson] trait LowPriority4BSONHandlers { _: DefaultBSONHandlers =>
     }
 }
 
-private[bson] final class FunctionalDocumentHandler[T](
+private[bson] final class WrappedDocumentHandler[T](
   read: BSONDocument => T,
   w: T => BSONDocument) extends BSONDocumentReader[T]
   with BSONDocumentWriter[T] with BSONHandler[T] {

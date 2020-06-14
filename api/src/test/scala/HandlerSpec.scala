@@ -33,24 +33,34 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
 
   "Complex Document" should {
     "have a name == 'James'" in {
-      doc.getAsTry[BSONString]("name") must beSuccessfulTry(BSONString("James"))
-      doc.getAsTry[String]("name") must beSuccessfulTry("James")
+      doc.getAsTry[BSONString]("name") must beSuccessfulTry(
+        BSONString("James")) and {
+          doc.getAsTry[String]("name") must beSuccessfulTry("James")
+        } and {
+          doc.getAsTry[BSONInteger]("name") must beFailedTry
+        } and {
+          doc.getAsOpt[BSONInteger]("name") must beNone
+        } and {
+          doc.getOrElse[BSONInteger](
+            "name", BSONInteger(-1)) must_=== BSONInteger(-1)
 
-      doc.getAsTry[BSONInteger]("name") must beFailedTry and {
-        doc.getAsOpt[BSONInteger]("name") must beNone
-      } and {
-        doc.getAsTry[Int]("name") must beFailedTry
-      } and {
-        doc.getAsOpt[Int]("name") must beNone
-      } and {
-        doc.getAsTry[BSONNumberLike]("name") must beFailedTry
-      } and {
-        doc.get("name").get.asTry[String] must beSuccessfulTry("James")
-      } and {
-        doc.get("name").get.asTry[Int] must beFailedTry
-      } and {
-        doc.get("name").get.asOpt[String] must beSome("James")
-      }
+        } and {
+          doc.getAsTry[Int]("name") must beFailedTry
+        } and {
+          doc.getAsOpt[Int]("name") must beNone
+        } and {
+          doc.getOrElse[Int]("name", -1) must_=== -1
+        } and {
+          doc.getOrElse[String]("name", "foo") must_=== "James"
+        } and {
+          doc.getAsTry[BSONNumberLike]("name") must beFailedTry
+        } and {
+          doc.get("name").get.asTry[String] must beSuccessfulTry("James")
+        } and {
+          doc.get("name").get.asTry[Int] must beFailedTry
+        } and {
+          doc.get("name").get.asOpt[String] must beSome("James")
+        }
     }
 
     "have a score == 3.88" in {
