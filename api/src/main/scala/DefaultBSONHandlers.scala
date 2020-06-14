@@ -423,6 +423,15 @@ private[bson] trait LowPriority4BSONHandlers { _: DefaultBSONHandlers =>
     }
 }
 
+private[bson] final class FunctionalDocumentHandler[T](
+  read: BSONDocument => Try[T],
+  w: T => Try[BSONDocument]) extends BSONDocumentReader[T]
+  with BSONDocumentWriter[T] with BSONHandler[T] {
+
+  def readDocument(doc: BSONDocument): Try[T] = read(doc)
+  def writeTry(value: T): Try[BSONDocument] = w(value)
+}
+
 private[bson] final class WrappedDocumentHandler[T](
   read: BSONDocument => T,
   w: T => BSONDocument) extends BSONDocumentReader[T]

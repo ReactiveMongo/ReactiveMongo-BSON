@@ -98,12 +98,63 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
 
   /** Handler factory */
   object BSONDocumentHandler {
+    import scala.util.Try
+
+    /**
+     * Document handler factory.
+     *
+     * {{{
+     * import reactivemongo.api.bson.{ BSONDocument, BSONDocumentHandler }
+     *
+     * case class Bar(score: Double)
+     *
+     * val h: BSONDocumentHandler[Bar] = BSONDocumentHandler[Bar](
+     *   read = { doc =>
+     *     Bar(doc.getOrElse[Double]("score", 0D))
+     *   },
+     *   write = { bar => BSONDocument("score" -> bar.score) })
+     * }}}
+     */
     def apply[T](
       read: BSONDocument => T,
       write: T => BSONDocument): BSONDocumentHandler[T] =
-      new FunctionalDocumentHandler[T](read, write)
+      new WrappedDocumentHandler[T](read, write)
 
+    /**
+     * Returns a document handler for a type `T`,
+     * provided there are a writer and a reader for it.
+     *
+     * {{{
+     * import reactivemongo.api.bson.{
+     *   BSONDocumentHandler, BSONDocumentReader, BSONDocumentWriter
+     * }
+     *
+     * def foo[T](
+     *   implicit r: BSONDocumentReader[T],
+     *     w: BSONDocumentWriter[T]): BSONDocumentHandler[T] =
+     *   BSONDocumentHandler.provided[T]
+     * }}}
+     */
     def provided[T](implicit r: BSONDocumentReader[T], w: BSONDocumentWriter[T]): BSONDocumentHandler[T] = new DefaultDocumentHandler[T](r, w)
+
+    /**
+     * Document safe handler factory.
+     *
+     * {{{
+     * import scala.util.Success
+     * import reactivemongo.api.bson.{ BSONDocument, BSONDocumentHandler }
+     *
+     * case class Bar(score: Double)
+     *
+     * val h: BSONDocumentHandler[Bar] = BSONDocumentHandler.from[Bar](
+     *   read = _.getAsTry[Double]("score").map(Bar(_)),
+     *   write = { bar => Success(BSONDocument("score" -> bar.score)) })
+     * }}}
+     */
+    def from[T](
+      read: BSONDocument => Try[T],
+      write: T => Try[BSONDocument]): BSONDocumentHandler[T] =
+      new FunctionalDocumentHandler(read, write)
   }
 
   /**

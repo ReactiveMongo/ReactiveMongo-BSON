@@ -580,11 +580,28 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
       r.readTry(bson) must beSuccessfulTry(foo)
     }
 
-    "be handled (provided there are reader and writer)" in {
-      val h = implicitly[BSONHandler[Foo]]
+    "be handled" >> {
+      "provided there are reader and writer" in {
+        val h = implicitly[BSONHandler[Foo]]
 
-      h.writeTry(foo) must beSuccessfulTry(bson) and {
-        h.readTry(bson) must beSuccessfulTry(foo)
+        h.writeTry(foo) must beSuccessfulTry(bson) and {
+          h.readTry(bson) must beSuccessfulTry(foo)
+        }
+      }
+
+      "using safe functions" in {
+        import scala.util.{ Failure, Success }
+
+        val h: BSONHandler[Foo] = BSONHandler.from[Foo](
+          read = {
+            case BSONString(bar) => Success(Foo(bar))
+            case _ => Failure(new IllegalArgumentException())
+          },
+          write = { foo => Success(BSONString(foo.bar)) })
+
+        h.writeTry(foo) must beSuccessfulTry(bson) and {
+          h.readTry(bson) must beSuccessfulTry(foo)
+        }
       }
     }
   }
