@@ -168,8 +168,6 @@ object BSONReader {
    *
    * intToStrCodeReader.readOpt(BSONInteger(3)) // None (as failed)
    * }}}
-   *
-   * @param read the safe function to read BSON values as `T`
    */
   def option[T](read: BSONValue => Option[T]): BSONReader[T] =
     new OptionalReader[T](read)
@@ -199,7 +197,7 @@ object BSONReader {
    * @param read the safe function to read BSON values as `T`
    */
   def from[T](read: BSONValue => Try[T]): BSONReader[T] =
-    new Default[T](read)
+    new DefaultReader[T](read)
 
   /**
    * Creates a [[BSONReader]] based on the given partial function.
@@ -233,12 +231,12 @@ object BSONReader {
 
   // ---
 
-  private class Default[T](
+  private[bson] class DefaultReader[T](
     read: BSONValue => Try[T]) extends BSONReader[T] {
     def readTry(bson: BSONValue): Try[T] = read(bson)
   }
 
-  private class OptionalReader[T](
+  private[bson] class OptionalReader[T](
     read: BSONValue => Option[T]) extends BSONReader[T] {
     def readTry(bson: BSONValue): Try[T] = Try(read(bson)).flatMap {
       case Some(result) => Success(result)
@@ -253,7 +251,7 @@ object BSONReader {
       read(bson).getOrElse(default)
   }
 
-  private class FunctionalReader[T](
+  private[bson] class FunctionalReader[T](
     read: BSONValue => T) extends BSONReader[T] {
     def readTry(bson: BSONValue): Try[T] = Try(read(bson))
 

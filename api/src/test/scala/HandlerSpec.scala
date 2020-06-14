@@ -13,7 +13,7 @@ import java.util.UUID
 
 import java.net.{ URL, URI }
 
-import scala.util.{ Success, Try }
+import scala.util.Success
 
 final class HandlerSpec extends org.specs2.mutable.Specification {
   "Handler" title
@@ -105,21 +105,53 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
       val writer1 = BSONDocumentWriter { s: String =>
         BSONDocument(f"$$foo" -> s)
       }
+      val expected1 = BSONDocument(f"$$foo" -> "bar")
 
-      writer1.writeTry("bar") must beSuccessfulTry(BSONDocument(f"$$foo" -> "bar")) and {
+      val zero = BSONDocument("_value" -> "zero")
+      val one = BSONDocument("_value" -> "one")
+
+      def partialSpec(w: BSONDocumentWriter[Int]) = {
+        w.writeTry(0) must beSuccessfulTry(zero) and {
+          w.writeOpt(0) must beSome(zero)
+        } and {
+          w.writeTry(1) must beSuccessfulTry(one)
+        } and {
+          w.writeOpt(1) must beSome(one)
+        } and {
+          w.writeTry(2) must beFailedTry[BSONDocument]
+        } and {
+          w.writeOpt(2) must beNone
+        }
+      }
+
+      writer1.writeTry("bar") must beSuccessfulTry(expected1) and {
         val writer2: BSONDocumentWriter[Int] =
           writer1.beforeWrite[Int](_.toString)
 
         writer2.writeTry(10) must beSuccessfulTry(
-          BSONDocument(f"$$foo" -> "10"))
-
+          BSONDocument(f"$$foo" -> "10")) and {
+            writer2.writeOpt(10) must beSome(BSONDocument(f"$$foo" -> "10"))
+          }
       } and {
         val expected = BSONDocument("lorem" -> "ipsum")
         val writer3: BSONDocumentWriter[String] = writer1.afterWrite {
           case _ => expected
         }
 
-        writer3.writeTry("test") must beSuccessfulTry(expected)
+        writer3.writeTry("test") must beSuccessfulTry(expected) and {
+          writer3.writeOpt("test") must beSome(expected)
+        }
+      } and {
+        partialSpec(BSONDocumentWriter.option[Int] {
+          case 0 => Some(zero)
+          case 1 => Some(one)
+          case _ => None
+        })
+      } and {
+        partialSpec(BSONDocumentWriter.collect[Int] {
+          case 0 => zero
+          case 1 => one
+        })
       }
     }
   }
@@ -581,27 +613,48 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
 
     "be handled" >> {
-      "provided there are reader and writer" in {
-        val h = implicitly[BSONHandler[Foo]]
-
+      def spec(h: BSONHandler[Foo]) = {
         h.writeTry(foo) must beSuccessfulTry(bson) and {
+          h.writeOpt(foo) must beSome(bson)
+        } and {
           h.readTry(bson) must beSuccessfulTry(foo)
+        } and {
+          h.readOpt(bson) must beSome(foo)
         }
+      }
+
+      "provided there are reader and writer" in {
+        spec(implicitly[BSONHandler[Foo]])
       }
 
       "using safe functions" in {
         import scala.util.{ Failure, Success }
 
-        val h: BSONHandler[Foo] = BSONHandler.from[Foo](
+        spec(BSONHandler.from[Foo](
           read = {
             case BSONString(bar) => Success(Foo(bar))
             case _ => Failure(new IllegalArgumentException())
           },
-          write = { foo => Success(BSONString(foo.bar)) })
+          write = { foo => Success(BSONString(foo.bar)) }))
+      }
 
-        h.writeTry(foo) must beSuccessfulTry(bson) and {
-          h.readTry(bson) must beSuccessfulTry(foo)
-        }
+      "using optional functions" in {
+        spec(BSONHandler.option[Foo](
+          read = {
+            case BSONString(bar) => Some(Foo(bar))
+            case _ => None
+          },
+          write = { foo => Some(BSONString(foo.bar)) }))
+      }
+
+      "using partial functions" in {
+        spec(BSONHandler.collect[Foo](
+          read = {
+            case BSONString(bar) => Foo(bar)
+          },
+          write = {
+            case foo => BSONString(foo.bar)
+          }))
       }
     }
   }
@@ -669,6 +722,39 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
   }
 
+  "Writer" should {
+    {
+      def partialSpec(w: BSONWriter[String]) = {
+        w.writeTry("zero") must beSuccessfulTry(BSONInteger(0)) and {
+          w.writeTry("one") must beSuccessfulTry(BSONInteger(1))
+        } and {
+          w.writeOpt("zero") must beSome(BSONInteger(0))
+        } and {
+          w.writeOpt("one") must beSome(BSONInteger(1))
+        } and {
+          w.writeTry("3") must beFailedTry[BSONValue]
+        } and {
+          w.writeOpt("4") must beNone
+        }
+      }
+
+      "be created from an Option based function" in {
+        partialSpec(BSONWriter.option[String] {
+          case "zero" => Some(BSONInteger(0))
+          case "one" => Some(BSONInteger(1))
+          case _ => None
+        })
+      }
+
+      "be created from a partial function" in {
+        partialSpec(BSONWriter.collect[String] {
+          case "zero" => BSONInteger(0)
+          case "one" => BSONInteger(1)
+        })
+      }
+    }
+  }
+
   // ---
 
   lazy val doc = {
@@ -725,34 +811,39 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           "Running Dry (Requiem For the Rockets)",
           "Cowgirl in the Sand"))))
 
-  implicit object AlbumHandler extends BSONDocumentWriter[Album] with BSONDocumentReader[Album] {
-    def writeTry(album: Album): Try[BSONDocument] = Success(BSONDocument(
-      "name" -> album.name,
-      "releaseYear" -> album.releaseYear,
-      "certificate" -> album.certificate,
-      "tracks" -> album.tracks))
+  implicit def albumHandler: BSONDocumentHandler[Album] =
+    BSONDocumentHandler.from[Album](
+      read = { doc: BSONDocument =>
+        for {
+          n <- doc.getAsTry[String]("name")
+          r <- doc.getAsTry[Int]("releaseYear")
+          c <- doc.getAsUnflattenedTry[Array[Byte]]("certificate")
+          t <- doc.getAsTry[List[String]]("tracks")
+        } yield new Album(n, r, c, t)
+      },
+      write = { album: Album =>
+        Success(BSONDocument(
+          "name" -> album.name,
+          "releaseYear" -> album.releaseYear,
+          "certificate" -> album.certificate,
+          "tracks" -> album.tracks))
+      })
 
-    def readDocument(doc: BSONDocument) = for {
-      n <- doc.getAsTry[String]("name")
-      r <- doc.getAsTry[Int]("releaseYear")
-      c <- doc.getAsUnflattenedTry[Array[Byte]]("certificate")
-      t <- doc.getAsTry[List[String]]("tracks")
-    } yield new Album(n, r, c, t)
-  }
-
-  implicit object ArtistHandler extends BSONDocumentWriter[Artist] with BSONDocumentReader[Artist] {
-    def writeTry(artist: Artist): Try[BSONDocument] =
-      Success(BSONDocument(
-        "name" -> artist.name,
-        "birthDate" -> artist.birthDate,
-        "albums" -> artist.albums))
-
-    def readDocument(doc: BSONDocument) = for {
-      name <- doc.getAsTry[String]("name")
-      birthDate <- doc.getAsTry[Instant]("birthDate")
-      arts <- doc.getAsTry[List[Album]]("albums")
-    } yield Artist(name, birthDate, arts)
-  }
+  implicit def artistHandler: BSONDocumentHandler[Artist] =
+    BSONDocumentHandler.from[Artist](
+      read = { doc: BSONDocument =>
+        for {
+          name <- doc.getAsTry[String]("name")
+          birthDate <- doc.getAsTry[Instant]("birthDate")
+          arts <- doc.getAsTry[List[Album]]("albums")
+        } yield Artist(name, birthDate, arts)
+      },
+      write = { artist: Artist =>
+        Success(BSONDocument(
+          "name" -> artist.name,
+          "birthDate" -> artist.birthDate,
+          "albums" -> artist.albums))
+      })
 
   "Neil Young" should {
     "produce the expected pretty representation" in {

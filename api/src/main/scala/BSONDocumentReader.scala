@@ -24,6 +24,7 @@ trait BSONDocumentReader[T] extends BSONReader[T] { self =>
   }
 }
 
+/** [[BSONDocumentReader]] factories */
 object BSONDocumentReader {
   /** Creates a [[BSONDocumentReader]] based on the given `read` function. */
   def apply[T](read: BSONDocument => T): BSONDocumentReader[T] =
@@ -46,13 +47,13 @@ object BSONDocumentReader {
 
   // ---
 
-  private class DefaultReader[T](
+  private[bson] class DefaultReader[T](
     read: BSONDocument => Try[T]) extends BSONDocumentReader[T] {
 
     def readDocument(doc: BSONDocument): Try[T] = read(doc)
   }
 
-  private class OptionalReader[T](
+  private[bson] class OptionalReader[T](
     read: BSONDocument => Option[T]) extends BSONDocumentReader[T] {
 
     override def readOpt(bson: BSONValue): Option[T] = bson match {
@@ -84,7 +85,7 @@ object BSONDocumentReader {
     }
   }
 
-  private class FunctionalReader[T](
+  private[bson] class FunctionalReader[T](
     read: BSONDocument => T) extends BSONDocumentReader[T] {
 
     def readDocument(doc: BSONDocument): Try[T] = Try(read(doc))

@@ -96,7 +96,7 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
   /** Convenient type alias for document handlers */
   type BSONDocumentHandler[T] = BSONDocumentReader[T] with BSONDocumentWriter[T] with BSONHandler[T]
 
-  /** Handler factory */
+  /** [[BSONDocumentHandler]] factories */
   object BSONDocumentHandler {
     import scala.util.Try
 
@@ -118,7 +118,7 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
     def apply[T](
       read: BSONDocument => T,
       write: T => BSONDocument): BSONDocumentHandler[T] =
-      new WrappedDocumentHandler[T](read, write)
+      new FunctionalDocumentHandler[T](read, write)
 
     /**
      * Returns a document handler for a type `T`,
@@ -135,10 +135,44 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
      *   BSONDocumentHandler.provided[T]
      * }}}
      */
-    def provided[T](implicit r: BSONDocumentReader[T], w: BSONDocumentWriter[T]): BSONDocumentHandler[T] = new DefaultDocumentHandler[T](r, w)
+    def provided[T](implicit r: BSONDocumentReader[T], w: BSONDocumentWriter[T]): BSONDocumentHandler[T] = new WrappedDocumentHandler[T](r, w)
 
     /**
-     * Document safe handler factory.
+     * Creates a [[BSONDocumentHandler]]
+     * based on the given `read` and `write` functions.
+     *
+     * {{{
+     * import reactivemongo.api.bson.{ BSONDocumentHandler, BSONDocument }
+     *
+     * val handler = BSONDocumentHandler.option[String](
+     *   read = {
+     *     case doc: BSONDocument => doc.getAsOpt[Int]("value").collect {
+     *       case 0 => "zero"
+     *       case 1 => "one"
+     *     }
+     *     case _ => None
+     *   },
+     *   write = {
+     *     case "zero" => Some(BSONDocument("value" -> 0))
+     *     case "one" => Some(BSONDocument("value" -> 1))
+     *     case _ => None
+     *   })
+     *
+     * handler.readTry(BSONDocument("value" -> 0)) // Success("zero")
+     * handler.readOpt(BSONDocument("value" -> 3)) // None (as failed)
+     *
+     * handler.writeTry("one") // Success(BSONDocument("value" -> 1))
+     * handler.writeOpt("3") // None (as failed)
+     * }}}
+     */
+    def option[T](
+      read: BSONValue => Option[T],
+      write: T => Option[BSONDocument]): BSONDocumentHandler[T] =
+      new OptionalDocumentHandler(read, write) // TODO: Test
+
+    /**
+     * Creates a [[BSONDocumentHandler]]
+     * based on the given safe `read` and `write` functions.
      *
      * {{{
      * import scala.util.Success
@@ -154,7 +188,49 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
     def from[T](
       read: BSONDocument => Try[T],
       write: T => Try[BSONDocument]): BSONDocumentHandler[T] =
-      new FunctionalDocumentHandler(read, write)
+      new DefaultDocumentHandler(read, write)
+
+    /**
+     * Creates a [[BSONDocumentHandler]]
+     * based on the given `read` and `write` functions.
+     *
+     * {{{
+     * import reactivemongo.api.bson.{ BSONDocumentHandler, BSONDocument }
+     *
+     * val handler = BSONDocumentHandler.collect[String](
+     *   read = {
+     *     case doc: BSONDocument => doc.getAsOpt[Int]("value").collect {
+     *       case 0 => "zero"
+     *       case 1 => "one"
+     *     } getOrElse ""
+     *   },
+     *   write = {
+     *     case "zero" => BSONDocument("value" -> 0)
+     *     case "one" => BSONDocument("value" -> 1)
+     *   })
+     *
+     * handler.readTry(BSONDocument("value" -> 0)) // Success("zero")
+     * handler.readOpt(BSONDocument("value" -> 3)) // None (as failed)
+     *
+     * handler.writeTry("one") // Success(BSONDocument("value" -> 1))
+     * handler.writeOpt("3") // None (as failed)
+     * }}}
+     */
+    def collect[T](
+      read: PartialFunction[BSONValue, T],
+      write: PartialFunction[T, BSONDocument]): BSONDocumentHandler[T] =
+      new FunctionalDocumentHandler(
+        { bson =>
+          read.lift(bson) getOrElse {
+            throw exceptions.ValueDoesNotMatchException(
+              BSONDocument pretty bson)
+          }
+        },
+        { v =>
+          write.lift(v) getOrElse {
+            throw exceptions.ValueDoesNotMatchException(s"${v}")
+          }
+        })
   }
 
   /**
