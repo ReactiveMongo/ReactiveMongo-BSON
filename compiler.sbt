@@ -18,6 +18,7 @@ ThisBuild / scalacOptions ++= Seq(
 ThisBuild / scalacOptions ++= {
   if (scalaBinaryVersion.value == "2.12") {
     Seq(
+      "-Xmax-classfile-name", "128",
       "-Ywarn-numeric-widen",
       "-Ywarn-dead-code",
       "-Ywarn-value-discard",
@@ -27,7 +28,9 @@ ThisBuild / scalacOptions ++= {
       "-Ywarn-macros:after"
     )
   } else if (scalaBinaryVersion.value == "2.11") {
-    Seq("-Yopt:_", "-Ydead-code", "-Yclosure-elim", "-Yconst-opt")
+    Seq(
+      "-Xmax-classfile-name", "128",
+      "-Yopt:_", "-Ydead-code", "-Yclosure-elim", "-Yconst-opt")
   } else {
     Seq("-Wmacros:after")
   }

@@ -37,6 +37,20 @@ trait BSONReader[T] { self =>
   def readOpt(bson: BSONValue): Option[T] = readTry(bson).toOption
 
   /**
+   * Tries to produce an instance of `T` from the `bson` value,
+   * returns the `default` value if an error occurred.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONReader, BSONValue }
+   *
+   * def fromBSON[T](bson: BSONValue, v: T)(implicit r: BSONReader[T]): T =
+   *   r.readOrElse(bson, v)
+   * }}}
+   */
+  def readOrElse(bson: BSONValue, default: => T): T =
+    readTry(bson).getOrElse(default)
+
+  /**
    * Prepares a [[BSONReader]] that returns the result of applying `f`
    * on the result of this reader.
    *
@@ -234,6 +248,9 @@ object BSONReader {
     }
 
     override def readOpt(bson: BSONValue): Option[T] = read(bson)
+
+    override def readOrElse(bson: BSONValue, default: => T): T =
+      read(bson).getOrElse(default)
   }
 
   private class FunctionalReader[T](
@@ -245,6 +262,13 @@ object BSONReader {
     } catch {
       case NonFatal(_) =>
         None
+    }
+
+    override def readOrElse(bson: BSONValue, default: => T): T = try {
+      read(bson)
+    } catch {
+      case NonFatal(_) =>
+        default
     }
   }
 
