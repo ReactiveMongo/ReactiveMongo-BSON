@@ -423,29 +423,29 @@ private[bson] trait LowPriority4BSONHandlers { _: DefaultBSONHandlers =>
     }
 }
 
-private[bson] final class FunctionalDocumentHandler[T](
-  read: BSONDocument => Try[T],
-  w: T => Try[BSONDocument]) extends BSONDocumentReader[T]
-  with BSONDocumentWriter[T] with BSONHandler[T] {
-
-  def readDocument(doc: BSONDocument): Try[T] = read(doc)
-  def writeTry(value: T): Try[BSONDocument] = w(value)
-}
-
-private[bson] final class WrappedDocumentHandler[T](
-  read: BSONDocument => T,
-  w: T => BSONDocument) extends BSONDocumentReader[T]
-  with BSONDocumentWriter[T] with BSONHandler[T] {
-
-  def readDocument(doc: BSONDocument): Try[T] = Try(read(doc))
-  def writeTry(value: T): Try[BSONDocument] = Try(w(value))
-}
+private[bson] final class OptionalDocumentHandler[T](
+  read: BSONDocument => Option[T],
+  val write: T => Option[BSONDocument])
+  extends BSONDocumentReader.OptionalReader[T](read)
+  with BSONDocumentWriter.OptionalWriter[T] with BSONHandler[T]
 
 private[bson] final class DefaultDocumentHandler[T](
+  read: BSONDocument => Try[T],
+  val write: T => Try[BSONDocument])
+  extends BSONDocumentReader.DefaultReader[T](read)
+  with BSONDocumentWriter.DefaultWriter[T] with BSONHandler[T]
+
+private[bson] final class FunctionalDocumentHandler[T](
+  read: BSONDocument => T,
+  val write: T => BSONDocument)
+  extends BSONDocumentReader.FunctionalReader[T](read)
+  with BSONDocumentWriter.FunctionalWriter[T] with BSONHandler[T]
+
+private[bson] final class WrappedDocumentHandler[T](
   reader: BSONDocumentReader[T],
   writer: BSONDocumentWriter[T]) extends BSONDocumentReader[T]
   with BSONDocumentWriter[T] with BSONHandler[T] {
 
-  def readDocument(doc: BSONDocument): Try[T] = reader.readTry(doc)
-  def writeTry(value: T): Try[BSONDocument] = writer.writeTry(value)
+  @inline def readDocument(doc: BSONDocument): Try[T] = reader.readTry(doc)
+  @inline def writeTry(value: T): Try[BSONDocument] = writer.writeTry(value)
 }
