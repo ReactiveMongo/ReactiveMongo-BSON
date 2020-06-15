@@ -125,7 +125,7 @@ trait BSONReader[T] { self =>
 }
 
 /** [[BSONReader]] factories */
-object BSONReader {
+object BSONReader extends BSONReaderCompat {
   /**
    * Creates a [[BSONReader]] based on the given `read` function.
    *
@@ -228,6 +228,15 @@ object BSONReader {
         throw exceptions.ValueDoesNotMatchException(BSONValue pretty bson)
       }
     })
+
+  /**
+   * '''EXPERIMENTAL:''' (API may change without notice)
+   *
+   * Creates a [[BSONReader]] accepting only [[BSONArray]],
+   * and applying the given safe `read` function to each element value.
+   */
+  def sequence[T](read: BSONValue => Try[T]): BSONReader[Seq[T]] =
+    iterable[T, Seq](read)
 
   // ---
 
