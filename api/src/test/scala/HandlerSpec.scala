@@ -604,8 +604,20 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     val foo = Foo("lorem")
     val bson = BSONString("lorem")
 
-    "be written" in {
-      w.writeTry(foo) must beSuccessfulTry(bson)
+    "be written" >> {
+      "as a single value" in {
+        w.writeTry(foo) must beSuccessfulTry(bson)
+      }
+
+      "as an array" in {
+        val aw = BSONWriter.sequence(w.writeTry _)
+        val seq = Seq(foo, Foo("bar"))
+        val arr = BSONArray(bson, BSONString("bar"))
+
+        aw.writeTry(seq) must beSuccessfulTry(arr) and {
+          aw.writeOpt(seq) must beSome(arr)
+        }
+      }
     }
 
     "be read" in {
@@ -681,7 +693,7 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
       }
     }
 
-    "be created for a document from an Option based function" in {
+    {
       val r = BSONDocumentReader.option[(String, Int)] { doc =>
         for {
           s <- doc.string("a")
@@ -689,34 +701,68 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         } yield s -> i
       }
 
-      r.readTry(BSONDocument(
-        "a" -> "A", "b" -> 1)) must beSuccessfulTry("A" -> 1) and {
-        // Missing 'b'
-        val doc = BSONDocument("a" -> "B")
+      "be created for a document from an Option based function" in {
+        r.readTry(BSONDocument(
+          "a" -> "A", "b" -> 1)) must beSuccessfulTry("A" -> 1) and {
+          // Missing 'b'
+          val doc = BSONDocument("a" -> "B")
 
-        r.readTry(doc) must beFailedTry[(String, Int)] and {
-          r.readOpt(doc) must beNone
+          r.readTry(doc) must beFailedTry[(String, Int)] and {
+            r.readOpt(doc) must beNone
+          }
+        } and {
+          // Missing 'a'
+          val doc = BSONDocument("b" -> 2)
+
+          r.readTry(doc) must beFailedTry[(String, Int)] and {
+            r.readOpt(doc) must beNone
+          }
+        } and {
+          // Wrong type for 'a'
+          val doc = BSONDocument("a" -> 3, "b" -> 4)
+
+          r.readTry(doc) must beFailedTry[(String, Int)] and {
+            r.readOpt(doc) must beNone
+          }
+        } and {
+          // Wrong type for 'b'
+          val doc = BSONDocument("a" -> "C", "b" -> 5.6D)
+
+          r.readTry(doc) must beFailedTry[(String, Int)] and {
+            r.readOpt(doc) must beNone
+          }
         }
-      } and {
-        // Missing 'a'
-        val doc = BSONDocument("b" -> 2)
+      }
 
-        r.readTry(doc) must beFailedTry[(String, Int)] and {
-          r.readOpt(doc) must beNone
-        }
-      } and {
-        // Wrong type for 'a'
-        val doc = BSONDocument("a" -> 3, "b" -> 4)
+      "be created for BSON array" in {
+        val seqReader: BSONReader[Seq[(String, Int)]] =
+          BSONReader.sequence(r.readTry _)
 
-        r.readTry(doc) must beFailedTry[(String, Int)] and {
-          r.readOpt(doc) must beNone
-        }
-      } and {
-        // Wrong type for 'b'
-        val doc = BSONDocument("a" -> "C", "b" -> 5.6D)
+        val arr1 = BSONArray(
+          BSONDocument("a" -> "A", "b" -> 1),
+          BSONDocument("a" -> "B", "b" -> 2),
+          BSONDocument("a" -> "C", "b" -> 3))
 
-        r.readTry(doc) must beFailedTry[(String, Int)] and {
-          r.readOpt(doc) must beNone
+        val seq1 = Seq("A" -> 1, "B" -> 2, "C" -> 3)
+
+        val arr2 = BSONArray(
+          BSONDocument("a" -> "A", "b" -> 1),
+          BSONDocument("a" -> "B"))
+
+        val arr3 = BSONArray(
+          BSONDocument("b" -> 1),
+          BSONDocument("a" -> "B", "b" -> 2))
+
+        seqReader.readTry(arr1) must beSuccessfulTry(seq1) and {
+          seqReader.readOpt(arr1) must beSome(seq1)
+        } and {
+          seqReader.readTry(arr2) must beFailedTry[Seq[(String, Int)]]
+        } and {
+          seqReader.readOpt(arr2) must beNone
+        } and {
+          seqReader.readTry(arr3) must beFailedTry[Seq[(String, Int)]]
+        } and {
+          seqReader.readOpt(arr3) must beNone
         }
       }
     }

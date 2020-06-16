@@ -27,4 +27,26 @@ private[bson] trait Utils {
 
   @inline private[bson] def mapValues[K, V, U](m: Map[K, V])(f: V => U) =
     m.view.mapValues(f).toMap
+
+  import scala.collection.Factory
+  import scala.util.{ Failure, Try, Success }
+
+  private[bson] def trySeq[A, B, M[_]](in: Iterable[A])(f: A => Try[B])(implicit cbf: Factory[B, M[B]]): Try[M[B]] = {
+    val builder = cbf.newBuilder
+
+    @annotation.tailrec def go(in: Iterator[A]): Try[Unit] =
+      if (!in.hasNext) Success({}) else {
+        f(in.next) match {
+          case Success(b) => {
+            builder += b
+            go(in)
+          }
+
+          case Failure(e) =>
+            Failure(e)
+        }
+      }
+
+    go(in.iterator).map(_ => builder.result())
+  }
 }

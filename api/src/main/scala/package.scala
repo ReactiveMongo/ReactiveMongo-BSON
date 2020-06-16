@@ -168,7 +168,7 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
     def option[T](
       read: BSONValue => Option[T],
       write: T => Option[BSONDocument]): BSONDocumentHandler[T] =
-      new OptionalDocumentHandler(read, write) // TODO: Test
+      new OptionalDocumentHandler(read, write)
 
     /**
      * Creates a [[BSONDocumentHandler]]
@@ -191,7 +191,7 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
       new DefaultDocumentHandler(read, write)
 
     /**
-     * Creates a [[BSONDocumentHandler]]
+     * '''EXPERIMENTAL:''' Creates a [[BSONDocumentHandler]]
      * based on the given `read` and `write` functions.
      *
      * {{{
