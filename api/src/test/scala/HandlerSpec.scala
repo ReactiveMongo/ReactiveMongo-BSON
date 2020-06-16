@@ -604,8 +604,20 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     val foo = Foo("lorem")
     val bson = BSONString("lorem")
 
-    "be written" in {
-      w.writeTry(foo) must beSuccessfulTry(bson)
+    "be written" >> {
+      "as a single value" in {
+        w.writeTry(foo) must beSuccessfulTry(bson)
+      }
+
+      "as an array" in {
+        val aw = BSONWriter.sequence(w.writeTry _)
+        val seq = Seq(foo, Foo("bar"))
+        val arr = BSONArray(bson, BSONString("bar"))
+
+        aw.writeTry(seq) must beSuccessfulTry(arr) and {
+          aw.writeOpt(seq) must beSome(arr)
+        }
+      }
     }
 
     "be read" in {

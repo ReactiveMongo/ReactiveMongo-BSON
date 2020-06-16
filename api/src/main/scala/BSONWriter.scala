@@ -48,7 +48,7 @@ trait BSONWriter[T] {
 }
 
 /** [[BSONWriter]] factories */
-object BSONWriter {
+object BSONWriter extends BSONWriterCompat {
   /**
    * Creates a [[BSONWriter]] based on the given `write` function.
    * This function is called within a [[scala.util.Try]].
@@ -160,6 +160,15 @@ object BSONWriter {
         throw exceptions.ValueDoesNotMatchException(s"${v}")
       }
     }
+
+  /**
+   * '''EXPERIMENTAL:''' (API may change without notice)
+   *
+   * Creates a [[BSONWriter]] accepting only [[scala.collection.Iterable]],
+   * and applying the given safe `write` function to each element value.
+   */
+  def sequence[T](write: T => Try[BSONValue]): BSONWriter[Seq[T]] =
+    iterable[T, Seq](write)
 
   // ---
 

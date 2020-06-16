@@ -19,7 +19,7 @@ private[bson] trait BSONReaderCompat { self: BSONReader.type =>
 
     from[M[T]] {
       case BSONArray(values) =>
-        reactivemongo.api.bson.trySeq[BSONValue, T, M](values)(read)
+        trySeq[BSONValue, T, M](values)(read)
 
       case bson => Failure(exceptions.TypeDoesNotMatchException(
         "BSONArray", bson.getClass.getSimpleName))

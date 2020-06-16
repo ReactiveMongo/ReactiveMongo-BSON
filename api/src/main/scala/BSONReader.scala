@@ -234,6 +234,12 @@ object BSONReader extends BSONReaderCompat {
    *
    * Creates a [[BSONReader]] accepting only [[BSONArray]],
    * and applying the given safe `read` function to each element value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONReader
+   *
+   * def foo(elmReader: BSONReader[(String, Int)]): BSONReader[Seq[(String, Int)]] = BSONReader.sequence(elmReader.readTry _)
+   * }}}
    */
   def sequence[T](read: BSONValue => Try[T]): BSONReader[Seq[T]] =
     iterable[T, Seq](read)
