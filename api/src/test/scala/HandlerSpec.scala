@@ -15,6 +15,8 @@ import java.net.{ URL, URI }
 
 import scala.util.Success
 
+import org.specs2.specification.core.Fragments
+
 final class HandlerSpec extends org.specs2.mutable.Specification {
   "Handler" title
 
@@ -798,6 +800,89 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           case "one" => BSONInteger(1)
         })
       }
+    }
+  }
+
+  "Tuple" should {
+    "be read" >> {
+      val invalidDoc = BSONDocument("ok" -> 0)
+      val invalidArr = BSONArray("ko")
+
+      Fragments.foreach(
+        Seq[Tuple4[BSONValue, BSONValue, Product, BSONReader[_]]](
+          // BSONDocumentReader.tuple2
+          Tuple4(
+            BSONDocument("name" -> "Foo", "age" -> 20),
+            invalidDoc,
+            ("Foo", 20),
+            BSONDocumentReader.tuple2[String, Int]("name", "age")),
+          // BSONDocumentReader.tuple3
+          Tuple4(
+            BSONDocument(
+              "firstName" -> "Foo",
+              "lastName" -> "Bar",
+              "age" -> 20),
+            invalidDoc,
+            ("Foo", "Bar", 20),
+            BSONDocumentReader.tuple3[String, String, Int](
+              "firstName", "lastName", "age")),
+          // BSONDocumentReader.tuple4
+          Tuple4(
+            BSONDocument(
+              "firstName" -> "Foo",
+              "lastName" -> "Bar",
+              "age" -> 20,
+              "score" -> 1.23D),
+            invalidDoc,
+            ("Foo", "Bar", 20, 1.23D),
+            BSONDocumentReader.tuple4[String, String, Int, Double](
+              "firstName", "lastName", "age", "score")),
+          // BSONDocumentReader.tuple5
+          Tuple4(
+            BSONDocument(
+              "firstName" -> "Foo",
+              "lastName" -> "Bar",
+              "age" -> 20,
+              "score" -> 1.23D,
+              "days" -> BSONArray(3, 5)),
+            invalidDoc,
+            ("Foo", "Bar", 20, 1.23D, Seq(3, 5)),
+            BSONDocumentReader.tuple5[String, String, Int, Double, Seq[Int]]("firstName", "lastName", "age", "score", "days")),
+          // BSONReader.tuple2
+          Tuple4(
+            BSONArray("Foo", 20),
+            invalidArr,
+            ("Foo", 20),
+            BSONReader.tuple2[String, Int]),
+          // BSONReader.tuple3
+          Tuple4(
+            BSONArray("Foo", "Bar", 20),
+            invalidArr,
+            ("Foo", "Bar", 20),
+            BSONReader.tuple3[String, String, Int]),
+          // BSONReader.tuple4
+          Tuple4(
+            BSONArray("Foo", "Bar", 20, 1.23D),
+            invalidArr,
+            ("Foo", "Bar", 20, 1.23D),
+            BSONReader.tuple4[String, String, Int, Double]),
+          // BSONReader.tuple5
+          Tuple4(
+            BSONArray("Foo", "Bar", 20, 1.23D, BSONArray(3, 5)),
+            invalidArr,
+            ("Foo", "Bar", 20, 1.23D, Seq(3, 5)),
+            BSONReader.tuple5[String, String, Int, Double, Seq[Int]]))) {
+          case (bson, invalidBson, tuple, reader) =>
+            s"from ${BSONValue pretty bson} as arity ${tuple.productArity}" in {
+              reader.readTry(bson) must beSuccessfulTry(tuple) and {
+                reader.readOpt(bson) must beSome(tuple)
+              } and {
+                reader.readTry(invalidBson) must beFailedTry
+              } and {
+                reader.readOpt(invalidBson) must beNone
+              }
+            }
+        }
     }
   }
 
