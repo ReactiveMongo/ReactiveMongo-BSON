@@ -47,7 +47,11 @@ trait BSONWriter[T] {
     BSONWriter.from[U] { u => writeTry(f(u)) }
 }
 
-/** [[BSONWriter]] factories */
+/**
+ * [[BSONWriter]] factories.
+ *
+ * @define valueDoesNotMatchException A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
+ */
 object BSONWriter extends BSONWriterCompat {
   /**
    * Creates a [[BSONWriter]] based on the given `write` function.
@@ -101,7 +105,7 @@ object BSONWriter extends BSONWriterCompat {
   }
 
   /**
-   * Creates a [[BSONWriter]] based on the given `write` function.
+   * Creates a [[BSONWriter]] based on the given safe `write` function.
    *
    * {{{
    * import scala.util.{ Failure, Success }
@@ -132,10 +136,44 @@ object BSONWriter extends BSONWriterCompat {
   }
 
   /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] based on the given
+   * partially safe `write` function.
+   *
+   * $valueDoesNotMatchException.
+   *
+   * {{{
+   * import scala.util.Success
+   * import reactivemongo.api.bson.{ BSONWriter, BSONInteger }
+   *
+   * val strCodeToIntWriter = BSONWriter.collectFrom[String] {
+   *   case "zero" => Success(BSONInteger(0))
+   *   case "one" => Success(BSONInteger(1))
+   * }
+   *
+   * strCodeToIntWriter.writeTry("zero") // Success(BSONInteger(0))
+   * strCodeToIntWriter.writeTry("one") // Success(BSONInteger(1))
+   *
+   * strCodeToIntWriter.writeTry("3")
+   * // => Failure(IllegalArgumentException(..))
+   *
+   * strCodeToIntWriter.writeOpt("4") // None (as failed)
+   * }}}
+   */
+  def collectFrom[T](write: PartialFunction[T, Try[BSONValue]]): BSONWriter[T] = {
+    @inline def w = write
+    new DefaultWriter[T] {
+      val write = { v: T =>
+        w.lift(v) getOrElse {
+          Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
+        }
+      }
+    }
+  }
+
+  /**
    * Creates a [[BSONWriter]] based on the given partial function.
    *
-   * A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure`
-   * for any value that is not matched by the `write` function.
+   * $valueDoesNotMatchException.
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONWriter, BSONInteger }

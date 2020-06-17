@@ -13,7 +13,7 @@ import java.util.UUID
 
 import java.net.{ URL, URI }
 
-import scala.util.{ Failure, Success }
+import scala.util.Success
 
 import org.specs2.specification.core.Fragments
 
@@ -811,9 +811,8 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
 
       def w[T <: Product](writer: BSONWriter[T])(
         implicit
-        ev: scala.reflect.ClassTag[T]) = BSONWriter.from[Product] {
+        ev: scala.reflect.ClassTag[T]) = BSONWriter.collectFrom[Product] {
         case `ev`(t) => writer.writeTry(t)
-        case _ => Failure(new IllegalArgumentException("Foo"))
       }
 
       Fragments.foreach(
