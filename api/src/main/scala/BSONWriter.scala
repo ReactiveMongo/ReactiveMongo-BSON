@@ -170,6 +170,48 @@ object BSONWriter extends BSONWriterCompat {
   def sequence[T](write: T => Try[BSONValue]): BSONWriter[Seq[T]] =
     iterable[T, Seq](write)
 
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
+   * as [[BSONArray]] elements.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONWriter
+   *
+   * val writer = BSONWriter.tuple2[String, Int]
+   *
+   * writer.writeTry("Foo" -> 20)
+   * // => Success: ['Foo', 20]
+   * }}}
+   */
+  def tuple2[A: BSONWriter, B: BSONWriter]: BSONWriter[(A, B)] =
+    apply[(A, B)] {
+      case (a, b) => BSONArray(a, b)
+    }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
+   * as [[BSONArray]] elements.
+   */
+  def tuple3[A: BSONWriter, B: BSONWriter, C: BSONWriter]: BSONWriter[(A, B, C)] = apply[(A, B, C)] {
+    case (a, b, c) => BSONArray(a, b, c)
+  }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
+   * as [[BSONArray]] elements.
+   */
+  def tuple4[A: BSONWriter, B: BSONWriter, C: BSONWriter, D: BSONWriter]: BSONWriter[(A, B, C, D)] = apply[(A, B, C, D)] {
+    case (a, b, c, d) => BSONArray(a, b, c, d)
+  }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
+   * as [[BSONArray]] elements.
+   */
+  def tuple5[A: BSONWriter, B: BSONWriter, C: BSONWriter, D: BSONWriter, E: BSONWriter]: BSONWriter[(A, B, C, D, E)] = apply[(A, B, C, D, E)] {
+    case (a, b, c, d, e) => BSONArray(a, b, c, d, e)
+  }
+
   // ---
 
   private[bson] trait DefaultWriter[T] extends BSONWriter[T] {

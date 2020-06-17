@@ -13,7 +13,7 @@ import java.util.UUID
 
 import java.net.{ URL, URI }
 
-import scala.util.Success
+import scala.util.{ Failure, Success }
 
 import org.specs2.specification.core.Fragments
 
@@ -806,28 +806,39 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
   "Tuple" should {
     "be read" >> {
       val invalidDoc = BSONDocument("ok" -> 0)
+      val invalidProduct = Tuple1(0)
       val invalidArr = BSONArray("ko")
 
+      def w[T <: Product](writer: BSONWriter[T])(
+        implicit
+        ev: scala.reflect.ClassTag[T]) = BSONWriter.from[Product] {
+        case `ev`(t) => writer.writeTry(t)
+        case _ => Failure(new IllegalArgumentException("Foo"))
+      }
+
       Fragments.foreach(
-        Seq[Tuple4[BSONValue, BSONValue, Product, BSONReader[_]]](
-          // BSONDocumentReader.tuple2
-          Tuple4(
+        Seq[Tuple5[BSONValue, BSONValue, Product, BSONWriter[Product], BSONReader[_]]](
+          // BSONDocumentX.tuple2
+          Tuple5(
             BSONDocument("name" -> "Foo", "age" -> 20),
             invalidDoc,
             ("Foo", 20),
+            w(BSONDocumentWriter.tuple2[String, Int]("name", "age")),
             BSONDocumentReader.tuple2[String, Int]("name", "age")),
-          // BSONDocumentReader.tuple3
-          Tuple4(
+          // BSONDocumentX.tuple3
+          Tuple5(
             BSONDocument(
               "firstName" -> "Foo",
               "lastName" -> "Bar",
               "age" -> 20),
             invalidDoc,
             ("Foo", "Bar", 20),
+            w(BSONDocumentWriter.tuple3[String, String, Int](
+              "firstName", "lastName", "age")),
             BSONDocumentReader.tuple3[String, String, Int](
               "firstName", "lastName", "age")),
-          // BSONDocumentReader.tuple4
-          Tuple4(
+          // BSONDocumentX.tuple4
+          Tuple5(
             BSONDocument(
               "firstName" -> "Foo",
               "lastName" -> "Bar",
@@ -835,10 +846,12 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
               "score" -> 1.23D),
             invalidDoc,
             ("Foo", "Bar", 20, 1.23D),
+            w(BSONDocumentWriter.tuple4[String, String, Int, Double](
+              "firstName", "lastName", "age", "score")),
             BSONDocumentReader.tuple4[String, String, Int, Double](
               "firstName", "lastName", "age", "score")),
-          // BSONDocumentReader.tuple5
-          Tuple4(
+          // BSONDocumentX.tuple5
+          Tuple5(
             BSONDocument(
               "firstName" -> "Foo",
               "lastName" -> "Bar",
@@ -847,34 +860,47 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
               "days" -> BSONArray(3, 5)),
             invalidDoc,
             ("Foo", "Bar", 20, 1.23D, Seq(3, 5)),
+            w(BSONDocumentWriter.tuple5[String, String, Int, Double, Seq[Int]]("firstName", "lastName", "age", "score", "days")),
             BSONDocumentReader.tuple5[String, String, Int, Double, Seq[Int]]("firstName", "lastName", "age", "score", "days")),
-          // BSONReader.tuple2
-          Tuple4(
+          // BSONX.tuple2
+          Tuple5(
             BSONArray("Foo", 20),
             invalidArr,
             ("Foo", 20),
+            w(BSONWriter.tuple2[String, Int]),
             BSONReader.tuple2[String, Int]),
-          // BSONReader.tuple3
-          Tuple4(
+          // BSONX.tuple3
+          Tuple5(
             BSONArray("Foo", "Bar", 20),
             invalidArr,
             ("Foo", "Bar", 20),
+            w(BSONWriter.tuple3[String, String, Int]),
             BSONReader.tuple3[String, String, Int]),
-          // BSONReader.tuple4
-          Tuple4(
+          // BSONX.tuple4
+          Tuple5(
             BSONArray("Foo", "Bar", 20, 1.23D),
             invalidArr,
             ("Foo", "Bar", 20, 1.23D),
+            w(BSONWriter.tuple4[String, String, Int, Double]),
             BSONReader.tuple4[String, String, Int, Double]),
-          // BSONReader.tuple5
-          Tuple4(
+          // BSONX.tuple5
+          Tuple5(
             BSONArray("Foo", "Bar", 20, 1.23D, BSONArray(3, 5)),
             invalidArr,
             ("Foo", "Bar", 20, 1.23D, Seq(3, 5)),
+            w(BSONWriter.tuple5[String, String, Int, Double, Seq[Int]]),
             BSONReader.tuple5[String, String, Int, Double, Seq[Int]]))) {
-          case (bson, invalidBson, tuple, reader) =>
+          case (bson, invalidBson, tuple, writer, reader) =>
             s"from ${BSONValue pretty bson} as arity ${tuple.productArity}" in {
-              reader.readTry(bson) must beSuccessfulTry(tuple) and {
+              writer.writeTry(tuple) must beSuccessfulTry(bson) and {
+                writer.writeOpt(tuple) must beSome(bson)
+              } and {
+                writer.writeTry(invalidProduct) must beFailedTry
+              } and {
+                writer.writeOpt(invalidProduct) must beNone
+              } and {
+                reader.readTry(bson) must beSuccessfulTry(tuple)
+              } and {
                 reader.readOpt(bson) must beSome(tuple)
               } and {
                 reader.readTry(invalidBson) must beFailedTry
