@@ -244,6 +244,85 @@ object BSONReader extends BSONReaderCompat {
   def sequence[T](read: BSONValue => Try[T]): BSONReader[Seq[T]] =
     iterable[T, Seq](read)
 
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
+   * the [[BSONArray]] elements.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONArray, BSONReader }
+   *
+   * val reader = BSONReader.tuple2[String, Int]
+   *
+   * val arr = BSONArray("Foo", 20)
+   *
+   * reader.readTry(arr) // => Success(("Foo", 20))
+   * }}}
+   */
+  def tuple2[A: BSONReader, B: BSONReader]: BSONReader[(A, B)] =
+    from[(A, B)] {
+      case BSONArray(v1 +: v2 +: _) => for {
+        _1 <- v1.asTry[A]
+        _2 <- v2.asTry[B]
+      } yield Tuple2(_1, _2)
+
+      case bson =>
+        Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
+    }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
+   * the [[BSONArray]] elements.
+   *
+   * @see [[tuple2]]
+   */
+  def tuple3[A: BSONReader, B: BSONReader, C: BSONReader]: BSONReader[(A, B, C)] = from[(A, B, C)] {
+    case BSONArray(v1 +: v2 +: v3 +: _) => for {
+      _1 <- v1.asTry[A]
+      _2 <- v2.asTry[B]
+      _3 <- v3.asTry[C]
+    } yield Tuple3(_1, _2, _3)
+
+    case bson =>
+      Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
+  }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
+   * the [[BSONArray]] elements.
+   *
+   * @see [[tuple2]]
+   */
+  def tuple4[A: BSONReader, B: BSONReader, C: BSONReader, D: BSONReader]: BSONReader[(A, B, C, D)] = from[(A, B, C, D)] {
+    case BSONArray(v1 +: v2 +: v3 +: v4 +: _) => for {
+      _1 <- v1.asTry[A]
+      _2 <- v2.asTry[B]
+      _3 <- v3.asTry[C]
+      _4 <- v4.asTry[D]
+    } yield Tuple4(_1, _2, _3, _4)
+
+    case bson =>
+      Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
+  }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
+   * the [[BSONArray]] elements.
+   *
+   * @see [[tuple2]]
+   */
+  def tuple5[A: BSONReader, B: BSONReader, C: BSONReader, D: BSONReader, E: BSONReader]: BSONReader[(A, B, C, D, E)] = from[(A, B, C, D, E)] {
+    case BSONArray(v1 +: v2 +: v3 +: v4 +: v5 +: _) => for {
+      _1 <- v1.asTry[A]
+      _2 <- v2.asTry[B]
+      _3 <- v3.asTry[C]
+      _4 <- v4.asTry[D]
+      _5 <- v5.asTry[E]
+    } yield Tuple5(_1, _2, _3, _4, _5)
+
+    case bson =>
+      Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
+  }
+
   // ---
 
   private[bson] class DefaultReader[T](

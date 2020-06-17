@@ -15,6 +15,8 @@ import java.net.{ URL, URI }
 
 import scala.util.Success
 
+import org.specs2.specification.core.Fragments
+
 final class HandlerSpec extends org.specs2.mutable.Specification {
   "Handler" title
 
@@ -798,6 +800,114 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           case "one" => BSONInteger(1)
         })
       }
+    }
+  }
+
+  "Tuple" should {
+    "be read" >> {
+      val invalidDoc = BSONDocument("ok" -> 0)
+      val invalidProduct = Tuple1(0)
+      val invalidArr = BSONArray("ko")
+
+      def w[T <: Product](writer: BSONWriter[T])(
+        implicit
+        ev: scala.reflect.ClassTag[T]) = BSONWriter.collectFrom[Product] {
+        case `ev`(t) => writer.writeTry(t)
+      }
+
+      Fragments.foreach(
+        Seq[Tuple5[BSONValue, BSONValue, Product, BSONWriter[Product], BSONReader[_]]](
+          // BSONDocumentX.tuple2
+          Tuple5(
+            BSONDocument("name" -> "Foo", "age" -> 20),
+            invalidDoc,
+            ("Foo", 20),
+            w(BSONDocumentWriter.tuple2[String, Int]("name", "age")),
+            BSONDocumentReader.tuple2[String, Int]("name", "age")),
+          // BSONDocumentX.tuple3
+          Tuple5(
+            BSONDocument(
+              "firstName" -> "Foo",
+              "lastName" -> "Bar",
+              "age" -> 20),
+            invalidDoc,
+            ("Foo", "Bar", 20),
+            w(BSONDocumentWriter.tuple3[String, String, Int](
+              "firstName", "lastName", "age")),
+            BSONDocumentReader.tuple3[String, String, Int](
+              "firstName", "lastName", "age")),
+          // BSONDocumentX.tuple4
+          Tuple5(
+            BSONDocument(
+              "firstName" -> "Foo",
+              "lastName" -> "Bar",
+              "age" -> 20,
+              "score" -> 1.23D),
+            invalidDoc,
+            ("Foo", "Bar", 20, 1.23D),
+            w(BSONDocumentWriter.tuple4[String, String, Int, Double](
+              "firstName", "lastName", "age", "score")),
+            BSONDocumentReader.tuple4[String, String, Int, Double](
+              "firstName", "lastName", "age", "score")),
+          // BSONDocumentX.tuple5
+          Tuple5(
+            BSONDocument(
+              "firstName" -> "Foo",
+              "lastName" -> "Bar",
+              "age" -> 20,
+              "score" -> 1.23D,
+              "days" -> BSONArray(3, 5)),
+            invalidDoc,
+            ("Foo", "Bar", 20, 1.23D, Seq(3, 5)),
+            w(BSONDocumentWriter.tuple5[String, String, Int, Double, Seq[Int]]("firstName", "lastName", "age", "score", "days")),
+            BSONDocumentReader.tuple5[String, String, Int, Double, Seq[Int]]("firstName", "lastName", "age", "score", "days")),
+          // BSONX.tuple2
+          Tuple5(
+            BSONArray("Foo", 20),
+            invalidArr,
+            ("Foo", 20),
+            w(BSONWriter.tuple2[String, Int]),
+            BSONReader.tuple2[String, Int]),
+          // BSONX.tuple3
+          Tuple5(
+            BSONArray("Foo", "Bar", 20),
+            invalidArr,
+            ("Foo", "Bar", 20),
+            w(BSONWriter.tuple3[String, String, Int]),
+            BSONReader.tuple3[String, String, Int]),
+          // BSONX.tuple4
+          Tuple5(
+            BSONArray("Foo", "Bar", 20, 1.23D),
+            invalidArr,
+            ("Foo", "Bar", 20, 1.23D),
+            w(BSONWriter.tuple4[String, String, Int, Double]),
+            BSONReader.tuple4[String, String, Int, Double]),
+          // BSONX.tuple5
+          Tuple5(
+            BSONArray("Foo", "Bar", 20, 1.23D, BSONArray(3, 5)),
+            invalidArr,
+            ("Foo", "Bar", 20, 1.23D, Seq(3, 5)),
+            w(BSONWriter.tuple5[String, String, Int, Double, Seq[Int]]),
+            BSONReader.tuple5[String, String, Int, Double, Seq[Int]]))) {
+          case (bson, invalidBson, tuple, writer, reader) =>
+            s"from ${BSONValue pretty bson} as arity ${tuple.productArity}" in {
+              writer.writeTry(tuple) must beSuccessfulTry(bson) and {
+                writer.writeOpt(tuple) must beSome(bson)
+              } and {
+                writer.writeTry(invalidProduct) must beFailedTry
+              } and {
+                writer.writeOpt(invalidProduct) must beNone
+              } and {
+                reader.readTry(bson) must beSuccessfulTry(tuple)
+              } and {
+                reader.readOpt(bson) must beSome(tuple)
+              } and {
+                reader.readTry(invalidBson) must beFailedTry
+              } and {
+                reader.readOpt(invalidBson) must beNone
+              }
+            }
+        }
     }
   }
 

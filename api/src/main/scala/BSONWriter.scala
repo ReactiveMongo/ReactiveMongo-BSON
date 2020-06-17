@@ -47,7 +47,11 @@ trait BSONWriter[T] {
     BSONWriter.from[U] { u => writeTry(f(u)) }
 }
 
-/** [[BSONWriter]] factories */
+/**
+ * [[BSONWriter]] factories.
+ *
+ * @define valueDoesNotMatchException A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
+ */
 object BSONWriter extends BSONWriterCompat {
   /**
    * Creates a [[BSONWriter]] based on the given `write` function.
@@ -101,7 +105,7 @@ object BSONWriter extends BSONWriterCompat {
   }
 
   /**
-   * Creates a [[BSONWriter]] based on the given `write` function.
+   * Creates a [[BSONWriter]] based on the given safe `write` function.
    *
    * {{{
    * import scala.util.{ Failure, Success }
@@ -132,10 +136,44 @@ object BSONWriter extends BSONWriterCompat {
   }
 
   /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] based on the given
+   * partially safe `write` function.
+   *
+   * $valueDoesNotMatchException.
+   *
+   * {{{
+   * import scala.util.Success
+   * import reactivemongo.api.bson.{ BSONWriter, BSONInteger }
+   *
+   * val strCodeToIntWriter = BSONWriter.collectFrom[String] {
+   *   case "zero" => Success(BSONInteger(0))
+   *   case "one" => Success(BSONInteger(1))
+   * }
+   *
+   * strCodeToIntWriter.writeTry("zero") // Success(BSONInteger(0))
+   * strCodeToIntWriter.writeTry("one") // Success(BSONInteger(1))
+   *
+   * strCodeToIntWriter.writeTry("3")
+   * // => Failure(IllegalArgumentException(..))
+   *
+   * strCodeToIntWriter.writeOpt("4") // None (as failed)
+   * }}}
+   */
+  def collectFrom[T](write: PartialFunction[T, Try[BSONValue]]): BSONWriter[T] = {
+    @inline def w = write
+    new DefaultWriter[T] {
+      val write = { v: T =>
+        w.lift(v) getOrElse {
+          Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
+        }
+      }
+    }
+  }
+
+  /**
    * Creates a [[BSONWriter]] based on the given partial function.
    *
-   * A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure`
-   * for any value that is not matched by the `write` function.
+   * $valueDoesNotMatchException.
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONWriter, BSONInteger }
@@ -169,6 +207,48 @@ object BSONWriter extends BSONWriterCompat {
    */
   def sequence[T](write: T => Try[BSONValue]): BSONWriter[Seq[T]] =
     iterable[T, Seq](write)
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
+   * as [[BSONArray]] elements.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONWriter
+   *
+   * val writer = BSONWriter.tuple2[String, Int]
+   *
+   * writer.writeTry("Foo" -> 20)
+   * // => Success: ['Foo', 20]
+   * }}}
+   */
+  def tuple2[A: BSONWriter, B: BSONWriter]: BSONWriter[(A, B)] =
+    apply[(A, B)] {
+      case (a, b) => BSONArray(a, b)
+    }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
+   * as [[BSONArray]] elements.
+   */
+  def tuple3[A: BSONWriter, B: BSONWriter, C: BSONWriter]: BSONWriter[(A, B, C)] = apply[(A, B, C)] {
+    case (a, b, c) => BSONArray(a, b, c)
+  }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
+   * as [[BSONArray]] elements.
+   */
+  def tuple4[A: BSONWriter, B: BSONWriter, C: BSONWriter, D: BSONWriter]: BSONWriter[(A, B, C, D)] = apply[(A, B, C, D)] {
+    case (a, b, c, d) => BSONArray(a, b, c, d)
+  }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
+   * as [[BSONArray]] elements.
+   */
+  def tuple5[A: BSONWriter, B: BSONWriter, C: BSONWriter, D: BSONWriter, E: BSONWriter]: BSONWriter[(A, B, C, D, E)] = apply[(A, B, C, D, E)] {
+    case (a, b, c, d, e) => BSONArray(a, b, c, d, e)
+  }
 
   // ---
 
