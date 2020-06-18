@@ -768,6 +768,30 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         }
       }
     }
+
+    "be widened" >> {
+      trait Foo
+      case class Bar(v: Int) extends Foo
+      val bar = Bar(0)
+
+      "as BSONReader" in {
+        val barReader = BSONReader[Bar] { _ => bar }
+        val fooReader: BSONReader[Foo] = barReader.widen[Foo]
+
+        fooReader.readTry(BSONInteger(1)) must beSuccessfulTry(bar) and {
+          fooReader.readOpt(BSONInteger(1)) must beSome(bar)
+        }
+      }
+
+      "as BSONDocumentReader" in {
+        val barReader = BSONDocumentReader[Bar] { _ => bar }
+        val fooReader: BSONDocumentReader[Foo] = barReader.widen[Foo]
+
+        fooReader.readTry(BSONDocument.empty) must beSuccessfulTry(bar) and {
+          fooReader.readOpt(BSONDocument.empty) must beSome(bar)
+        }
+      }
+    }
   }
 
   "Writer" should {

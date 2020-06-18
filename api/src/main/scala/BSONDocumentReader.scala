@@ -22,6 +22,12 @@ trait BSONDocumentReader[T] extends BSONReader[T] { self =>
     def readDocument(doc: BSONDocument): Try[T] =
       underlying.readDocument(doc).flatMap(self.readDocument)
   }
+
+  final override def widen[U >: T]: BSONDocumentReader[U] =
+    new BSONDocumentReader[U] {
+      def readDocument(doc: BSONDocument): Try[U] =
+        self.readDocument(doc).map(identity[U])
+    }
 }
 
 /** [[BSONDocumentReader]] factories */

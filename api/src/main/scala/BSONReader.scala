@@ -118,7 +118,7 @@ trait BSONReader[T] { self =>
    *
    * @tparam U must be a super-type of `T`
    */
-  final def widen[U >: T]: BSONReader[U] = new BSONReader[U] {
+  def widen[U >: T]: BSONReader[U] = new BSONReader[U] {
     def readTry(bson: BSONValue): Try[U] =
       self.readTry(bson).map(identity[U])
   }
