@@ -285,4 +285,8 @@ object MacroTest {
 
   case class PerField2(
     @Reader(implicitly[BSONReader[Int]])@Writer(descrWriter) name: String)
+
+  final class FooVal(val v: Int) extends AnyVal
+
+  final class BarVal(val v: Exception) extends AnyVal
 }

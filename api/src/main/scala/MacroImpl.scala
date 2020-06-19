@@ -23,11 +23,40 @@ private[bson] class MacroImpl(val c: Context) {
 
   def configuredReader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] = readerWithConfig[A, Opts](withOptionsConfig)
 
+  @SuppressWarnings(Array("PointlessTypeBounds"))
+  def valueReader[A <: AnyVal: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONReader[A]] = reify(BSONReader.from[A] { macroVal =>
+    createHelper[A, Opts](implicitOptionsConfig).valueReaderBody.splice
+  })
+
   def writer[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentWriter[A]] = writerWithConfig[A, Opts](implicitOptionsConfig)
 
   def configuredWriter[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentWriter[A]] = writerWithConfig[A, Opts](withOptionsConfig)
 
+  @SuppressWarnings(Array("PointlessTypeBounds"))
+  def valueWriter[A <: AnyVal: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONWriter[A]] = reify(BSONWriter.from[A] { macroVal =>
+    createHelper[A, Opts](implicitOptionsConfig).valueWriterBody.splice
+  })
+
   def handler[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentHandler[A]] = handlerWithConfig[A, Opts](implicitOptionsConfig)
+
+  @SuppressWarnings(Array("PointlessTypeBounds"))
+  def valueHandler[A <: AnyVal: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONHandler[A]] = {
+    val config = implicitOptionsConfig
+
+    reify(new BSONHandler[A] {
+      private val r: BSONValue => UTry[A] = { macroVal =>
+        createHelper[A, Opts](config).valueReaderBody.splice
+      }
+
+      @inline def readTry(bson: BSONValue) = r(bson)
+
+      private val w: A => UTry[BSONValue] = { macroVal =>
+        createHelper[A, Opts](config).valueWriterBody.splice
+      }
+
+      @inline def writeTry(v: A) = w(v)
+    })
+  }
 
   def configuredHandler[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentHandler[A]] = handlerWithConfig[A, Opts](withOptionsConfig)
 
@@ -237,6 +266,36 @@ private[bson] class MacroImpl(val c: Context) {
       result
     }
 
+    lazy val valueReaderBody: c.Expr[UTry[A]] = {
+      val ctor = aTpe.decl(c.universe.termNames.CONSTRUCTOR).asMethod
+
+      ctor.paramLists match {
+        case List(v: TermSymbol) :: Nil => {
+          val typ = v.info
+          val resolve = resolver(
+            Map.empty, "BSONReader", debugEnabled)(readerType)
+
+          resolve(typ)._1 match {
+            case EmptyTree =>
+              c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONReader[_]].getName}[${typ.typeSymbol.fullName}]")
+
+            case reader => {
+              val body =
+                q"${reader}.readTry(macroVal).map { new ${aTpe}(_) }"
+
+              if (debugEnabled) {
+                c.echo(
+                  c.enclosingPosition,
+                  s"// Value reader\n${show(body)}")
+              }
+
+              c.Expr[UTry[A]](body)
+            }
+          }
+        }
+      }
+    }
+
     lazy val writeBody: c.Expr[UTry[BSONDocument]] = {
       val valNme = TermName("macroVal")
       val writer = unionTypes.map { types =>
@@ -275,6 +334,35 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       result
+    }
+
+    lazy val valueWriterBody: c.Expr[UTry[BSONValue]] = {
+      val ctor = aTpe.decl(c.universe.termNames.CONSTRUCTOR).asMethod
+
+      ctor.paramLists match {
+        case List(v: TermSymbol) :: Nil => {
+          val typ = v.info
+          val resolve = resolver(
+            Map.empty, "BSONWriter", debugEnabled)(writerType)
+
+          resolve(typ)._1 match {
+            case EmptyTree =>
+              c.abort(c.enclosingPosition, s"Implicit not found for '${typ.typeSymbol.name}': ${classOf[BSONWriter[_]].getName}[${typ.typeSymbol.fullName}]")
+
+            case writer => {
+              val body = q"${writer}.writeTry(macroVal.${v.name})"
+
+              if (debugEnabled) {
+                c.echo(
+                  c.enclosingPosition,
+                  s"// Value writer\n${show(body)}")
+              }
+
+              c.Expr[UTry[BSONValue]](body)
+            }
+          }
+        }
+      }
     }
 
     // For member of a union

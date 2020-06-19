@@ -10,6 +10,7 @@ import reactivemongo.api.bson.{
   BSONDocumentReader,
   BSONDocumentWriter,
   BSONHandler,
+  BSONInteger,
   BSONNull,
   BSONReader,
   BSONString,
@@ -615,6 +616,27 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         reader2.readTry(expectedDoc) must beSuccessfulTry(expectedVal)
       }
     }
+
+    "be generated for Value class" in {
+      val handler = Macros.valueHandler[FooVal]
+
+      typecheck("Macros.valueHandler[Person]") must failWith(
+        "Person.* do not conform to.* AnyVal") and {
+          typecheck("Macros.valueHandler[BarVal]") must failWith("Implicit not found for 'Exception': .*BSONReader\\[java\\.lang\\.Exception\\]")
+        } and {
+          handler.readTry(BSONInteger(1)) must beSuccessfulTry(new FooVal(1))
+        } and {
+          handler.readOpt(BSONInteger(2)) must beSome(new FooVal(2))
+        } and {
+          handler.readTry(BSONString("oof")) must beFailedTry
+        } and {
+          handler.readOpt(BSONString("bar")) must beNone
+        } and {
+          handler.writeTry(new FooVal(1)) must beSuccessfulTry(BSONInteger(1))
+        } and {
+          handler.writeOpt(new FooVal(2)) must beSome(BSONInteger(2))
+        }
+    }
   }
 
   "Reader" should {
@@ -754,6 +776,23 @@ final class MacroSpec extends org.specs2.mutable.Specification {
             typecheck("Macros.reader[PerField2]") must failWith("Invalid\\ annotation\\ @Reader.*\\ for\\ 'name':\\ Reader\\[String\\]")
           }
     }
+
+    "be generated for Value class" in {
+      val reader = Macros.valueReader[FooVal]
+
+      typecheck("Macros.valueReader[Person]") must failWith(
+        "Person.* do not conform to.* AnyVal") and {
+          typecheck("Macros.valueReader[BarVal]") must failWith("Implicit not found for 'Exception': .*BSONReader\\[java\\.lang\\.Exception\\]")
+        } and {
+          reader.readTry(BSONInteger(1)) must beSuccessfulTry(new FooVal(1))
+        } and {
+          reader.readOpt(BSONInteger(2)) must beSome(new FooVal(2))
+        } and {
+          reader.readTry(BSONString("oof")) must beFailedTry
+        } and {
+          reader.readOpt(BSONString("bar")) must beNone
+        }
+    }
   }
 
   "Writer" should {
@@ -828,6 +867,19 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           } and {
             typecheck("Macros.writer[PerField2]") must failWith("Invalid\\ annotation\\ @Writer.*\\ for\\ 'name':\\ Writer\\[String\\]")
           }
+    }
+
+    "be generated for Value class" in {
+      val writer = Macros.valueWriter[FooVal]
+
+      typecheck("Macros.valueWriter[Person]") must failWith(
+        "Person.* do not conform to.* AnyVal") and {
+          typecheck("Macros.valueWriter[BarVal]") must failWith("Implicit not found for 'Exception': .*BSONWriter\\[java\\.lang\\.Exception\\]")
+        } and {
+          writer.writeTry(new FooVal(1)) must beSuccessfulTry(BSONInteger(1))
+        } and {
+          writer.writeOpt(new FooVal(2)) must beSome(BSONInteger(2))
+        }
     }
   }
 
