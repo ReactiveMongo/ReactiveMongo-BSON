@@ -62,6 +62,24 @@ object Macros {
   def readerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentReader[A] = macro MacroImpl.reader[A, Opts]
 
   /**
+   * Creates a [[BSONReader]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
+   *
+   * The inner value will be directly read from BSON value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONInteger, BSONReader, Macros }
+   *
+   * final class FooVal(val v: Int) extends AnyVal // Value Class
+   *
+   * val vreader: BSONReader[FooVal] = Macros.valueReader[FooVal]
+   *
+   * vreader.readTry(BSONInteger(1)) // Success(FooVal(1))
+   * }}}
+   */
+  @SuppressWarnings(Array("PointlessTypeBounds", "NullParameter"))
+  def valueReader[A <: AnyVal]: BSONReader[A] = macro MacroImpl.valueReader[A, MacroOptions.Default]
+
+  /**
    * $writerMacro.
    * $defaultCfg.
    *
@@ -77,6 +95,24 @@ object Macros {
    */
   @SuppressWarnings(Array("NullParameter"))
   def writer[A]: BSONDocumentWriter[A] = macro MacroImpl.writer[A, MacroOptions.Default]
+
+  /**
+   * Creates a [[BSONWriter]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
+   *
+   * The inner value will be directly writen from BSON value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONWriter, Macros }
+   *
+   * final class FooVal(val v: Int) extends AnyVal // Value Class
+   *
+   * val vwriter: BSONWriter[FooVal] = Macros.valueWriter[FooVal]
+   *
+   * vwriter.writeTry(new FooVal(1)) // Success(BSONInteger(1))
+   * }}}
+   */
+  @SuppressWarnings(Array("PointlessTypeBounds", "NullParameter"))
+  def valueWriter[A <: AnyVal]: BSONWriter[A] = macro MacroImpl.valueWriter[A, MacroOptions.Default]
 
   /**
    * $writerMacro.
@@ -130,6 +166,29 @@ object Macros {
    */
   @SuppressWarnings(Array("NullParameter"))
   def handlerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, Opts]
+
+  /**
+   * Creates a [[BSONHandler]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
+   *
+   * The inner value will be directly write from BSON value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{
+   *   BSONInteger, BSONReader, BSONWriter, Macros
+   * }
+   *
+   * final class FooVal(val v: Int) extends AnyVal // Value Class
+   *
+   * val vreader: BSONReader[FooVal] = Macros.valueReader[FooVal]
+   * val vwriter: BSONWriter[FooVal] = Macros.valueWriter[FooVal]
+   *
+   * vreader.readTry(BSONInteger(1)) // Success(FooVal(1))
+   *
+   * vwriter.writeTry(new FooVal(1)) // Success(BSONInteger(1))
+   * }}}
+   */
+  @SuppressWarnings(Array("PointlessTypeBounds", "NullParameter"))
+  def valueHandler[A <: AnyVal]: BSONHandler[A] = macro MacroImpl.valueHandler[A, MacroOptions.Default]
 
   // ---
 
