@@ -154,6 +154,11 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           case 0 => zero
           case 1 => one
         })
+      } and {
+        partialSpec(BSONDocumentWriter.collectFrom[Int] {
+          case 0 => Success(zero)
+          case 1 => Success(one)
+        })
       }
     }
   }

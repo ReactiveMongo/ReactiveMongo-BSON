@@ -24,10 +24,15 @@ trait BSONDocumentWriter[T] extends BSONWriter[T] { self =>
   }
 }
 
-/** [[BSONDocumentWriter]] factories */
+/**
+ * [[BSONDocumentWriter]] factories.
+ *
+ * @define createWriterBasedOn Creates a [[BSONDocumentWriter]] based on
+ * @define valueDoesNotMatchException A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
+ */
 object BSONDocumentWriter {
   /**
-   * Creates a [[BSONDocumentWriter]] based on the given `write` function.
+   * $createWriterBasedOn the given `write` function.
    * This function is called within a [[scala.util.Try]].
    *
    * {{{
@@ -71,7 +76,7 @@ object BSONDocumentWriter {
   }
 
   /**
-   * Creates a [[BSONDocumentWriter]] based on the given `write` safe function.
+   * $createWriterBasedOn the given `write` safe function.
    *
    * {{{
    * import scala.util.Success
@@ -94,10 +99,9 @@ object BSONDocumentWriter {
   }
 
   /**
-   * Creates a [[BSONDocumentWriter]] based on the given partial function.
+   * $createWriterBasedOn the given partial function.
    *
-   * A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure`
-   * for any value that is not matched by the `write` function.
+   * $valueDoesNotMatchException.
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONDocument, BSONDocumentWriter }
@@ -117,6 +121,29 @@ object BSONDocumentWriter {
         throw exceptions.ValueDoesNotMatchException(s"${v}")
       }
     }
+
+  /**
+   * '''EXPERIMENTAL:''' $createWriterBasedOn the given
+   * partially safe `write` function.
+   *
+   * $valueDoesNotMatchException.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONDocumentWriter }
+   *
+   * case class Foo(value: String)
+   *
+   * val writer = BSONDocumentWriter.collectFrom[Foo] {
+   *   case Foo(value) if value.nonEmpty =>
+   *     scala.util.Success(BSONDocument("value" -> value))
+   * }
+   * }}}
+   */
+  def collectFrom[T](write: PartialFunction[T, Try[BSONDocument]]): BSONDocumentWriter[T] = from[T] { v: T =>
+    write.lift(v) getOrElse {
+      Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
+    }
+  }
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONDocumentWriter]] that writes
