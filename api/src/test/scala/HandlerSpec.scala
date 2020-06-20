@@ -148,8 +148,19 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           case _ => expected
         }
 
+        val handler1 = BSONDocumentHandler.provided[String](
+          reader = BSONDocumentReader[String] { _ => ??? },
+          writer = writer3)
+
+        // Make sure type BSONDocumentHandler is preserved with afterWrite
+        val handler2: BSONDocumentHandler[String] = handler1.afterWrite {
+          case _ => expected
+        }
+
         writer3.writeTry("test") must beSuccessfulTry(expected) and {
           writer3.writeOpt("test") must beSome(expected)
+        } and {
+          handler2.writeTry("test") must beSuccessfulTry(expected)
         }
       } and {
         partialSpec(BSONDocumentWriter.option[Int] {
