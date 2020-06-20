@@ -95,12 +95,13 @@ trait BSONReader[T] { self =>
    * normalizingReader.readOpt(BSONInteger(4)) // unchanged: Some(4)
    * }}}
    */
-  final def beforeRead(f: PartialFunction[BSONValue, BSONValue]): BSONReader[T] = new BSONReader[T] {
-    val underlying = BSONReader.collect(f)
+  def beforeRead(f: PartialFunction[BSONValue, BSONValue]): BSONReader[T] =
+    new BSONReader[T] {
+      val underlying = BSONReader.collect(f)
 
-    def readTry(bson: BSONValue): Try[T] =
-      underlying.readTry(bson).flatMap(self.readTry)
-  }
+      def readTry(bson: BSONValue): Try[T] =
+        underlying.readTry(bson).flatMap(self.readTry)
+    }
 
   /**
    * Widen this read for compatible type `U`.

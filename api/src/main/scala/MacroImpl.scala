@@ -138,7 +138,7 @@ private[bson] class MacroImpl(val c: Context) {
     def writeTry(v: A) = forwardBSONWriter.writeTry(v)
   })
 
-  private def handlerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](config: c.Expr[MacroConfiguration]): c.Expr[BSONDocumentHandler[A]] = reify(new BSONDocumentReader[A] with BSONDocumentWriter[A] with BSONHandler[A] {
+  private def handlerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](config: c.Expr[MacroConfiguration]): c.Expr[BSONDocumentHandler[A]] = reify(new BSONDocumentHandler[A] {
     private val r: BSONDocument => UTry[A] = { macroDoc =>
       createHelper[A, Opts](config).readBody.splice
     }

@@ -165,8 +165,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         }
       }
 
-      implicit def optionHandler[T](implicit h: BSONHandler[T]): BSONDocumentHandler[Option[T]] = new BSONDocumentReader[Option[T]] with BSONDocumentWriter[Option[T]] with BSONHandler[Option[T]] {
-
+      implicit def optionHandler[T](implicit h: BSONHandler[T]): BSONDocumentHandler[Option[T]] = new BSONDocumentHandler[Option[T]] {
         def readDocument(doc: BSONDocument): Try[Option[T]] =
           doc.getAsUnflattenedTry[T](f"$$some")
 

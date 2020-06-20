@@ -20,6 +20,14 @@ import scala.util.Try
 trait BSONHandler[T] extends BSONReader[T] with BSONWriter[T] {
   final def as[R](to: T => R, from: R => T): BSONHandler[R] =
     new BSONHandler.MappedHandler(this, to, from)
+
+  final override def beforeRead(f: PartialFunction[BSONValue, BSONValue]): BSONHandler[T] = BSONHandler.provided[T](
+    reader = super.beforeRead(f),
+    writer = this)
+
+  final override def afterWrite(f: PartialFunction[BSONValue, BSONValue]): BSONHandler[T] = BSONHandler.provided[T](
+    reader = this,
+    writer = super.afterWrite(f))
 }
 
 /** [[BSONHandler]] factories */

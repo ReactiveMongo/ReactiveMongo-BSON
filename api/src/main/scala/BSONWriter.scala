@@ -24,18 +24,19 @@ trait BSONWriter[T] {
    *
    * @param f the partial function to apply
    */
-  final def afterWrite(f: PartialFunction[BSONValue, BSONValue]): BSONWriter[T] = BSONWriter.from[T] {
-    writeTry(_).flatMap { before =>
-      f.lift(before) match {
-        case Some(after) =>
-          Success(after)
+  def afterWrite(f: PartialFunction[BSONValue, BSONValue]): BSONWriter[T] =
+    BSONWriter.from[T] {
+      writeTry(_).flatMap { before =>
+        f.lift(before) match {
+          case Some(after) =>
+            Success(after)
 
-        case _ =>
-          Failure(exceptions.ValueDoesNotMatchException(
-            BSONValue pretty before))
+          case _ =>
+            Failure(exceptions.ValueDoesNotMatchException(
+              BSONValue pretty before))
+        }
       }
     }
-  }
 
   /**
    * Prepares a BSON writer that converts the input before calling
@@ -50,11 +51,12 @@ trait BSONWriter[T] {
 /**
  * [[BSONWriter]] factories.
  *
+ * @define createWriterBasedOn Creates a [[BSONWriter]] based on
  * @define valueDoesNotMatchException A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
  */
 object BSONWriter extends BSONWriterCompat {
   /**
-   * Creates a [[BSONWriter]] based on the given `write` function.
+   * $createWriterBasedOn the given `write` function.
    * This function is called within a [[scala.util.Try]].
    *
    * {{{
@@ -77,7 +79,7 @@ object BSONWriter extends BSONWriterCompat {
   }
 
   /**
-   * Creates a [[BSONWriter]] based on the given `write` function.
+   * $createWriterBasedOn the given `write` function.
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONWriter, BSONInteger }
@@ -105,7 +107,7 @@ object BSONWriter extends BSONWriterCompat {
   }
 
   /**
-   * Creates a [[BSONWriter]] based on the given safe `write` function.
+   * $createWriterBasedOn the given safe `write` function.
    *
    * {{{
    * import scala.util.{ Failure, Success }
@@ -136,7 +138,7 @@ object BSONWriter extends BSONWriterCompat {
   }
 
   /**
-   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] based on the given
+   * '''EXPERIMENTAL:''' $createWriterBasedOn the given
    * partially safe `write` function.
    *
    * $valueDoesNotMatchException.
@@ -159,19 +161,15 @@ object BSONWriter extends BSONWriterCompat {
    * strCodeToIntWriter.writeOpt("4") // None (as failed)
    * }}}
    */
-  def collectFrom[T](write: PartialFunction[T, Try[BSONValue]]): BSONWriter[T] = {
-    @inline def w = write
-    new DefaultWriter[T] {
-      val write = { v: T =>
-        w.lift(v) getOrElse {
-          Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
-        }
+  def collectFrom[T](write: PartialFunction[T, Try[BSONValue]]): BSONWriter[T] =
+    from[T] { v: T =>
+      write.lift(v) getOrElse {
+        Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
       }
     }
-  }
 
   /**
-   * Creates a [[BSONWriter]] based on the given partial function.
+   * $createWriterBasedOn the given partial function.
    *
    * $valueDoesNotMatchException.
    *

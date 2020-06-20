@@ -95,7 +95,15 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         }
         val reader2: BSONDocumentReader[String] = reader1.beforeRead(before)
 
-        reader2.readTry(doc) must beSuccessfulTry("John")
+        val handler1 = BSONDocumentHandler.provided[String](
+          reader2, writer = BSONDocumentWriter[String] { _ => ??? })
+
+        // Make sure the type BSONDocumentHandler is preserved
+        val handler2: BSONDocumentHandler[String] = handler1.beforeRead(before)
+
+        reader2.readTry(doc) must beSuccessfulTry("John") and {
+          handler2.readOpt(doc) must beSome("John")
+        }
       } and {
         val reader3: BSONDocumentReader[Unit] = reader1.afterRead(_ => ())
 
@@ -140,8 +148,19 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           case _ => expected
         }
 
+        val handler1 = BSONDocumentHandler.provided[String](
+          reader = BSONDocumentReader[String] { _ => ??? },
+          writer = writer3)
+
+        // Make sure type BSONDocumentHandler is preserved with afterWrite
+        val handler2: BSONDocumentHandler[String] = handler1.afterWrite {
+          case _ => expected
+        }
+
         writer3.writeTry("test") must beSuccessfulTry(expected) and {
           writer3.writeOpt("test") must beSome(expected)
+        } and {
+          handler2.writeTry("test") must beSuccessfulTry(expected)
         }
       } and {
         partialSpec(BSONDocumentWriter.option[Int] {
@@ -153,6 +172,11 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         partialSpec(BSONDocumentWriter.collect[Int] {
           case 0 => zero
           case 1 => one
+        })
+      } and {
+        partialSpec(BSONDocumentWriter.collectFrom[Int] {
+          case 0 => Success(zero)
+          case 1 => Success(one)
         })
       }
     }
@@ -530,7 +554,8 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
   }
 
   "BSONString" should {
-    val reader = BSONReader.collect[String] { case BSONString(str) => str }
+    val reader: BSONReader[String] =
+      BSONReader.collect[String] { case BSONString(str) => str }
 
     "be read #1" in {
       reader.afterRead(_ => 1).readTry(BSONString("lorem")).
@@ -538,9 +563,19 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
 
     "be read #2" in {
+      val handler1 = BSONHandler.provided(
+        reader, BSONWriter[String] { _ => ??? })
+
+      // Make sure the type BSONHandler is preserved
+      val handler2: BSONHandler[String] = handler1.beforeRead {
+        case BSONInteger(i) => BSONString(s"lorem:${i}")
+      }
+
       reader.beforeRead {
         case BSONInteger(i) => BSONString(s"lorem:${i}")
-      }.readTry(BSONInteger(2)) must beSuccessfulTry("lorem:2")
+      }.readTry(BSONInteger(2)) must beSuccessfulTry("lorem:2") and {
+        handler2.readOpt(BSONInteger(3)) must beSome("lorem:3")
+      }
     }
 
     "be read as URL" in {
@@ -567,9 +602,19 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
 
     "be written #1" in {
+      val handler1 = BSONHandler.provided[String](
+        reader = BSONReader[String] { _ => ??? }, writer)
+
+      // Make sure the type BSONHandler is preserved with afterWrite
+      val handler2: BSONHandler[String] = handler1.afterWrite {
+        case BSONString(_) => BSONInteger(4)
+      }
+
       writer.afterWrite {
         case BSONString(_) => BSONInteger(3)
-      }.writeTry("foo") must beSuccessfulTry(BSONInteger(3))
+      }.writeTry("foo") must beSuccessfulTry(BSONInteger(3)) and {
+        handler2.writeOpt("bar") must beSome(BSONInteger(4))
+      }
     }
 
     "be written #2" in {
