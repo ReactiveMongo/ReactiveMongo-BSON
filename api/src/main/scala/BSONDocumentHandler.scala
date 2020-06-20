@@ -4,11 +4,11 @@ package reactivemongo.api.bson
 trait BSONDocumentHandler[T] extends BSONDocumentReader[T]
   with BSONDocumentWriter[T] with BSONHandler[T] {
 
-  final override def beforeRead(f: PartialFunction[BSONDocument, BSONDocument]): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
+  final override def beforeRead(f: BSONDocument => BSONDocument): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
     reader = super.beforeRead(f),
     writer = this)
 
-  final override def afterWrite(f: PartialFunction[BSONDocument, BSONDocument]): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
+  final override def afterWrite(f: BSONDocument => BSONDocument): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
     reader = this,
     writer = super.afterWrite(f))
 }

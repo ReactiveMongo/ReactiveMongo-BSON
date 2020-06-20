@@ -10,18 +10,10 @@ trait BSONDocumentWriter[T] extends BSONWriter[T] { self =>
   final override def beforeWrite[U](f: U => T): BSONDocumentWriter[U] =
     BSONDocumentWriter.from[U] { u => writeTry(f(u)) }
 
-  def afterWrite(f: PartialFunction[BSONDocument, BSONDocument]): BSONDocumentWriter[T] = BSONDocumentWriter.from[T] {
-    self.writeTry(_).flatMap { before =>
-      f.lift(before) match {
-        case Some(after) =>
-          Success(after)
-
-        case _ =>
-          Failure(exceptions.ValueDoesNotMatchException(
-            BSONDocument pretty before))
-      }
+  def afterWrite(f: BSONDocument => BSONDocument): BSONDocumentWriter[T] =
+    BSONDocumentWriter.from[T] {
+      self.writeTry(_).map(f)
     }
-  }
 }
 
 /**
