@@ -24,18 +24,19 @@ trait BSONWriter[T] {
    *
    * @param f the partial function to apply
    */
-  final def afterWrite(f: PartialFunction[BSONValue, BSONValue]): BSONWriter[T] = BSONWriter.from[T] {
-    writeTry(_).flatMap { before =>
-      f.lift(before) match {
-        case Some(after) =>
-          Success(after)
+  def afterWrite(f: PartialFunction[BSONValue, BSONValue]): BSONWriter[T] =
+    BSONWriter.from[T] {
+      writeTry(_).flatMap { before =>
+        f.lift(before) match {
+          case Some(after) =>
+            Success(after)
 
-        case _ =>
-          Failure(exceptions.ValueDoesNotMatchException(
-            BSONValue pretty before))
+          case _ =>
+            Failure(exceptions.ValueDoesNotMatchException(
+              BSONValue pretty before))
+        }
       }
     }
-  }
 
   /**
    * Prepares a BSON writer that converts the input before calling

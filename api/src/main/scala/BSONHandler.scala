@@ -25,6 +25,9 @@ trait BSONHandler[T] extends BSONReader[T] with BSONWriter[T] {
     reader = super.beforeRead(f),
     writer = this)
 
+  final override def afterWrite(f: PartialFunction[BSONValue, BSONValue]): BSONHandler[T] = BSONHandler.provided[T](
+    reader = this,
+    writer = super.afterWrite(f))
 }
 
 /** [[BSONHandler]] factories */

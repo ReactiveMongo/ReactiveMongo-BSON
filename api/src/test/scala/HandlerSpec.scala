@@ -591,9 +591,19 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
 
     "be written #1" in {
+      val handler1 = BSONHandler.provided[String](
+        reader = BSONReader[String] { _ => ??? }, writer)
+
+      // Make sure the type BSONHandler is preserved with afterWrite
+      val handler2: BSONHandler[String] = handler1.afterWrite {
+        case BSONString(_) => BSONInteger(4)
+      }
+
       writer.afterWrite {
         case BSONString(_) => BSONInteger(3)
-      }.writeTry("foo") must beSuccessfulTry(BSONInteger(3))
+      }.writeTry("foo") must beSuccessfulTry(BSONInteger(3)) and {
+        handler2.writeOpt("bar") must beSome(BSONInteger(4))
+      }
     }
 
     "be written #2" in {
