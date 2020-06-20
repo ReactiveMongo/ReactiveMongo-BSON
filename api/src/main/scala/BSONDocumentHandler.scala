@@ -8,7 +8,7 @@ trait BSONDocumentHandler[T] extends BSONDocumentReader[T]
     reader = super.beforeRead(f),
     writer = this)
 
-  final override def afterWrite(f: PartialFunction[BSONDocument, BSONDocument]): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
+  final override def afterWrite(f: BSONDocument => BSONDocument): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
     reader = this,
     writer = super.afterWrite(f))
 }
