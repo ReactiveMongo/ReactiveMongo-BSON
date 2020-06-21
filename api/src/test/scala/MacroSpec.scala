@@ -792,6 +792,41 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           reader.readOpt(BSONString("bar")) must beNone
         }
     }
+
+    "be generated for Map property" >> {
+      "with Locale keys" in {
+        import java.util.Locale
+
+        val reader = Macros.reader[WithMap1]
+
+        reader.readTry(BSONDocument(
+          "name" -> "Foo",
+          "localizedDescription" -> BSONDocument(
+            "fr-FR" -> "French"))) must beSuccessfulTry(WithMap1(
+          name = "Foo",
+          localizedDescription = Map(Locale.FRANCE -> "French")))
+
+      }
+
+      "with custom KeyReader for FooVal keys" in {
+        import reactivemongo.api.bson.KeyReader
+
+        implicit def keyReader: KeyReader[FooVal] =
+          KeyReader.from[FooVal] { str =>
+            Try(str.toInt).map(new FooVal(_))
+          }
+
+        val reader = Macros.reader[WithMap2]
+
+        reader.readTry(BSONDocument(
+          "name" -> "Bar",
+          "values" -> BSONDocument(
+            "1" -> "Lorem"))) must beSuccessfulTry(WithMap2(
+          name = "Bar",
+          values = Map((new FooVal(1)) -> "Lorem")))
+
+      }
+    }
   }
 
   "Writer" should {
@@ -879,6 +914,41 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         } and {
           writer.writeOpt(new FooVal(2)) must beSome(BSONInteger(2))
         }
+    }
+
+    "be generated for Map property" >> {
+      "with Locale keys" in {
+        import java.util.Locale
+
+        val writer = Macros.writer[WithMap1]
+
+        writer.writeTry(WithMap1(
+          name = "Foo",
+          localizedDescription = Map(
+            Locale.FRANCE -> "French"))) must beSuccessfulTry(BSONDocument(
+          "name" -> "Foo",
+          "localizedDescription" -> BSONDocument(
+            "fr-FR" -> "French")))
+
+      }
+
+      "with custom KeyWriter for FooVal keys" in {
+        import reactivemongo.api.bson.KeyWriter
+
+        implicit def keyWriter: KeyWriter[FooVal] =
+          KeyWriter[FooVal](_.v.toString)
+
+        val writer = Macros.writer[WithMap2]
+
+        writer.writeTry(WithMap2(
+          name = "Bar",
+          values = Map(
+            (new FooVal(1)) -> "Lorem"))) must beSuccessfulTry(BSONDocument(
+          "name" -> "Bar",
+          "values" -> BSONDocument(
+            "1" -> "Lorem")))
+
+      }
     }
   }
 

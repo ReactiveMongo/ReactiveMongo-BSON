@@ -1,5 +1,7 @@
 package reactivemongo.api.bson
 
+import java.util.{ Locale, UUID }
+
 import scala.util.{ Success, Try }
 
 /**
@@ -15,7 +17,7 @@ import scala.util.{ Success, Try }
  * import reactivemongo.api.bson.KeyWriter
  *
  * implicit def fooKeyWriter: KeyWriter[Foo] =
- *   KeyWriter.safe[Foo] { foo =>
+ *   KeyWriter[Foo] { foo =>
  *     "foo:" + foo.v
  *   }
  *
@@ -31,13 +33,13 @@ trait KeyWriter[T] {
 object KeyWriter extends LowPriorityKeyWriter {
   /**
    * Creates a [[KeyWriter]] based on the given `write` function.
-   * If `write` is safe (no exception), then rather use the [[safe]] factory.
    */
   def apply[T](write: T => String): KeyWriter[T] =
     new FunctionalWriter[T](write)
 
   /** Creates a [[KeyWriter]] based on the given safe `write` function. */
-  def safe[T](write: T => String): KeyWriter[T] = new SafeKeyWriter[T](write)
+  private[bson] def safe[T](write: T => String): KeyWriter[T] =
+    new SafeKeyWriter[T](write)
 
   /** Creates a [[KeyWriter]] based on the given `writeTry` function. */
   def from[T](writeTry: T => Try[String]): KeyWriter[T] =
@@ -49,6 +51,34 @@ object KeyWriter extends LowPriorityKeyWriter {
    */
   implicit def keyWriter[T](implicit conv: T => String): KeyWriter[T] =
     apply[T](conv)
+
+  /**
+   * Supports writing locales as keys,
+   * using [[https://tools.ietf.org/html/bcp47 language tag]]
+   * as string representation.
+   *
+   * {{{
+   * import reactivemongo.api.bson.KeyWriter
+   *
+   * implicitly[KeyWriter[java.util.Locale]].writeTry(java.util.Locale.FRANCE)
+   * // => Success("fr-FR")
+   * }}}
+   */
+  implicit def localeWriter: KeyWriter[Locale] =
+    KeyWriter[Locale](_.toLanguageTag)
+
+  /**
+   * Supports writing `UUID` as keys.
+   *
+   * {{{
+   * import reactivemongo.api.bson.KeyWriter
+   *
+   * implicitly[KeyWriter[java.util.UUID]].writeTry(
+   *   java.util.UUID fromString "BDE87A8B-52F6-4345-9BCE-A30F4CB9FCB4")
+   * // => Success("BDE87A8B-52F6-4345-9BCE-A30F4CB9FCB4")
+   * }}}
+   */
+  implicit def uuidWriter: KeyWriter[UUID] = KeyWriter[UUID](_.toString)
 
   // ---
 
