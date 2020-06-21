@@ -289,4 +289,8 @@ object MacroTest {
   final class FooVal(val v: Int) extends AnyVal
 
   final class BarVal(val v: Exception) extends AnyVal
+
+  case class WithMap1(
+    name: String,
+    localizedDescription: Map[java.util.Locale, String])
 }

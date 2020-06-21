@@ -792,6 +792,18 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           reader.readOpt(BSONString("bar")) must beNone
         }
     }
+
+    /* TODO
+    "be generated for Map property with non-String key type" in {
+      val _ = implicitly[BSONDocumentReader[Map[java.util.Locale, String]]]
+
+      val reader = Macros.reader[WithMap1]
+
+      // Implicit not found for 'localizedDescription': reactivemongo.api.bson.BSONReader[Map[java.util.Locale,String]]
+
+      ok
+    } tag "wip"
+     */
   }
 
   "Writer" should {
