@@ -293,4 +293,8 @@ object MacroTest {
   case class WithMap1(
     name: String,
     localizedDescription: Map[java.util.Locale, String])
+
+  case class WithMap2(
+    name: String,
+    values: Map[FooVal, String])
 }

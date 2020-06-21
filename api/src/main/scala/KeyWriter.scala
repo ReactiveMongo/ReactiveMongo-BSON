@@ -17,7 +17,7 @@ import scala.util.{ Success, Try }
  * import reactivemongo.api.bson.KeyWriter
  *
  * implicit def fooKeyWriter: KeyWriter[Foo] =
- *   KeyWriter.safe[Foo] { foo =>
+ *   KeyWriter[Foo] { foo =>
  *     "foo:" + foo.v
  *   }
  *
@@ -33,13 +33,13 @@ trait KeyWriter[T] {
 object KeyWriter extends LowPriorityKeyWriter {
   /**
    * Creates a [[KeyWriter]] based on the given `write` function.
-   * If `write` is safe (no exception), then rather use the [[safe]] factory.
    */
   def apply[T](write: T => String): KeyWriter[T] =
     new FunctionalWriter[T](write)
 
   /** Creates a [[KeyWriter]] based on the given safe `write` function. */
-  def safe[T](write: T => String): KeyWriter[T] = new SafeKeyWriter[T](write)
+  private[bson] def safe[T](write: T => String): KeyWriter[T] =
+    new SafeKeyWriter[T](write)
 
   /** Creates a [[KeyWriter]] based on the given `writeTry` function. */
   def from[T](writeTry: T => Try[String]): KeyWriter[T] =
@@ -68,7 +68,7 @@ object KeyWriter extends LowPriorityKeyWriter {
     KeyWriter[Locale](_.toLanguageTag)
 
   /**
-   * Supports writing [[java.util.UUID]] as keys.
+   * Supports writing `UUID` as keys.
    *
    * {{{
    * import reactivemongo.api.bson.KeyWriter

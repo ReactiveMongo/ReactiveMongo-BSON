@@ -12,12 +12,12 @@ trait KeyReader[T] {
 object KeyReader {
   /**
    * Creates a [[KeyReader]] based on the given `read` function.
-   * If `read` is safe (no exception), then rather use the [[safe]] factory.
    */
   def apply[T](read: String => T): KeyReader[T] = new FunctionalReader[T](read)
 
   /** Creates a [[KeyReader]] based on the given safe `read` function. */
-  def safe[T](read: String => T): KeyReader[T] = new SafeKeyReader[T](read)
+  private[bson] def safe[T](read: String => T): KeyReader[T] =
+    new SafeKeyReader[T](read)
 
   /** Creates a [[KeyReader]] based on the given `readTry` function. */
   def from[T](readTry: String => Try[T]): KeyReader[T] = new Default[T](readTry)
@@ -73,7 +73,7 @@ object KeyReader {
     }
 
   /**
-   * Supports reading [[java.util.UUID]] as keys.
+   * Supports reading `UUID` as keys.
    *
    * {{{
    * import reactivemongo.api.bson.KeyReader
