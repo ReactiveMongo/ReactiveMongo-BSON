@@ -9,7 +9,7 @@ import java.time.{
   ZoneId
 }
 
-import java.util.UUID
+import java.util.{ UUID, Locale }
 
 import java.net.{ URL, URI }
 
@@ -297,6 +297,32 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         val handler = implicitly[BSONReader[Map[String, Foo]]]
 
         handler.readTry(input) must beFailedTry
+      }
+    }
+
+    "support keys" >> {
+      "with Locale type as language tag" in {
+        val kr = implicitly[KeyReader[Locale]]
+        val kw = implicitly[KeyWriter[Locale]]
+
+        val locale = Locale.FRANCE
+        val repr = locale.toLanguageTag
+
+        kw.writeTry(locale) must beSuccessfulTry(repr) and {
+          kr.readTry(repr) must beSuccessfulTry(locale)
+        }
+      }
+
+      "with UUID type" in {
+        val kr = implicitly[KeyReader[UUID]]
+        val kw = implicitly[KeyWriter[UUID]]
+
+        val uuid = UUID.randomUUID()
+        val repr = uuid.toString
+
+        kw.writeTry(uuid) must beSuccessfulTry(repr) and {
+          kr.readTry(repr) must beSuccessfulTry(uuid)
+        }
       }
     }
   }

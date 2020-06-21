@@ -1,5 +1,7 @@
 package reactivemongo.api.bson
 
+import java.util.{ Locale, UUID }
+
 import scala.util.{ Failure, Success, Try }
 
 /** Mapping from a BSON string to `T` */
@@ -52,6 +54,38 @@ object KeyReader {
   implicit def longKeyReader: KeyReader[Long] = apply(_.toLong)
 
   implicit def shortKeyReader: KeyReader[Short] = apply(_.toShort)
+
+  /**
+   * Supports reading locales as keys,
+   * using [[https://tools.ietf.org/html/bcp47 language tag]]
+   * as string representation.
+   *
+   * {{{
+   * import reactivemongo.api.bson.KeyReader
+   *
+   * implicitly[KeyReader[java.util.Locale]].readTry("fr-FR")
+   * // => Success(Locale.FRANCE)
+   * }}}
+   */
+  implicit lazy val localeReader: KeyReader[Locale] =
+    KeyReader.from[Locale] { languageTag =>
+      Try(Locale forLanguageTag languageTag)
+    }
+
+  /**
+   * Supports reading [[java.util.UUID]] as keys.
+   *
+   * {{{
+   * import reactivemongo.api.bson.KeyReader
+   *
+   * implicitly[KeyReader[java.util.UUID]].
+   *   readTry("BDE87A8B-52F6-4345-9BCE-A30F4CB9FCB4")
+   * // => Success(java.util.UUID{"BDE87A8B-52F6-4345-9BCE-A30F4CB9FCB4"})
+   * }}}
+   */
+  implicit lazy val uuidReader: KeyReader[UUID] = KeyReader.from[UUID] { repr =>
+    Try(UUID fromString repr)
+  }
 
   // ---
 
