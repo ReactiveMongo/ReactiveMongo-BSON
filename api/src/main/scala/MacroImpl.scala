@@ -599,7 +599,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val applyArgs = params.map {
-        case ReadableProperty(_, _, vt, _, _, _) => q"${vt}.value"
+        case ReadableProperty(_, _, vt, _, _, _) => q"${vt}.value()"
       }
 
       val accName = TermName(c.freshName("acc"))

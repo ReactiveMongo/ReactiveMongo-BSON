@@ -20,19 +20,19 @@ class WritableBufferBenchmark {
 
     emptyBuffer = WritableBuffer.empty
     outputBuffer = WritableBuffer(bytes)
-    bytesBuffer = outputBuffer.toReadableBuffer
+    bytesBuffer = outputBuffer.toReadableBuffer()
   }
 
   @Benchmark
   def toReadableBuffer(): Unit = {
-    assert(outputBuffer.toReadableBuffer.size == bytes.size)
+    assert(outputBuffer.toReadableBuffer().size == bytes.size)
   }
 
   @Benchmark // Only for internal testing, not part of runtime/API
   def empty() = WritableBuffer.empty
 
   @Benchmark
-  def size(): Int = emptyBuffer.size
+  def size(): Int = emptyBuffer.size()
 
   @Benchmark
   def setInt(): WritableBuffer = emptyBuffer.setInt(0, 10)

@@ -25,7 +25,7 @@ final class EqualitySpec extends org.specs2.mutable.Specification {
       val writeBuffer = WritableBuffer.empty
       writeBinary(expected, writeBuffer)
 
-      expected must_=== readBinary(writeBuffer.toReadableBuffer)
+      expected must_=== readBinary(writeBuffer.toReadableBuffer())
     }
   }
 
@@ -40,7 +40,7 @@ final class EqualitySpec extends org.specs2.mutable.Specification {
       val writeBuffer = WritableBuffer.empty
       writeObjectID(boid1, writeBuffer)
 
-      boid1 must_=== readObjectID(writeBuffer.toReadableBuffer)
+      boid1 must_=== readObjectID(writeBuffer.toReadableBuffer())
     }
   }
 
@@ -59,9 +59,9 @@ final class EqualitySpec extends org.specs2.mutable.Specification {
       val writeBuffer = WritableBuffer.empty
       writeArray(ba1.values, writeBuffer)
 
-      val input = writeBuffer.toReadableBuffer
+      val input = writeBuffer.toReadableBuffer()
 
-      input.size must_=== writeBuffer.size and {
+      input.size must_=== writeBuffer.size() and {
         readArray(input) must_=== ba1
       }
     }
@@ -84,7 +84,7 @@ final class EqualitySpec extends org.specs2.mutable.Specification {
       val writeBuffer = WritableBuffer.empty
       writeDocument(b1, writeBuffer)
 
-      readDocument(writeBuffer.toReadableBuffer) must_=== b1
+      readDocument(writeBuffer.toReadableBuffer()) must_=== b1
     }
   }
 

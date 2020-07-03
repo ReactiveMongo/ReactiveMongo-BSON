@@ -15,13 +15,13 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
     "write bytes" in {
       val buf = WritableBuffer.empty.writeBytes(expectedWholeDocumentBytes)
 
-      buf.size must_=== expectedWholeDocumentBytes.size and {
-        buf.array must_=== expectedWholeDocumentBytes
+      buf.size() must_=== expectedWholeDocumentBytes.size and {
+        buf.array() must_=== expectedWholeDocumentBytes
       } and {
-        val readable = buf.toReadableBuffer
+        val readable = buf.toReadableBuffer()
 
-        readable.size must_=== buf.size and {
-          val bytes = Array.ofDim[Byte](buf.size)
+        readable.size must_=== buf.size() and {
+          val bytes = Array.ofDim[Byte](buf.size())
 
           readable.readBytes(bytes) must_=== readable and {
             bytes must_=== expectedWholeDocumentBytes
@@ -37,9 +37,9 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
       val buf = WritableBuffer.empty
 
       buf.writeBsonString(str) must_=== buf and {
-        buf.array must_=== bytes
+        buf.array() must_=== bytes
       } and {
-        buf.toReadableBuffer.readBsonString() must_=== str
+        buf.toReadableBuffer().readBsonString() must_=== str
       }
     }
 
@@ -50,22 +50,22 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
       val buf = WritableBuffer.empty
 
       buf.writeCString(str) must_=== buf and {
-        buf.array must_=== bytes
+        buf.array() must_=== bytes
       } and {
-        buf.toReadableBuffer.readCString() must_=== str
+        buf.toReadableBuffer().readCString() must_=== str
       }
     }
 
     "skip until condition" in {
       val buf = WritableBuffer.empty.
-        writeCString("foo").writeInt(13).toReadableBuffer
+        writeCString("foo").writeInt(13).toReadableBuffer()
 
       buf.skipUntil(_ == (0x0: Byte)).readInt() must_=== 13
     }
 
     "split after n bytes" in {
       val buf = WritableBuffer.empty.
-        writeInt(21).writeLong(3L).toReadableBuffer
+        writeInt(21).writeLong(3L).toReadableBuffer()
 
       buf.splitAt(4) must beLike {
         case (before, `buf`) => before.readInt() must_=== 21 and {
@@ -78,7 +78,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
   "BSON default serializer" should {
     def codec(expected: BSONValue): Option[BSONValue] = scala.util.Try {
       val buffer = DefaultBufferHandler.serialize(
-        expected, WritableBuffer.empty).toReadableBuffer
+        expected, WritableBuffer.empty).toReadableBuffer()
 
       DefaultBufferHandler.readValue(buffer, expected.byteCode)
     }.toOption
@@ -99,7 +99,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
       val buffer = WritableBuffer.empty
 
       writeArray(arr.values, buffer) must_=== buffer and {
-        buffer.array must_=== expected
+        buffer.array() must_=== expected
       }
     }
 
@@ -108,13 +108,13 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty
 
         writeDocument(wholeDoc, buffer) must_=== buffer and {
-          val doc = readDocument(buffer.toReadableBuffer)
+          val doc = readDocument(buffer.toReadableBuffer())
 
           doc must_=== wholeDoc and {
             doc.elements must_=== wholeDoc.elements // elements in same order
           }
         } and {
-          buffer.array must_=== expectedWholeDocumentBytes
+          buffer.array() must_=== expectedWholeDocumentBytes
         }
       }
 
@@ -124,9 +124,9 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty
 
         writeDocument(dbool, buffer) must_=== buffer and {
-          buffer.array must_=== expected
+          buffer.array() must_=== expected
         } and {
-          readDocument(buffer.toReadableBuffer) must_=== dbool
+          readDocument(buffer.toReadableBuffer()) must_=== dbool
         }
       }
 
@@ -136,7 +136,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty
 
         writeDocument(ddoub, buffer) must_=== buffer and {
-          buffer.array must_=== expected
+          buffer.array() must_=== expected
         }
       }
 
@@ -146,7 +146,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty
 
         writeDocument(dint, buffer) must_=== (buffer) and {
-          buffer.array must_=== expected
+          buffer.array() must_=== expected
         }
       }
 
@@ -156,7 +156,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty
 
         writeDocument(dlong, buffer) must_=== (buffer) and {
-          buffer.array must_=== expected
+          buffer.array() must_=== expected
         }
       }
 
@@ -166,9 +166,9 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty
 
         writeDocument(dstr, buffer) must_=== buffer and {
-          buffer.array must_=== expected
+          buffer.array() must_=== expected
         } and {
-          readDocument(buffer.toReadableBuffer) must_=== dstr
+          readDocument(buffer.toReadableBuffer()) must_=== dstr
         }
       }
 
@@ -180,7 +180,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty
 
         writeDocument(doc, buffer) must_=== buffer and {
-          readDocument(buffer.toReadableBuffer) must_=== doc
+          readDocument(buffer.toReadableBuffer()) must_=== doc
         }
       }
 
@@ -190,7 +190,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty
 
         writeDocument(docdoc, buffer) must_=== buffer and {
-          buffer.array must_=== expected
+          buffer.array() must_=== expected
         }
       }
 
@@ -204,9 +204,9 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty
 
         writeDocument(docarray, buffer) must_=== (buffer) and {
-          buffer.array must_=== expected
+          buffer.array() must_=== expected
         } and {
-          readDocument(buffer.toReadableBuffer) must_=== docarray
+          readDocument(buffer.toReadableBuffer()) must_=== docarray
         }
       }
 
@@ -250,7 +250,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         val buffer = WritableBuffer.empty.writeByte(jsWs.code)
 
         val readable = DefaultBufferHandler.
-          serialize(jsWs, buffer).toReadableBuffer
+          serialize(jsWs, buffer).toReadableBuffer()
 
         DefaultBufferHandler.
           deserialize(readable) must beSuccessfulTry[BSONValue].like {
@@ -276,7 +276,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
     def written(v: BSONValue): Int = {
       val buf = WritableBuffer.empty
       DefaultBufferHandler.serialize(v, buf)
-      buf.size
+      buf.size()
     }
 
     "be 0 for any BSON constant" >> {
