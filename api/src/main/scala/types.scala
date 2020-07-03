@@ -749,7 +749,7 @@ final class BSONBinary private[bson] (
 
   override private[reactivemongo] lazy val byteSize = {
     5 /* header = 4 (value.readable: Int) + 1 (subtype.value.toByte) */ +
-      value.readable
+      value.readable()
   }
 
   override lazy val hashCode: Int = {
@@ -771,7 +771,7 @@ final class BSONBinary private[bson] (
   }
 
   override lazy val toString: String =
-    s"BSONBinary(${subtype}, size = ${value.readable})"
+    s"BSONBinary(${subtype}, size = ${value.readable()})"
 }
 
 /**

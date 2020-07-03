@@ -63,10 +63,10 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
   "Removal" should {
     "be successful" in {
-      (doc1 -- ("Bar", "Lorem") must_=== BSONDocument("Foo" -> 1)) and {
-        doc1 -- ("Foo", "Bar") must_=== BSONDocument("Lorem" -> 3)
+      (doc1.--("Bar", "Lorem") must_=== BSONDocument("Foo" -> 1)) and {
+        doc1.--("Foo", "Bar") must_=== BSONDocument("Lorem" -> 3)
       } and {
-        doc1 -- ("Bar") contains ("Foo") must beTrue
+        (doc1 -- "Bar") contains ("Foo") must beTrue
       } and {
         // Retain strict'ness
         val su = strict1 -- "foo"

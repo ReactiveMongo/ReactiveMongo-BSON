@@ -36,7 +36,7 @@ private[bson] trait Utils {
 
     @annotation.tailrec def go(in: Iterator[A]): Try[Unit] =
       if (!in.hasNext) Success({}) else {
-        f(in.next) match {
+        f(in.next()) match {
           case Success(b) => {
             builder += b
             go(in)

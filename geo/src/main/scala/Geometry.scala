@@ -249,7 +249,7 @@ final class GeoPolygon private[bson] (
   override lazy val hashCode: Int = tupled.hashCode
 
   override def toString: String =
-    s"""GeoPolygon(${exterior}${interior mkString (", ", ", ", "")})"""
+    s"""GeoPolygon(${exterior}${interior.mkString(", ", ", ", "")})"""
 }
 
 /** See [[GeoPolygon]] */

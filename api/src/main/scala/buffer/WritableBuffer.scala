@@ -60,7 +60,7 @@ private[reactivemongo] final class WritableBuffer(
 
   /** Returns the written content of this buffer as a readable one. */
   def toReadableBuffer(): ReadableBuffer = {
-    val buf = buffer.slice(0, size).nioBuffer
+    val buf = buffer.slice(0, size()).nioBuffer
     buf.order(java.nio.ByteOrder.LITTLE_ENDIAN)
 
     new ReadableBuffer(buf)
@@ -80,8 +80,9 @@ private[reactivemongo] final class WritableBuffer(
 
   /** Returns an array containing all the data that were put in this buffer. */
   def array(): Array[Byte] = {
-    val bytes = Array.ofDim[Byte](size)
-    buffer.getBytes(0, bytes, 0, size)
+    val sz = size()
+    val bytes = Array.ofDim[Byte](sz)
+    buffer.getBytes(0, bytes, 0, sz)
     bytes
   }
 }

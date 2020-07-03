@@ -29,7 +29,7 @@ sealed trait SerializationBenchmark {
   @Setup(Level.Invocation)
   def setupInvocation(): Unit = {
     output = WritableBuffer.empty
-    input = written.toReadableBuffer
+    input = written.toReadableBuffer()
   }
 
   @Benchmark
