@@ -286,7 +286,7 @@ object GeoGeometryCollection {
     Option(collection).map(_.geometries)
 
   implicit val reader: BSONDocumentReader[GeoGeometryCollection] =
-    Macros.reader[GeoGeometryCollection] // ignore 'type'
+    Macros.readerOpts[GeoGeometryCollection, MacroOptions.Verbose] // ignore 'type'
 
   implicit val writer: BSONDocumentWriter[GeoGeometryCollection] =
     BSONDocumentWriter[GeoGeometryCollection] { geo =>

@@ -18,7 +18,7 @@ class ReadableBufferBenchmark {
 
   @Setup(Level.Invocation)
   def setupInvocation(): Unit = {
-    input = fixture.toReadableBuffer
+    input = fixture.toReadableBuffer()
   }
 
   @Benchmark
@@ -32,5 +32,5 @@ class ReadableBufferBenchmark {
 
   @Benchmark
   def toWritableBuffer(): Unit =
-    assert(input.toWritableBuffer.size == input.size)
+    assert(input.toWritableBuffer.size() == input.size)
 }

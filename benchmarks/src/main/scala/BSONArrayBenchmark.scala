@@ -67,7 +67,7 @@ class BSONArrayBenchmark {
 
   @Setup(Level.Invocation)
   def setupInvocation(): Unit = {
-    serializedBuffer = WritableBuffer(bsonArrayBytes).toReadableBuffer
+    serializedBuffer = WritableBuffer(bsonArrayBytes).toReadableBuffer()
   }
 
   @Benchmark

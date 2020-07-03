@@ -766,7 +766,7 @@ class BSONDecimalSpec extends org.specs2.mutable.Specification {
 
           writeDocument(BSONDocument("d" -> dec), buf)
 
-          buf.array.map("%02X" format _).mkString must_=== repr
+          buf.array().map("%02X" format _).mkString must_=== repr
         }
 
         case (repr, _) => s"for '$repr'" in {
@@ -783,6 +783,6 @@ class BSONDecimalSpec extends org.specs2.mutable.Specification {
 
     writeDecimal(in, buf)
 
-    readDecimal(buf.toReadableBuffer)
+    readDecimal(buf.toReadableBuffer())
   }
 }

@@ -40,7 +40,7 @@ private[bson] final class ReadableBuffer private[bson] (
    * @see WritableBuffer#writeBsonString
    */
   def readBsonString(): String = {
-    val bytes = new Array[Byte](this.readInt - 1)
+    val bytes = new Array[Byte](this.readInt() - 1)
 
     this.readBytes(bytes)
     this.readByte() // 0 delimiter byte
@@ -101,7 +101,7 @@ private[bson] final class ReadableBuffer private[bson] (
 
   @scala.annotation.tailrec
   private def takeUntilZero(array: ArrayBuffer[Byte]): Array[Byte] = {
-    val byte = this.readByte
+    val byte = this.readByte()
 
     if (byte == (0x00: Byte /* C end marker */ )) {
       array.toArray

@@ -336,7 +336,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val applyArgs = params.map {
-        case (_, _, vt, _) => q"${vt}.value"
+        case (_, _, vt, _) => q"${vt}.value()"
       }
 
       val accName = TermName(c.freshName("acc"))

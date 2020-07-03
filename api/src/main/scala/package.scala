@@ -13,7 +13,7 @@ package reactivemongo.api
  * // { "_id": generatedId, "name": "Jane", "surname": "Doe", "age": 28,
  * //   "months": [1, 2, 3], "details": { "salary": 12345,
  * //   "inventory": ["foo", 7.8, 0, false] } }
- * document ++ ("_id" -> generateId, "name" -> "Jane", "surname" -> "Doe",
+ * document.++("_id" -> generateId, "name" -> "Jane", "surname" -> "Doe",
  *   "age" -> 28, "months" -> array(1, 2, 3),
  *   "details" -> document(
  *     "salary" -> 12345L, "inventory" -> array("foo", 7.8, 0L, false)))

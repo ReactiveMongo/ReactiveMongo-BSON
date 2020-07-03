@@ -90,7 +90,7 @@ class BSONDocumentBenchmark {
   @Setup(Level.Invocation)
   def setupInvocation(): Unit = {
     serializedBuffer = WritableBuffer(
-      SerializationFixtures.expectedWholeDocumentBytes).toReadableBuffer
+      SerializationFixtures.expectedWholeDocumentBytes).toReadableBuffer()
   }
 
   @Benchmark
