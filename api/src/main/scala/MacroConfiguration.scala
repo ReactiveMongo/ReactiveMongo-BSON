@@ -19,8 +19,10 @@ package reactivemongo.api.bson
  *   MacroConfiguration.simpleTypeName).reader[Foo]
  *
  * }}}
+ * 
+ * @see [[http://reactivemongo.org/releases/1.0/documentation/bson/typeclasses.html#configuration documentation]]
  */
-sealed trait MacroConfiguration { // TODO: Link to reactivemongo-site when BSON doc is up to date
+sealed trait MacroConfiguration {
   /** Compile-time options for the JSON macros */
   type Opts <: MacroOptions
 
