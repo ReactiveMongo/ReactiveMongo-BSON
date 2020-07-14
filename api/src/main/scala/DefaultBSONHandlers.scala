@@ -240,8 +240,11 @@ private[bson] trait DefaultBSONHandlers
     def readTry(bson: BSONValue): Try[UUID] = bson match {
       case BSONString(repr) => Try(UUID fromString repr)
 
+      case bin @ BSONBinary(Subtype.UuidSubtype) =>
+        Try(UUID nameUUIDFromBytes bin.byteArray)
+
       case _ => Failure(TypeDoesNotMatchException(
-        "BSONString", bson.getClass.getSimpleName))
+        "BSONString|BSONBinary", bson.getClass.getSimpleName))
     }
 
     def safeWrite(uuid: UUID) = BSONString(uuid.toString)
