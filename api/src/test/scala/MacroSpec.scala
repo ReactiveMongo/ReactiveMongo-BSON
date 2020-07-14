@@ -498,25 +498,67 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "skip ignored fields" >> {
-      "with Pair type" in {
-        val pairHandler = Macros.handler[Pair]
-        val doc = pairHandler.writeTry(Pair(left = "left", right = "right"))
+      "with error if no default value for read" in {
+        val writer = Macros.writer[NotIgnorable]
 
-        doc must beSuccessfulTry(BSONDocument("right" -> "right"))
+        val expectedReadErr =
+          "Cannot\\ ignore\\ 'MacroTest\\.NotIgnorable\\.title'"
+
+        writer.writeTry(NotIgnorable("foo", 1)) must beSuccessfulTry(
+          BSONDocument("score" -> 1)) and {
+            typecheck("Macros.reader[NotIgnorable]") must failWith(expectedReadErr)
+          } and {
+            typecheck("Macros.handler[NotIgnorable]") must failWith(expectedReadErr)
+          }
+      }
+
+      "with Pair type having a default field value" in {
+        val pairHandler = Macros.handler[Pair]
+        val pairWriter = Macros.writer[Pair]
+        val pairReader = Macros.reader[Pair]
+
+        val pair1 = Pair(left = "_1", right = "right1")
+        val pair2 = Pair(left = "_2", right = "right2")
+
+        val doc1 = BSONDocument("right" -> "right1")
+        val doc2 = BSONDocument("right" -> "right2")
+
+        pairHandler.writeTry(pair1) must beSuccessfulTry(doc1) and {
+          pairWriter.writeTry(pair2) must beSuccessfulTry(doc2)
+        } and {
+          pairHandler.readTry(doc2) must beSuccessfulTry(Pair(
+            left = "_left", // from default field value
+            right = pair2.right))
+        } and {
+          pairReader.readTry(doc1) must beSuccessfulTry(Pair(
+            left = "_left", // from default field value
+            right = pair1.right))
+        }
       }
 
       "along with Key annotation" in {
-        // TODO: Macros reader (manage Ignore with reader?)
-
-        implicit val handler: BSONDocumentWriter[IgnoredAndKey] =
+        implicit val writer: BSONDocumentWriter[IgnoredAndKey] =
           Macros.writer[IgnoredAndKey]
-        //TODO:Macros.handler[IgnoredAndKey]
+
+        implicit val reader: BSONDocumentReader[IgnoredAndKey] =
+          Macros.reader[IgnoredAndKey]
+
+        implicit val handler: BSONDocumentHandler[IgnoredAndKey] =
+          Macros.handler[IgnoredAndKey]
 
         val expected = BSONDocument("second" -> "foo")
         val v = IgnoredAndKey(Person("john", "doe"), "foo")
 
-        handler.writeTry(v) must beSuccessfulTry(expected) and {
-          todo //TODO: handler.readTry(expected) must beSuccessfulTry(v)
+        val withDefault = IgnoredAndKey(
+          a = Person("first", "last"), // from @DefaultValue
+          b = "foo")
+
+        writer.writeTry(v) must beSuccessfulTry(expected) and {
+          handler.writeTry(v) must beSuccessfulTry(expected)
+        } and {
+          handler.readTry(expected) must beSuccessfulTry(withDefault)
+        } and {
+          reader.readTry(expected) must beSuccessfulTry(withDefault)
         }
       }
     }
@@ -538,7 +580,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
     "support @Flatten annotation" in {
       typecheck("Macros.handler[InvalidRecursive]") must failWith(
-        "Cannot\\ flatten\\ reader\\ for\\ 'parent':\\ recursive\\ type") and {
+        "Cannot\\ flatten\\ reader\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type") and {
           typecheck("Macros.handler[InvalidNonDoc]") must failWith(
             "doesn't\\ conform\\ BSONDocumentReader")
         } and {
@@ -678,7 +720,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
     "be generated with @Flatten annotation" in {
       typecheck("Macros.reader[InvalidRecursive]") must failWith(
-        "Cannot\\ flatten\\ reader\\ for\\ 'parent':\\ recursive\\ type") and {
+        "Cannot\\ flatten\\ reader\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type") and {
           typecheck("Macros.reader[InvalidNonDoc]") must failWith(
             "doesn't\\ conform\\ BSONDocumentReader")
         } and {
@@ -733,7 +775,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
           r2.readTry(minimalDoc) must beSuccessfulTry(expected)
         } and {
-          typecheck("Macros.reader[WithDefaultValues3]") must failWith("Invalid\\ annotation\\ @DefaultValue\\(1\\)\\ for\\ 'name':\\ String\\ value\\ expected")
+          typecheck("Macros.reader[WithDefaultValues3]") must failWith("Invalid\\ annotation\\ @DefaultValue\\(1\\)\\ for\\ 'MacroTest\\.WithDefaultValues3\\.name':\\ String\\ value\\ expected")
         }
       }
     }
@@ -772,7 +814,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
                   range = Range(7, 11),
                   foo = 2))
           } and {
-            typecheck("Macros.reader[PerField2]") must failWith("Invalid\\ annotation\\ @Reader.*\\ for\\ 'name':\\ Reader\\[String\\]")
+            typecheck("Macros.reader[PerField2]") must failWith("Invalid\\ annotation\\ @Reader.*\\ for\\ 'MacroTest\\.PerField2\\.name':\\ Reader\\[String\\]")
           }
     }
 
@@ -853,7 +895,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
     "be generated with @Flatten annotation" in {
       typecheck("Macros.writer[InvalidRecursive]") must failWith(
-        "Cannot\\ flatten\\ writer\\ for\\ 'parent':\\ recursive\\ type") and {
+        "Cannot\\ flatten\\ writer\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type") and {
           typecheck("Macros.writer[InvalidNonDoc]") must failWith(
             "doesn't\\ conform\\ BSONDocumentWriter")
         } and {
@@ -900,7 +942,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
                   "description" -> 0))
 
           } and {
-            typecheck("Macros.writer[PerField2]") must failWith("Invalid\\ annotation\\ @Writer.*\\ for\\ 'name':\\ Writer\\[String\\]")
+            typecheck("Macros.writer[PerField2]") must failWith("Invalid\\ annotation\\ @Writer.*\\ for\\ 'MacroTest\\.PerField2\\.name':\\ Writer\\[String\\]")
           }
     }
 

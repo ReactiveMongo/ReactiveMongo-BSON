@@ -311,8 +311,12 @@ object Macros {
     }
 
     /**
-     * Indicates that the annotated field must be serialized to BSON.
+     * Indicates that the annotated field must not be serialized to BSON.
      * Annotation `@transient` can also be used to achieve the same purpose.
+     *
+     * If the annotate field must be read, a default value must be defined,
+     * either from the field default value,
+     * or using the annotation [[DefaultValue]] (specific to BSON).
      */
     @meta.param
     final class Ignore extends StaticAnnotation {

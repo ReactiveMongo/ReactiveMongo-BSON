@@ -513,11 +513,19 @@ private[bson] class MacroImpl(val c: Context) {
             q"val ${vt} = new ${bsonPkg}.Macros.LocalVar[${sig}]"
         })
 
-      val rt = TermName(c.freshName("read"))
       val errName = TermName(c.freshName("cause"))
 
       val values = params.map {
-        case ReadableProperty(param, pname, vt, sig, default, fieldReader) =>
+        case ReadableProperty(param, _, vt, _, Some(default), _) if (
+          ignoreField(param)) =>
+          q"${vt}.take($default); ()"
+
+        case ReadableProperty(param, pname, _, _, None, _) if (
+          ignoreField(param)) =>
+          c.abort(c.enclosingPosition, s"Cannot ignore '${tpe}.$pname': not default value (see @DefaultValue)")
+
+        case ReadableProperty(param, pname, vt, sig, default, fieldReader) => {
+          val rt = TermName(c.freshName("read"))
           val reader: Tree = fieldReader match {
             case Some(r) => r
 
@@ -596,6 +604,7 @@ private[bson] class MacroImpl(val c: Context) {
               case ${utilPkg}.Failure($errName) => 
                 ${bufErr} += ${exceptionsPkg}.HandlerException($pname, $errName)
             }"""
+        }
       }
 
       val applyArgs = params.map {
