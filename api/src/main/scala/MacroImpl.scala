@@ -451,7 +451,7 @@ private[bson] class MacroImpl(val c: Context) {
                       Seq(v)
 
                     case invalid =>
-                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '$pname': $sig value expected") // TODO: abort
+                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '$pname': $sig value expected")
                   }
                 }
 
@@ -657,8 +657,12 @@ private[bson] class MacroImpl(val c: Context) {
     private type WritableProperty = Tuple4[Symbol, Int, Type, Option[Tree]]
 
     private object WritableProperty {
-      def apply(symbol: Symbol, index: Int, tpe: Type, writer: Option[Tree]) =
-        Tuple4(symbol, index, tpe, writer)
+      def apply(
+        symbol: Symbol,
+        index: Int,
+        tpe: Type,
+        writerFromAnnotation: Option[Tree]) =
+        Tuple4(symbol, index, tpe, writerFromAnnotation)
 
       def unapply(property: WritableProperty) = Some(property)
     }
@@ -809,28 +813,16 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
       val extra = optional.collect {
-        case WritableProperty(param, i, optType @ OptionTypeParameter(sig), _ /*TODO*/ ) =>
+        case WritableProperty(
+          param, i, optType @ OptionTypeParameter(sig), writerFromAnn) =>
+
           val pname = paramName(param)
-
-          val writer = resolve(optType) match {
-            case (w, _) if w.nonEmpty =>
-              w // a writer explicitly defined for a Option[x]
-
-            case _ => resolveWriter(pname, sig)
-          }
           val field = q"$macroCfg.fieldNaming($pname)"
 
-          val vt = TermName(c.freshName(pname))
-          val vp = ValDef(
-            Modifiers(Flag.PARAM),
-            vt, TypeTree(sig), EmptyTree) // ${vt} =>
-
           val bt = TermName(c.freshName("bson"))
+          val vt = TermName(c.freshName(pname))
 
-          def empty =
-            q"${bufOk} += ${bsonPkg}.BSONElement($field, ${bsonPkg}.BSONNull)"
-
-          val writeCall = q"""($writer.writeTry($vt): ${utilPkg}.Try[${bsonPkg}.BSONValue]) match {
+          def writeCall(wr: Tree) = q"""($wr.writeTry($vt): ${utilPkg}.Try[${bsonPkg}.BSONValue]) match {
             case ${utilPkg}.Success(${bt}) =>
               ${bufOk} += ${bsonPkg}.BSONElement($field, $bt)
               ()
@@ -840,10 +832,35 @@ private[bson] class MacroImpl(val c: Context) {
               ()
           }"""
 
-          if (param.annotations.exists(_.tree.tpe =:= typeOf[NoneAsNull])) {
-            q"${tupleElement(i)}.fold({ ${empty}; () }) { ${vp} => $writeCall }"
-          } else {
-            q"${tupleElement(i)}.foreach { ${vp} => $writeCall }"
+          writerFromAnn match {
+            case Some(explicitWriter) =>
+              q"""{
+                val ${vt} = ${tupleElement(i)}
+                ${writeCall(explicitWriter)}
+              }"""
+
+            case _ => {
+              def empty = q"${bufOk} += ${bsonPkg}.BSONElement($field, ${bsonPkg}.BSONNull)"
+
+              val vp = ValDef(
+                Modifiers(Flag.PARAM),
+                vt, TypeTree(sig), EmptyTree) // ${vt} =>
+
+              def implicitWriter = resolve(optType) match {
+                case (w, _) if w.nonEmpty =>
+                  w // a writer explicitly defined for a Option[x]
+
+                case _ => resolveWriter(pname, sig)
+              }
+
+              val call = writeCall(implicitWriter)
+
+              if (param.annotations.exists(_.tree.tpe =:= typeOf[NoneAsNull])) {
+                q"${tupleElement(i)}.fold({ ${empty}; () }) { ${vp} => $call }"
+              } else {
+                q"${tupleElement(i)}.foreach { ${vp} => $call }"
+              }
+            }
           }
       }
 

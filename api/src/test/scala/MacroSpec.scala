@@ -581,7 +581,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
     "support @Reader & @Writer annotations" in {
       val reader1 = Macros.reader[PerField1[String]]
-      val writer = Macros.writer[PerField1[String]]
+      val writer = Macros.writerOpts[PerField1[String], MacroOptions.Verbose]
 
       val expectedVal = PerField1[String](
         id = 1L,
@@ -896,7 +896,8 @@ final class MacroSpec extends org.specs2.mutable.Specification {
                   "status" -> "off",
                   "score" -> "45.6",
                   "range" -> Seq(7, 11),
-                  "foo" -> "2"))
+                  "foo" -> "2",
+                  "description" -> 0))
 
           } and {
             typecheck("Macros.writer[PerField2]") must failWith("Invalid\\ annotation\\ @Writer.*\\ for\\ 'name':\\ Writer\\[String\\]")
