@@ -45,7 +45,7 @@ Then the conversions can be imported:
 import reactivemongo.api.bson.compat._
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-compat_2.12/0.18.5/reactivemongo-bson-compat_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/compat/index.html)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-compat_2.12/0.20.12-fix1/reactivemongo-bson-compat_2.12-0.20.12-fix1-javadoc.jar/!/reactivemongo/api/bson/compat/index.html)
 - [Examples](compat/src/test/scala/ValueConverterSpec.scala)
 
 **msb-compat:**
@@ -62,7 +62,7 @@ Then the conversions can be imported:
 import reactivemongo.api.bson.msb._
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-msb_2.12/0.18.5/reactivemongo-bson-msb_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/msb/index.html)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-msb_2.12/0.20.12-fix1/reactivemongo-bson-msb_2.12-0.20.12-fix1-javadoc.jar/!/reactivemongo/api/bson/msb/index.html)
 - [Examples](msb-compat/src/test/scala/ValueConverterSpec.scala)
 
 **geo:**
@@ -75,7 +75,7 @@ It can be configured in the `build.sbt` as below.
 libraryDependencies += "org.reactivemongo" %% "reactivemongo-bson-geo" % VERSION
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-geo_2.12/0.18.5/reactivemongo-bson-geo_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/geo/index.html)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-geo_2.12/0.20.12-fix1/reactivemongo-bson-geo_2.12-0.20.12-fix1-javadoc.jar/!/reactivemongo/api/bson/geo/index.html)
 - [Examples](geo/src/test/scala/GeometrySpec.scala)
 
 **specs2:**
@@ -105,7 +105,7 @@ final class MySpec extends org.specs2.mutable.Specification {
 }
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-geo_2.12/0.18.5/reactivemongo-bson-geo_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/geo/index.html)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-geo_2.12/0.20.12-fix1/reactivemongo-bson-geo_2.12-0.20.12-fix1-javadoc.jar/!/reactivemongo/api/bson/geo/index.html)
 - [Examples](specs2/src/test/scala/DiffableSpec.scala)
 
 **monocle:** EXPERIMENTAL
@@ -122,7 +122,7 @@ Then the utilities can be imported:
 import reactivemongo.api.bson.monocle._
 ```
 
-- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-monocle_2.12/0.18.5/reactivemongo-bson-monocle_2.12-0.18.5-javadoc.jar/!/reactivemongo/api/bson/monocle/index.html)
+- [Documentation](https://oss.sonatype.org/service/local/repositories/releases/archive/org/reactivemongo/reactivemongo-bson-monocle_2.12/0.20.12-fix1/reactivemongo-bson-monocle_2.12-0.20.12-fix1-javadoc.jar/!/reactivemongo/api/bson/monocle/index.html)
 - [Examples](monocle/src/test/scala/MonocleSpec.scala)
 
 ## Build manually
@@ -135,4 +135,4 @@ To run the tests, use:
 
     sbt test
 
-[Travis](https://travis-ci.org/ReactiveMongo/ReactiveMongo-BSON): ![Travis build status](https://travis-ci.org/ReactiveMongo/ReactiveMongo-BSON.png?branch=master)
+[CircleCI](https://circleci.com/gh/ReactiveMongo/ReactiveMongo-BSON): ![CircleCI build status](https://circleci.com/gh/ReactiveMongo/ReactiveMongo-BSON.png?branch=master)
