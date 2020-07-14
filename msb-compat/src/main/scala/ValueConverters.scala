@@ -286,8 +286,6 @@ trait ValueConverters extends LowPriorityConverters {
     val bson = new BsonMaxKey
     _ => bson
   }
-
-  // TODO
 }
 
 private[bson] sealed trait LowPriorityConverters { _: ValueConverters =>

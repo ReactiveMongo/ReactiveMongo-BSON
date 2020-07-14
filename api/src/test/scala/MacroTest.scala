@@ -199,10 +199,12 @@ object MacroTest {
     implicit val ch: Handler[C] = Macros.handler[C]
   }
 
-  case class Pair(@Ignore left: String, right: String)
+  case class NotIgnorable(@Ignore title: String, score: Int)
+
+  case class Pair(@Ignore left: String = "_left", right: String)
 
   case class IgnoredAndKey(
-    @Ignore a: Person,
+    @Ignore @DefaultValue(Person("first", "last")) a: Person,
     @Key("second") b: String)
 
   case class Range(start: Int, end: Int)
