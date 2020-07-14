@@ -451,13 +451,13 @@ private[bson] class MacroImpl(val c: Context) {
                       Seq(v)
 
                     case invalid =>
-                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '$pname': $sig value expected")
+                      c.abort(c.enclosingPosition, s"Invalid annotation @DefaultValue($invalid) for '${tpe}.$pname': $sig value expected")
                   }
                 }
 
                 case ann if ann.tree.tpe <:< readerAnnotationTpe => {
                   if (!(ann.tree.tpe <:< readerAnnTpe)) {
-                    abort(s"Invalid annotation @Reader(${show(ann.tree)}) for '$pname': Reader[${sig}]")
+                    abort(s"Invalid annotation @Reader(${show(ann.tree)}) for '${tpe}.$pname': Reader[${sig}]")
                   }
 
                   readerAnns ++= ann.tree.children.tail
@@ -469,7 +469,7 @@ private[bson] class MacroImpl(val c: Context) {
               val readerFromAnn: Option[Tree] = readerAnns.result() match {
                 case r +: other => {
                   if (other.nonEmpty) {
-                    warn(s"Exactly one @Reader must be provided for each property; Ignoring invalid annotations for '${pname}'")
+                    warn(s"Exactly one @Reader must be provided for each property; Ignoring invalid annotations for '${tpe}.$pname'")
                   }
 
                   Some(r)
@@ -534,7 +534,7 @@ private[bson] class MacroImpl(val c: Context) {
           }
 
           if (reader.isEmpty) {
-            c.abort(c.enclosingPosition, s"Implicit not found for '$pname': ${classOf[BSONReader[_]].getName}[$sig]")
+            c.abort(c.enclosingPosition, s"Implicit not found for '${tpe}.$pname': ${classOf[BSONReader[_]].getName}[$sig]")
           }
 
           def tryWithDefault(`try`: Tree, dv: Tree) = q"""${`try`} match {
@@ -554,11 +554,11 @@ private[bson] class MacroImpl(val c: Context) {
               if (reader.toString == "forwardBSONReader") {
                 c.abort(
                   c.enclosingPosition,
-                  s"Cannot flatten reader for '$pname': recursive type")
+                  s"Cannot flatten reader for '${tpe}.$pname': recursive type")
               }
 
               if (!(reader.tpe <:< appliedType(docReaderType, List(sig)))) {
-                c.abort(c.enclosingPosition, s"Cannot flatten reader '$reader': doesn't conform BSONDocumentReader")
+                c.abort(c.enclosingPosition, s"Cannot flatten reader '$reader' for '${tpe}.$pname': doesn't conform BSONDocumentReader")
               }
 
               val readTry = q"${reader}.readTry(macroDoc)"
@@ -716,7 +716,7 @@ private[bson] class MacroImpl(val c: Context) {
             val writerAnns = sym.annotations.flatMap {
               case ann if ann.tree.tpe <:< writerAnnotationTpe => {
                 if (!(ann.tree.tpe <:< writerAnnTpe)) {
-                  abort(s"Invalid annotation @Writer(${show(ann.tree)}) for '${paramName(sym)}': Writer[${sig}]")
+                  abort(s"Invalid annotation @Writer(${show(ann.tree)}) for '${tpe}.${paramName(sym)}': Writer[${sig}]")
                 }
 
                 ann.tree.children.tail
@@ -729,7 +729,7 @@ private[bson] class MacroImpl(val c: Context) {
             val writerFromAnn: Option[Tree] = writerAnns match {
               case w +: other => {
                 if (other.nonEmpty) {
-                  warn(s"Exactly one @Writer must be provided for each property; Ignoring invalid annotations for '${paramName(sym)}'")
+                  warn(s"Exactly one @Writer must be provided for each property; Ignoring invalid annotations for '${tpe}.${paramName(sym)}'")
                 }
 
                 Some(w)
@@ -746,7 +746,7 @@ private[bson] class MacroImpl(val c: Context) {
         val (writer, _) = resolve(tpe)
 
         if (writer.isEmpty) {
-          c.abort(c.enclosingPosition, s"Implicit not found for '$pname': ${classOf[BSONWriter[_]].getName}[$tpe]")
+          c.abort(c.enclosingPosition, s"Implicit not found for '${tpe}.$pname': ${classOf[BSONWriter[_]].getName}[$tpe]")
         }
 
         writer
@@ -770,11 +770,11 @@ private[bson] class MacroImpl(val c: Context) {
           if (writer.toString == "forwardBSONWriter") {
             c.abort(
               c.enclosingPosition,
-              s"Cannot flatten writer for '$pname': recursive type")
+              s"Cannot flatten writer for '${tpe}.$pname': recursive type")
           }
 
           if (!(writer.tpe <:< appliedType(docWriterType, List(sig)))) {
-            c.abort(c.enclosingPosition, s"Cannot flatten writer '$writer': doesn't conform BSONDocumentWriter")
+            c.abort(c.enclosingPosition, s"Cannot flatten writer '$writer' for '${tpe}.$pname': doesn't conform BSONDocumentWriter")
           }
 
           true
