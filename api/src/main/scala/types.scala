@@ -789,10 +789,8 @@ final class BSONBinary private[bson] (
  */
 object BSONBinary {
   /** Extracts the [[Subtype]] if `that`'s a [[BSONBinary]]. */
-  def unapply(that: Any): Option[Subtype] = that match {
-    case other: BSONBinary => Some(other.subtype)
-    case _ => None
-  }
+  def unapply(binary: BSONBinary): Option[Subtype] =
+    Some(binary).map(_.subtype)
 
   /**
    * Creates a [[BSONBinary]] with given `value` and [[Subtype]].
@@ -2177,11 +2175,7 @@ private[bson] sealed trait BSONDocumentExperimental { self: BSONDocument =>
   /**
    * $getFieldIf a binary/uuid field.
    */
-  def uuid(name: String): Option[UUID] =
-    document.getAsOpt[BSONBinary](name).collect { // TODO: As BSONReader?
-      case bin @ BSONBinary(Subtype.UuidSubtype) =>
-        UUID.nameUUIDFromBytes(bin.byteArray)
-    }
+  def uuid(name: String): Option[UUID] = document.getAsOpt[UUID](name)
 
   /**
    * '''EXPERIMENTAL:''' Returns a strict representation
