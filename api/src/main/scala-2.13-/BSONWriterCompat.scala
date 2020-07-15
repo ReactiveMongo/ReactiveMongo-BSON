@@ -10,6 +10,17 @@ private[bson] trait BSONWriterCompat { self: BSONWriter.type =>
    *
    * Creates a [[BSONWriter]] accepting only [[scala.collection.Iterable]],
    * and applying the given safe `write` function to each element value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONWriter, Macros }
+   *
+   * case class Element(str: String, v: Int)
+   *
+   * val elementHandler = Macros.handler[Element]
+   *
+   * val setWriter: BSONWriter[Set[Element]] =
+   *   BSONWriter.iterable[Element, Set](elementHandler writeTry _)
+   * }}}
    */
   def iterable[T, M[_]](
     write: T => Try[BSONValue])(
