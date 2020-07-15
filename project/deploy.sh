@@ -43,7 +43,7 @@ SCALA_MODULES="api:reactivemongo-bson-api specs2:reactivemongo-bson-specs2 msb-c
 SCALA_VERSIONS="2.10 2.11 2.12 2.13"
 BASES=""
 
-NOSHADED=`echo "$VERSION" | grep -- '-noshaded$' | wc -l`
+NOSHADED=`echo "$VERSION" | grep -- '-noshaded' | wc -l`
 
 for V in $SCALA_VERSIONS; do
     for M in $SCALA_MODULES; do
