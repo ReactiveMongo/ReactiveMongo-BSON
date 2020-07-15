@@ -293,6 +293,9 @@ private[bson] class MacroImpl(val c: Context) {
             }
           }
         }
+
+        case _ =>
+          c.abort(c.enclosingPosition, s"Cannot resolve value reader for '${aTpe.typeSymbol.name}'")
       }
     }
 
@@ -362,6 +365,10 @@ private[bson] class MacroImpl(val c: Context) {
             }
           }
         }
+
+        case _ =>
+          c.abort(c.enclosingPosition, s"Cannot resolve value writer for '${aTpe.typeSymbol.name}'")
+
       }
     }
 
