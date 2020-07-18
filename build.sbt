@@ -36,7 +36,7 @@ val reactivemongoShaded = Def.setting[Seq[ModuleID]] {
     Seq("org.reactivemongo" % "reactivemongo-shaded" % v % Provided)
   } else {
     Seq(
-      "io.netty" % "netty-handler" % "4.1.43.Final" % Provided,
+      "io.netty" % "netty-handler" % "4.1.51.Final" % Provided,
       "org.reactivemongo" %% "reactivemongo-alias" % v % Provided)
   }
 }
