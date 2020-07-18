@@ -43,25 +43,26 @@ SCALA_MODULES="api:reactivemongo-bson-api specs2:reactivemongo-bson-specs2 msb-c
 SCALA_VERSIONS="2.10 2.11 2.12 2.13"
 BASES=""
 
-NOSHADED=`echo "$VERSION" | grep -- '-noshaded' | wc -l`
-
 for V in $SCALA_VERSIONS; do
-    for M in $SCALA_MODULES; do
-        B=`echo "$M" | cut -d ':' -f 1`
+  for M in $SCALA_MODULES; do
+    B=`echo "$M" | cut -d ':' -f 1`
+    SDS="$B/target/shaded/scala-$V $B/target/noshaded/scala-$V"
 
-        if [ "$NOSHADED" -eq 0 ]; then
-          SCALA_DIR="$B/target/shaded/scala-$V"
-        else
-          SCALA_DIR="$B/target/noshaded/scala-$V"
-        fi
+    for SCALA_DIR in $SDS; do
+      if [ ! -d "$SCALA_DIR" ]; then
+        echo "Skip Scala version $V for $M"
+      else
+        N=`echo "$M" | cut -d ':' -f 2`
+        MV=`echo "$VERSION" | cut -d '-' -f 1`
 
-        if [ ! -d "$SCALA_DIR" ]; then
-            echo "Skip Scala version $V for $M"
+        if [ `echo "$SCALA_DIR" | grep noshaded | wc -l` -ne 0 -a ! "$MV" = "$VERSION" ]; then
+          BASES="$BASES $SCALA_DIR/$N"_"$V-$MV-noshaded-"`echo "$VERSION" | cut -d '-' -f 2`
         else
-            N=`echo "$M" | cut -d ':' -f 2`
-            BASES="$BASES $SCALA_DIR/$N"_$V-$VERSION
+          BASES="$BASES $SCALA_DIR/$N"_$V-$VERSION
         fi
+      fi
     done
+  done
 done
 
 for B in $BASES; do
