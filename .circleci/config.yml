@@ -74,6 +74,13 @@ commands:
                       exit 0
                     fi
 
+                    V=`sbt 'show version' 2>&1 | tail -n 1 | cut -d ']' -f 2 | perl -pe 's/^[ \t]+//;s/[ \t]+$//'`
+
+                    if [ `echo "$V" | grep -- '-SNAPSHOT' | wc -l` -eq 0 ]; then
+                      echo "Cannot publish release $V"
+                      exit 0
+                    fi
+
                     export REACTIVEMONGO_SHADED="<< parameters.shaded >>"
                     
                     export PUBLISH_REPO_NAME="Sonatype Nexus Repository Manager"
