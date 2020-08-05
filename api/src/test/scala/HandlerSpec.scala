@@ -4,6 +4,7 @@ import java.time.{
   Instant,
   LocalDate,
   LocalDateTime,
+  LocalTime,
   OffsetDateTime,
   ZonedDateTime,
   ZoneId
@@ -1003,6 +1004,22 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
               }
             }
         }
+    }
+  }
+
+  "LocalTime" should {
+    val writer = implicitly[BSONWriter[LocalTime]]
+    val reader = implicitly[BSONReader[LocalTime]]
+
+    "be represented as BSON long (nano precision)" in {
+      val localTime = LocalTime.now()
+
+      writer.writeTry(localTime) must beSuccessfulTry[BSONValue].like {
+        case repr @ BSONLong(v) =>
+          v must_=== localTime.toNanoOfDay and {
+            reader.readTry(repr) must beSuccessfulTry(localTime)
+          }
+      }
     }
   }
 

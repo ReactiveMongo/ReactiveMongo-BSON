@@ -8,6 +8,7 @@ import java.time.{
   Instant,
   LocalDate,
   LocalDateTime,
+  LocalTime,
   OffsetDateTime,
   ZonedDateTime,
   ZoneId
@@ -111,6 +112,15 @@ private[bson] trait DefaultBSONHandlers
     @inline def readTry(bson: BSONValue): Try[Instant] = bson.asDateTime
 
     @inline def safeWrite(date: Instant) = BSONDateTime(date.toEpochMilli)
+  }
+
+  implicit object BSONLocalTimeHandler
+    extends BSONHandler[LocalTime] with SafeBSONWriter[LocalTime] {
+
+    @inline def readTry(bson: BSONValue): Try[LocalTime] =
+      bson.asLong.map(LocalTime.ofNanoOfDay(_))
+
+    @inline def safeWrite(date: LocalTime) = BSONLong(date.toNanoOfDay)
   }
 
   private final class BSONLocalDateTimeHandler(zone: ZoneId)
