@@ -1791,8 +1791,7 @@ sealed abstract class BSONDocument
   def elements: Seq[BSONElement]
 
   /**
-   * Returns the [[scala.collection.immutable.Map]]
-   * representation for this document.
+   * Returns the `Map` representation for this document.
    *
    * {{{
    * import reactivemongo.api.bson.BSONDocument
