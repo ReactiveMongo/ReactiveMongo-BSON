@@ -14,11 +14,15 @@ final class TypeSpec extends org.specs2.mutable.Specification {
 
   "BSON document" should {
     "be empty" in {
-      BSONDocument().elements must beEmpty and (
-        BSONDocument.empty.elements must beEmpty) and (
-          document.elements must beEmpty) and (
-            document().elements must beEmpty) and (
-              BSONDocument.empty.contains("foo") must beFalse)
+      BSONDocument().elements must beEmpty and {
+        BSONDocument.empty.elements must beEmpty
+      } and {
+        document.elements must beEmpty
+      } and {
+        document().elements must beEmpty
+      } and {
+        BSONDocument.empty.contains("foo") must beFalse
+      }
     }
 
     "be created with a new element " in {
@@ -26,6 +30,24 @@ final class TypeSpec extends org.specs2.mutable.Specification {
 
       doc must_=== BSONDocument("foo" -> 1) and (
         doc.contains("foo") must beTrue)
+    }
+
+    "be created using builder" in {
+      val builder1 = BSONDocument.newBuilder += ("foo" -> 1)
+      val builder2 = BSONDocument.newBuilder
+
+      builder2 ++= Option[ElementProducer]("bar" -> 2)
+
+      builder1.result() must_=== BSONDocument("foo" -> 1) and {
+        builder2.result() must_=== BSONDocument("bar" -> 2)
+      } and {
+        builder1 ++= Seq("ipsum" -> 3.45D, "dolor" -> 6L)
+
+        builder1.result() must_=== BSONDocument(
+          "foo" -> 1,
+          "ipsum" -> 3.45D,
+          "dolor" -> 6L)
+      }
     }
   }
 

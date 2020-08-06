@@ -13,7 +13,12 @@ import scala.language.implicitConversions
 import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
-import scala.collection.mutable.{ HashMap => MMap, HashSet => MSet }
+import scala.collection.mutable.{
+  Builder => MBuilder,
+  HashMap => MMap,
+  HashSet => MSet
+}
+
 import scala.collection.immutable.{ HashMap, IndexedSeq, LinearSeq }
 
 import buffer._
@@ -1786,8 +1791,7 @@ sealed abstract class BSONDocument
   def elements: Seq[BSONElement]
 
   /**
-   * Returns the [[scala.collection.immutable.Map]]
-   * representation for this document.
+   * Returns the `Map` representation for this document.
    *
    * {{{
    * import reactivemongo.api.bson.BSONDocument
@@ -2496,6 +2500,23 @@ object BSONDocument {
     override val size = 0
     val headOption = Option.empty[BSONElement]
   }
+
+  /**
+   * '''EXPERIMENTAL:''' Returns a [[BSONDocument]] builder.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, ElementProducer }
+   *
+   * val builder = BSONDocument.newBuilder
+   *
+   * builder += ("foo" -> 1)
+   * builder ++= Seq("bar" -> "lorem", "ipsum" -> 3.45D)
+   * builder ++= Some[ElementProducer]("dolor" -> 6L)
+   *
+   * // builder.result() == {'foo':1, 'bar':'lorem', 'ipsum':3.45, 'dolor':6}
+   * }}}
+   */
+  def newBuilder: MBuilder[ElementProducer, BSONDocument] = new DocumentBuilder
 
   // ---
 
