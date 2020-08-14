@@ -3,6 +3,7 @@ import scala.util.{ Failure, Success, Try }
 import reactivemongo.api.bson.{
   BSONArray,
   BSONDocument,
+  BSONDocumentHandler,
   BSONDocumentReader,
   BSONDocumentWriter,
   BSONHandler,
@@ -152,8 +153,9 @@ object MacroTest {
     object Leaf {
       private val helper: Handler[Leaf] = Macros.handler[Leaf]
 
-      implicit val bson: Handler[Leaf] = new BSONDocumentReader[Leaf] with BSONDocumentWriter[Leaf] with BSONHandler[Leaf] {
-        def writeTry(t: Leaf): Try[BSONDocument] = helper.writeTry(Leaf("hai"))
+      implicit val bson: Handler[Leaf] = new BSONDocumentHandler[Leaf] {
+        def writeTry(t: Leaf): Try[BSONDocument] =
+          helper.writeTry(Leaf("hai"))
 
         def readDocument(bson: BSONDocument): Try[Leaf] = helper readTry bson
       }

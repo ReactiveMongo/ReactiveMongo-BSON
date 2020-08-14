@@ -14,6 +14,10 @@ trait BSONDocumentWriter[T] extends BSONWriter[T] { self =>
     BSONDocumentWriter.from[T] {
       self.writeTry(_).map(f)
     }
+
+  @SuppressWarnings(Array("AsInstanceOf"))
+  override def narrow[U <: T]: BSONDocumentWriter[U] =
+    this.asInstanceOf[BSONDocumentWriter[U]]
 }
 
 /**

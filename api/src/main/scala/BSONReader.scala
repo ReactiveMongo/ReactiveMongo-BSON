@@ -104,7 +104,7 @@ trait BSONReader[T] { self =>
     }
 
   /**
-   * Widen this read for compatible type `U`.
+   * Widens this reader for a compatible type `U`.
    *
    * {{{
    * import reactivemongo.api.bson.BSONReader
@@ -119,10 +119,8 @@ trait BSONReader[T] { self =>
    *
    * @tparam U must be a super-type of `T`
    */
-  def widen[U >: T]: BSONReader[U] = new BSONReader[U] {
-    def readTry(bson: BSONValue): Try[U] =
-      self.readTry(bson).map(identity[U])
-  }
+  @SuppressWarnings(Array("AsInstanceOf"))
+  def widen[U >: T]: BSONReader[U] = this.asInstanceOf[BSONReader[U]]
 }
 
 /** [[BSONReader]] factories */
