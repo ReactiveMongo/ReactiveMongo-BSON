@@ -46,6 +46,25 @@ trait BSONWriter[T] {
    */
   def beforeWrite[U](f: U => T): BSONWriter[U] =
     BSONWriter.from[U] { u => writeTry(f(u)) }
+
+  /**
+   * Narrows this writer for a compatible type `U`.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONWriter
+   *
+   * val listWriter: BSONWriter[Seq[String]] =
+   *   implicitly[BSONWriter[Seq[String]]]
+   *
+   * val narrowAsListWriter: BSONWriter[List[String]] =
+   *   listWriter.narrow[List[String]]
+   *   // as List[String] <: Seq[String]
+   * }}}
+   *
+   * @tparam U must be a sub-type of `T`
+   */
+  @SuppressWarnings(Array("AsInstanceOf"))
+  def narrow[U <: T]: BSONWriter[U] = this.asInstanceOf[BSONWriter[U]]
 }
 
 /**

@@ -848,19 +848,35 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
 
       "as BSONReader" in {
         val barReader = BSONReader[Bar] { _ => bar }
+        val barHandler = BSONHandler.provided(
+          barReader, BSONWriter[Bar](b => BSONInteger(b.v)))
+
         val fooReader: BSONReader[Foo] = barReader.widen[Foo]
+        val fooHandler: BSONHandler[Foo] = barHandler.widen[Foo]
 
         fooReader.readTry(BSONInteger(1)) must beSuccessfulTry(bar) and {
           fooReader.readOpt(BSONInteger(1)) must beSome(bar)
+        } and {
+          fooHandler.readTry(BSONInteger(1)) must beSuccessfulTry(bar)
+        } and {
+          fooHandler.readOpt(BSONInteger(1)) must beSome(bar)
         }
       }
 
       "as BSONDocumentReader" in {
         val barReader = BSONDocumentReader[Bar] { _ => bar }
+        val barHandler = BSONDocumentHandler.provided(
+          barReader, BSONDocumentWriter[Bar](_ => BSONDocument.empty))
+
         val fooReader: BSONDocumentReader[Foo] = barReader.widen[Foo]
+        val fooHandler: BSONDocumentHandler[Foo] = barHandler.widen[Foo]
 
         fooReader.readTry(BSONDocument.empty) must beSuccessfulTry(bar) and {
           fooReader.readOpt(BSONDocument.empty) must beSome(bar)
+        } and {
+          fooHandler.readTry(BSONDocument.empty) must beSuccessfulTry(bar)
+        } and {
+          fooHandler.readOpt(BSONDocument.empty) must beSome(bar)
         }
       }
     }
@@ -895,6 +911,47 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           case "zero" => BSONInteger(0)
           case "one" => BSONInteger(1)
         })
+      }
+    }
+
+    "be narrowed" >> {
+      trait Foo
+      case class Bar(v: Int) extends Foo
+      val bar = Bar(0)
+
+      "as BSONWriter" in {
+        val fooWriter = BSONWriter[Foo](_ => BSONInteger(1))
+        val fooHandler = BSONHandler.provided(
+          BSONReader[Foo](_ => bar), fooWriter)
+
+        val barWriter: BSONWriter[Bar] = fooWriter.narrow[Bar]
+        val barHandler: BSONHandler[Bar] = fooHandler.narrow[Bar]
+
+        barWriter.writeTry(bar) must beSuccessfulTry(BSONInteger(1)) and {
+          barWriter.writeOpt(bar) must beSome(BSONInteger(1))
+        } and {
+          barHandler.writeTry(bar) must beSuccessfulTry(BSONInteger(1))
+        } and {
+          barHandler.writeOpt(bar) must beSome(BSONInteger(1))
+        }
+      }
+
+      "as BSONDocumentWriter" in {
+        val doc = BSONDocument("bar" -> 1)
+        val fooWriter = BSONDocumentWriter[Foo](_ => doc)
+        val fooHandler = BSONDocumentHandler.provided(
+          BSONDocumentReader[Foo](_ => bar), fooWriter)
+
+        val barWriter: BSONDocumentWriter[Bar] = fooWriter.narrow[Bar]
+        val barHandler: BSONDocumentHandler[Bar] = fooHandler.narrow[Bar]
+
+        barWriter.writeTry(bar) must beSuccessfulTry(doc) and {
+          barWriter.writeOpt(bar) must beSome(doc)
+        } and {
+          barHandler.writeTry(bar) must beSuccessfulTry(doc)
+        } and {
+          barHandler.writeOpt(bar) must beSome(doc)
+        }
       }
     }
   }

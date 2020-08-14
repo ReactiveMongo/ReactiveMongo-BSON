@@ -28,6 +28,13 @@ trait BSONHandler[T] extends BSONReader[T] with BSONWriter[T] {
   final override def afterWrite(f: PartialFunction[BSONValue, BSONValue]): BSONHandler[T] = BSONHandler.provided[T](
     reader = this,
     writer = super.afterWrite(f))
+
+  @SuppressWarnings(Array("AsInstanceOf"))
+  override def widen[U >: T]: BSONHandler[U] = this.asInstanceOf[BSONHandler[U]]
+
+  @SuppressWarnings(Array("AsInstanceOf"))
+  override def narrow[U <: T]: BSONHandler[U] =
+    this.asInstanceOf[BSONHandler[U]]
 }
 
 /** [[BSONHandler]] factories */

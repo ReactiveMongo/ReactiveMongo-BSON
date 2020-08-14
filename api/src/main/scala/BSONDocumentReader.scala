@@ -20,11 +20,9 @@ trait BSONDocumentReader[T] extends BSONReader[T] { self =>
     self.readDocument(f(doc))
   }
 
-  final override def widen[U >: T]: BSONDocumentReader[U] =
-    new BSONDocumentReader[U] {
-      def readDocument(doc: BSONDocument): Try[U] =
-        self.readDocument(doc).map(identity[U])
-    }
+  @SuppressWarnings(Array("AsInstanceOf"))
+  override def widen[U >: T]: BSONDocumentReader[U] =
+    this.asInstanceOf[BSONDocumentReader[U]]
 }
 
 /** [[BSONDocumentReader]] factories */

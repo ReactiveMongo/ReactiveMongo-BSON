@@ -505,11 +505,7 @@ object Macros {
   object Placeholder {
     private val instance = new Placeholder()
 
-    implicit object Handler
-      extends BSONDocumentReader[Placeholder]
-      with BSONDocumentWriter[Placeholder]
-      with BSONHandler[Placeholder] {
-
+    implicit object Handler extends BSONDocumentHandler[Placeholder] {
       def readDocument(bson: BSONDocument) = Success(instance)
 
       @com.github.ghik.silencer.silent

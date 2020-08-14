@@ -11,6 +11,14 @@ trait BSONDocumentHandler[T] extends BSONDocumentReader[T]
   final override def afterWrite(f: BSONDocument => BSONDocument): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
     reader = this,
     writer = super.afterWrite(f))
+
+  @SuppressWarnings(Array("AsInstanceOf"))
+  final override def widen[U >: T]: BSONDocumentHandler[U] =
+    this.asInstanceOf[BSONDocumentHandler[U]]
+
+  @SuppressWarnings(Array("AsInstanceOf"))
+  final override def narrow[U <: T]: BSONDocumentHandler[U] =
+    this.asInstanceOf[BSONDocumentHandler[U]]
 }
 
 /** [[BSONDocumentHandler]] factories */
