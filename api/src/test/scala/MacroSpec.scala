@@ -187,6 +187,24 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       roundtrip(seq, genSeqHandler[Option[Single]])
     }
 
+    "support auto-materialization for property types (not recommended)" in {
+      val handler = Macros.handlerOpts[Person2, MacroOptions.AutomaticMaterialization with MacroOptions.DisableWarnings]
+
+      typecheck("Macros.handler[Person2]") must failWith(
+        "Implicit\\ not\\ found\\ for\\ .*itemList") and {
+          roundtrip(
+            Person2(
+              name = "Name",
+              age = 20,
+              phoneNum = 33000000000L,
+              itemList = Seq(
+                Item(name = "#1", number = new FooVal(10)),
+                Item(name = "#2", number = new FooVal(20))),
+              list = Seq(1, 2, 3)),
+            handler)
+        }
+    }
+
     "handle overloaded apply correctly" in {
       val doc1 = OverloadedApply("hello")
       val doc2 = OverloadedApply(List("hello", "world"))
@@ -646,7 +664,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         reader1.readTry(expectedDoc) must beFailedTry.
           withThrowable[HandlerException]( // As status is asymetric ...
             // ... with just a custom @Writer but no corresponding @Reader
-            "Fails\\ to\\ handle\\ score:\\ BSONString\\ !=\\ <float>")
+            "Fails\\ to\\ handle\\ 'score':\\ BSONString\\ !=\\ <float>")
       } and {
         // Define a BSONReader for 'score: Float' corresponding to @Writer
         implicit def floatReader = BSONReader.collect[Float] {
