@@ -152,10 +152,10 @@ final class HandlerException private[bson] (
 
   override lazy val getMessage: String = getCause match {
     case null =>
-      s"Fails to handle ${expression}"
+      s"Fails to handle '${expression}'"
 
     case cause =>
-      s"Fails to handle ${expression}: ${cause.getMessage}"
+      s"Fails to handle '${expression}': ${cause.getMessage}"
   }
 
   def suppress(other: Iterable[HandlerException]): HandlerException =

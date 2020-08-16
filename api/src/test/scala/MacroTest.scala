@@ -299,4 +299,13 @@ object MacroTest {
   case class WithMap2(
     name: String,
     values: Map[FooVal, String])
+
+  case class Person2(
+    name: String,
+    age: Int,
+    phoneNum: Long,
+    itemList: Seq[Item],
+    list: Seq[Int])
+
+  case class Item(name: String, number: FooVal)
 }
