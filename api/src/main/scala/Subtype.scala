@@ -9,25 +9,25 @@ sealed trait Subtype {
 }
 
 object Subtype {
-  sealed trait GenericBinarySubtype extends Subtype { val value = 0x00 }
+  sealed class GenericBinarySubtype extends Subtype { val value = 0x00 }
   object GenericBinarySubtype extends GenericBinarySubtype
 
-  sealed trait FunctionSubtype extends Subtype { val value = 0x01 }
+  sealed class FunctionSubtype extends Subtype { val value = 0x01 }
   object FunctionSubtype extends FunctionSubtype
 
-  sealed trait OldBinarySubtype extends Subtype { val value = 0x02 }
+  sealed class OldBinarySubtype extends Subtype { val value = 0x02 }
   object OldBinarySubtype extends OldBinarySubtype
 
-  sealed trait OldUuidSubtype extends Subtype { val value = 0x03 }
+  sealed class OldUuidSubtype extends Subtype { val value = 0x03 }
   object OldUuidSubtype extends OldUuidSubtype
 
-  sealed trait UuidSubtype extends Subtype { val value = 0x04 }
+  sealed class UuidSubtype extends Subtype { val value = 0x04 }
   object UuidSubtype extends UuidSubtype
 
-  sealed trait Md5Subtype extends Subtype { val value = 0x05 }
+  sealed class Md5Subtype extends Subtype { val value = 0x05 }
   object Md5Subtype extends Md5Subtype
 
-  sealed trait UserDefinedSubtype extends Subtype {
+  sealed class UserDefinedSubtype extends Subtype {
     val value = 0x80.toByte.toInt
   }
 

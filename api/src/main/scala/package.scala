@@ -7,7 +7,7 @@ package reactivemongo.api
  * import reactivemongo.api.bson._
  *
  * // { "name": "Johny", "surname": "Doe", "age": 28, "months": [1, 2, 3] }
- * document ++ ("name" -> "Johny") ++ ("surname" -> "Doe") ++
+ * BSONDocument.empty ++ ("name" -> "Johny") ++ ("surname" -> "Doe") ++
  * ("age" -> 28) ++ ("months" -> array(1, 2, 3))
  *
  * // { "_id": generatedId, "name": "Jane", "surname": "Doe", "age": 28,
@@ -21,10 +21,10 @@ package reactivemongo.api
  *
  * '''System properties:'''
  *
- * The following properties can be set (e.g. using `-D` option).
+ * The following properties can be set (e.g. using JVM `-D` options).
  *
  *   - `reactivemongo.api.bson.bufferSizeBytes` (integer; default: `96`): Number of bytes used as initial size when allocating a new buffer.
- *   - `reactivemongo.api.bson.document.strict` (boolean; default: `false`): Flag to enable strict reading of document (filter duplicate fields, see [[BSONDocument]]).
+ *   - `reactivemongo.api.bson.document.strict` (boolean; default: `false`): Flag to enable strict reading of document (filter duplicate fields, see [[BSONDocument.asStrict]]).
  */
 package object bson extends DefaultBSONHandlers with Aliases with Utils {
   // DSL helpers:
@@ -90,8 +90,6 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
 
   /** Returns a newly generated object ID. */
   def generateId = BSONObjectID.generate()
-
-  def element(name: String, value: BSONValue) = BSONElement(name, value)
 
   /**
    * Key/value ordering

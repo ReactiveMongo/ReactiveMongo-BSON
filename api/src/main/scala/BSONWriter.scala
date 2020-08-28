@@ -6,12 +6,29 @@ import scala.util.{ Failure, Success, Try }
  * A writer that produces a subtype of [[BSONValue]] from an instance of `T`.
  */
 trait BSONWriter[T] {
-  /** Tries to produce a BSON value from an instance of `T`. */
+  /**
+   * Tries to produce a BSON value from an instance of `T`.
+   *
+   * {{{
+   * import scala.util.Try
+   * import reactivemongo.api.bson.{ BSONWriter, BSONValue }
+   *
+   * def toBSON[T](value: T)(implicit w: BSONWriter[T]): Try[BSONValue] =
+   *   w.writeTry(value)
+   * }}}
+   */
   def writeTry(t: T): Try[BSONValue]
 
   /**
    * Tries to produce a BSON value from an instance of `T`,
    * returns `None` if an error occurred.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONWriter, BSONValue }
+   *
+   * def maybeBSON[T](value: T)(implicit w: BSONWriter[T]): Option[BSONValue] =
+   *   w.writeOpt(value)
+   * }}}
    */
   def writeOpt(t: T): Option[BSONValue] = writeTry(t).toOption
 
@@ -43,6 +60,15 @@ trait BSONWriter[T] {
    * the current writer.
    *
    * @param f the function apply the `U` input value to convert at `T` value used to the current writer
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONWriter
+   *
+   * val w: BSONWriter[String] =
+   *   implicitly[BSONWriter[Int]].beforeWrite(_.size)
+   *
+   * w.writeTry("foo") // Success: BSONInteger(3)
+   * }}}
    */
   def beforeWrite[U](f: U => T): BSONWriter[U] =
     BSONWriter.from[U] { u => writeTry(f(u)) }

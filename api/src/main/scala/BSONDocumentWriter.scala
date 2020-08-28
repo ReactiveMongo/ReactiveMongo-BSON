@@ -2,6 +2,7 @@ package reactivemongo.api.bson
 
 import scala.util.{ Failure, Success, Try }
 
+/** [[BSONWriter]] specialized for [[BSONDocument]] */
 trait BSONDocumentWriter[T] extends BSONWriter[T] { self =>
   override def writeTry(t: T): Try[BSONDocument]
 

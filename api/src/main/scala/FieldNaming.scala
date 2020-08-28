@@ -2,6 +2,15 @@ package reactivemongo.api.bson
 
 /**
  * Naming strategy, to map each class property to the corresponding field.
+ *
+ * {{{
+ * import reactivemongo.api.bson.{ FieldNaming, MacroConfiguration }
+ *
+ * def initCfg(naming: FieldNaming): MacroConfiguration =
+ *   MacroConfiguration(fieldNaming = naming)
+ * }}}
+ *
+ * @see [[MacroConfiguration]]
  */
 trait FieldNaming extends (String => String) {
   /**
@@ -18,6 +27,13 @@ object FieldNaming {
   /**
    * For each class property, use the name
    * as is for its field (e.g. fooBar -> fooBar).
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ FieldNaming, MacroConfiguration }
+   *
+   * val cfg: MacroConfiguration =
+   *   MacroConfiguration(fieldNaming = FieldNaming.Identity)
+   * }}}
    */
   object Identity extends FieldNaming {
     def apply(property: String): String = property
@@ -27,6 +43,13 @@ object FieldNaming {
   /**
    * For each class property, use the snake case equivalent
    * to name its field (e.g. fooBar -> foo_bar).
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ FieldNaming, MacroConfiguration }
+   *
+   * val cfg: MacroConfiguration =
+   *   MacroConfiguration(fieldNaming = FieldNaming.SnakeCase)
+   * }}}
    */
   object SnakeCase extends FieldNaming {
     def apply(property: String): String = {
@@ -64,6 +87,13 @@ object FieldNaming {
   /**
    * For each class property, use the pascal case equivalent
    * to name its field (e.g. fooBar -> FooBar).
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ FieldNaming, MacroConfiguration }
+   *
+   * val cfg: MacroConfiguration =
+   *   MacroConfiguration(fieldNaming = FieldNaming.PascalCase)
+   * }}}
    */
   object PascalCase extends FieldNaming {
     def apply(property: String): String = property.capitalize
@@ -71,7 +101,16 @@ object FieldNaming {
     override val toString = "PascalCase"
   }
 
-  /** Naming using a custom transformation function. */
+  /**
+   * Naming using a custom transformation function.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ FieldNaming, MacroConfiguration }
+   *
+   * def withNaming(f: String => String): MacroConfiguration =
+   *   MacroConfiguration(fieldNaming = FieldNaming(f))
+   * }}}
+   */
   def apply(transformation: String => String): FieldNaming = new FieldNaming {
     def apply(property: String): String = transformation(property)
   }

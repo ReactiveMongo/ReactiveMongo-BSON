@@ -4,7 +4,29 @@ import java.util.{ Locale, UUID }
 
 import scala.util.{ Failure, Success, Try }
 
-/** Mapping from a BSON string to `T` */
+/**
+ * Mapping from a BSON string to `T`;
+ * Used by [[scala.collection.Map]] handlers.
+ *
+ * {{{
+ * final class Foo(val v: String) extends AnyVal
+ *
+ * val bson = reactivemongo.api.bson.BSONDocument(
+ *   "foo:key" -> 1, "foo:name" -> 2)
+ *
+ * import reactivemongo.api.bson.KeyReader
+ *
+ * implicit def fooKeyReader: KeyReader[Foo] =
+ *   KeyReader[Foo] { str =>
+ *     new Foo(str.stripPrefix("foo:"))
+ *   }
+ *
+ * reactivemongo.api.bson.BSON.readDocument(bson)
+ * // Success: Map[Foo, Int](
+ * //  (new Foo("key") -> 1),
+ * //  (new Foo("name") -> 2))
+ * }}}
+ */
 trait KeyReader[T] {
   def readTry(key: String): Try[T]
 }
