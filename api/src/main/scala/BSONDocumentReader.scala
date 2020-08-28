@@ -3,6 +3,7 @@ package reactivemongo.api.bson
 import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
+/** [[BSONReader]] specialized for [[BSONDocument]] */
 trait BSONDocumentReader[T] extends BSONReader[T] { self =>
   final def readTry(bson: BSONValue): Try[T] = bson match {
     case doc: BSONDocument => readDocument(doc)
@@ -11,6 +12,17 @@ trait BSONDocumentReader[T] extends BSONReader[T] { self =>
       "BSONDocument", bson.getClass.getSimpleName))
   }
 
+  /**
+   * Tries to produce an instance of `T` from the `document`.
+   *
+   * {{{
+   * import scala.util.Try
+   * import reactivemongo.api.bson.{ BSONDocument, BSONDocumentReader }
+   *
+   * def fromBSON[T](document: BSONDocument)(
+   *   implicit r: BSONDocumentReader[T]): Try[T] = r.readTry(document)
+   * }}}
+   */
   def readDocument(doc: BSONDocument): Try[T]
 
   final override def afterRead[U](f: T => U): BSONDocumentReader[U] =

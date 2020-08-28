@@ -53,7 +53,7 @@ object MacroConfiguration {
    * val customCfg = MacroConfiguration(discriminator = "_type")
    * }}}
    *
-   * @param naming the naming strategy
+   * @param naming the naming strategy for the document fields
    * @param discriminator See [[MacroConfiguration.discriminator]]
    * @param typeNaming See [[MacroConfiguration.typeNaming]]
    * @tparam Opts the compile time options (see [[MacroOptions]])
@@ -76,6 +76,4 @@ object MacroConfiguration {
     val typeNaming: TypeNaming) extends MacroConfiguration {
     type Opts = O
   }
-
-  //protected def default: MacroConfiguration.Aux[MacroOptions] = apply()
 }

@@ -15,6 +15,8 @@ package reactivemongo.api.bson
  *     "_" + cls.getSimpleName
  *   })
  * }}}
+ *
+ * @see [[MacroConfiguration]]
  */
 trait TypeNaming extends (Class[_] => String) {
   /**

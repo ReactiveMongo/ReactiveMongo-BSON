@@ -1123,6 +1123,7 @@ final class BSONBoolean private[bson] (val value: Boolean)
   override def toString: String = s"BSONBoolean($value)"
 }
 
+/** [[BSONBoolean]] factories & utilities */
 object BSONBoolean {
   /** Extracts the boolean value if `that`'s a [[BSONBoolean]]. */
   def unapply(that: Any): Option[Boolean] = that match {
@@ -1168,6 +1169,7 @@ final class BSONDateTime private[bson] (val value: Long)
   override def toString: String = s"BSONDateTime($value)"
 }
 
+/** [[BSONDateTime]] factories & utilities */
 object BSONDateTime {
   /** Extracts the dateTime value if `that`'s a [[BSONDateTime]]. */
   def unapply(that: Any): Option[Long] = that match {
@@ -1236,6 +1238,7 @@ final class BSONRegex private[bson] (
   override def toString: String = s"BSONRegex($value, $flags)"
 }
 
+/** [[BSONRegex]] factories & utilities */
 object BSONRegex {
   /** Extracts the regex value and flags if `that`'s a [[BSONRegex]]. */
   def unapply(that: Any): Option[(String, String)] = that match {
@@ -1272,6 +1275,7 @@ final class BSONJavaScript private[bson] (val value: String) extends BSONValue {
   override def toString: String = s"BSONJavaScript($value)"
 }
 
+/** [[BSONJavaScript]] factories & utilities */
 object BSONJavaScript {
   /** Extracts the javaScript value if `that`'s a [[BSONJavaScript]]. */
   def unapply(that: Any): Option[String] = that match {
@@ -1307,6 +1311,7 @@ final class BSONSymbol private[bson] (val value: String) extends BSONValue {
   override def toString: String = s"BSONSymbol($value)"
 }
 
+/** [[BSONSymbol]] factories & utilities */
 object BSONSymbol {
   /** Extracts the symbol value if `that`'s a [[BSONSymbol]]. */
   def unapply(that: Any): Option[String] = that match {
@@ -1353,6 +1358,7 @@ final class BSONJavaScriptWS private[bson] (
   override def toString: String = s"BSONJavaScriptWS($value)"
 }
 
+/** [[BSONJavaScriptWS]] factories & utilities */
 object BSONJavaScriptWS {
   /** Extracts the javaScriptWS value if `that`'s a [[BSONJavaScriptWS]]. */
   def unapply(that: Any): Option[(String, BSONDocument)] = that match {
@@ -1406,6 +1412,7 @@ final class BSONInteger private[bson] (val value: Int)
   override def toString: String = s"BSONInteger($value)"
 }
 
+/** [[BSONInteger]] factories & utilities */
 object BSONInteger {
   /** Extracts the integer value if `that`'s a [[BSONInteger]]. */
   def unapply(that: Any): Option[Int] = that match {
@@ -1554,6 +1561,7 @@ final class BSONLong private[bson] (val value: Long)
   override def toString: String = s"BSONLong($value)"
 }
 
+/** [[BSONLong]] factories & utilities */
 object BSONLong {
   /** Extracts the value if `that`'s a [[BSONLong]]. */
   def unapply(that: Any): Option[Long] = that match {
@@ -1640,6 +1648,7 @@ final class BSONDecimal private[bson] (
   }
 }
 
+/** [[BSONDecimal]] factories & utilities */
 object BSONDecimal {
   import java.math.MathContext
 

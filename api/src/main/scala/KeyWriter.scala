@@ -6,6 +6,7 @@ import scala.util.{ Success, Try }
 
 /**
  * Mapping from a BSON string to `T`.
+ * Used by [[scala.collection.Map]] handlers.
  *
  * {{{
  * final class Foo(val v: String) extends AnyVal

@@ -40,7 +40,18 @@ object MacroOptions {
    */
   trait Verbose extends Default
 
-  /** The options to disable compilation warnings. */
+  /**
+   * The options to disable compilation warnings.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentWriter, Macros, MacroOptions }
+   *
+   * case class Bar(score: Float)
+   *
+   * val w: BSONDocumentWriter[Bar] =
+   *   Macros.using[MacroOptions.DisableWarnings].writer[Bar]
+   * }}}
+   */
   trait DisableWarnings extends Default
 
   /**
@@ -129,16 +140,8 @@ object MacroOptions {
 
   // ---
 
+  /** Implicit resolution of [[MacroOptions]] */
   trait ValueOf[O <: MacroOptions]
-
-  trait LowPriorityValueOfImplicits {
-    /**
-     * Low priority implicit used when some explicit MacroOptions
-     * instance is passed.
-     */
-    implicit def lowPriorityDefault[O <: MacroOptions]: ValueOf[O] =
-      new ValueOf[O] {}
-  }
 
   object ValueOf extends LowPriorityValueOfImplicits {
 
@@ -146,5 +149,14 @@ object MacroOptions {
      * This will be the default that's passed when no MacroOptions is specified.
      */
     implicit object optionsDefault extends ValueOf[MacroOptions]
+  }
+
+  private[bson] sealed trait LowPriorityValueOfImplicits {
+    /**
+     * Low priority implicit used when some explicit MacroOptions
+     * instance is passed.
+     */
+    implicit def lowPriorityDefault[O <: MacroOptions]: ValueOf[O] =
+      new ValueOf[O] {}
   }
 }

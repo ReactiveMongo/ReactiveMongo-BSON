@@ -10,9 +10,16 @@ import _root_.monocle.Optional
  */
 package object monocle extends LowPriorityMonocle {
   /**
-   * Returns an optional lens for a field with the given `name`.
+   * Returns an optional lens for a field with the given `name`
    *
    * @tparam T the field type
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONString
+   * import reactivemongo.api.bson.monocle._
+   *
+   * val lens = field[BSONString]("bar")
+   * }}}
    */
   def field[T <: BSONValue](name: String)(implicit ct: ClassTag[T]): Optional[BSONDocument, T] =
     Optional[BSONDocument, T](_.get(name).flatMap(ct.unapply)) { newVal: T =>
@@ -66,6 +73,8 @@ package object monocle extends LowPriorityMonocle {
     lens: Optional[BSONDocument, BSONDocument]) {
 
     /**
+     * Returns a lens for a nested document.
+     *
      * {{{
      * import reactivemongo.api.bson.monocle._
      *
@@ -82,6 +91,12 @@ private[bson] sealed trait LowPriorityMonocle {
    * Returns an optional lens for a field with the given `name`.
    *
    * @tparam T the field type
+   *
+   * {{{
+   * import reactivemongo.api.bson.monocle._
+   *
+   * val lens = field[String]("bar")
+   * }}}
    */
   def field[T](name: String)(
     implicit

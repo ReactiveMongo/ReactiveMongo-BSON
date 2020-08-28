@@ -5,7 +5,7 @@ import scala.util.{ Failure, Success, Try }
 import GeoPosition.safeWriter.{ safeWrite => writePos }
 
 /**
- * GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#overview geometry object]]
+ * GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#overview geometry]] object
  */
 sealed trait GeoGeometry {
   /** The type of coordinates (depends on the type of geometry). */
@@ -19,6 +19,9 @@ sealed trait GeoGeometry {
   protected def coordinates: C
 }
 
+/**
+ * Geometry utilities
+ */
 object GeoGeometry {
   implicit val handler: BSONDocumentHandler[GeoGeometry] = {
     implicit val cfg: MacroConfiguration = MacroConfiguration(
@@ -73,7 +76,7 @@ final class GeoPoint private[api] (
   override def toString = s"GeoPoint(${coordinates.toString})"
 }
 
-/** See [[GeoPoint]] */
+/** [[GeoPoint]] factories & utilities */
 object GeoPoint {
   val `type` = "Point"
 
