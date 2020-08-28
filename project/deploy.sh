@@ -43,6 +43,14 @@ SCALA_MODULES="api:reactivemongo-bson-api specs2:reactivemongo-bson-specs2 msb-c
 SCALA_VERSIONS="2.10 2.11 2.12 2.13"
 BASES=""
 
+QUALIFIER=""
+WO_QUALIFIER="$VERSION"
+
+if [ `expr index "$VERSION" '-'` -gt 0 ]; then
+  QUALIFIER=`echo "$VERSION" | cut -d '-' -f 2`
+  WO_QUALIFIER=`echo "$VERSION" | cut -d '-' -f 1`
+fi
+
 for V in $SCALA_VERSIONS; do
   for M in $SCALA_MODULES; do
     B=`echo "$M" | cut -d ':' -f 1`
@@ -53,10 +61,13 @@ for V in $SCALA_VERSIONS; do
         echo "Skip Scala version $V for $M"
       else
         N=`echo "$M" | cut -d ':' -f 2`
-        MV=`echo "$VERSION" | cut -d '-' -f 1`
 
-        if [ `echo "$SCALA_DIR" | grep noshaded | wc -l` -ne 0 -a ! "$MV" = "$VERSION" ]; then
-          BASES="$BASES $SCALA_DIR/$N"_"$V-$MV-noshaded-"`echo "$VERSION" | cut -d '-' -f 2`
+        if [ `echo "$SCALA_DIR" | grep noshaded | wc -l` -ne 0 ]; then
+          if [ ! -z $QUALIFIER ]; then
+            BASES="$BASES $SCALA_DIR/$N"_"$V-$WO_QUALIFIER-noshaded-"`echo "$VERSION" | cut -d '-' -f 2`
+          else
+            BASES="$BASES $SCALA_DIR/$N"_"$V-$VERSION-noshaded"
+          fi
         else
           BASES="$BASES $SCALA_DIR/$N"_$V-$VERSION
         fi
