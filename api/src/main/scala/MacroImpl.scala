@@ -1232,6 +1232,7 @@ private[bson] class MacroImpl(val c: Context) {
         alt.paramLists match {
           case params :: ps if (ps.isEmpty || ps.headOption.flatMap(
             _.headOption).exists(_.isImplicit)) => if (params.size != u.size) false else {
+
             deepConforms(lazyZip(params.map(_.typeSignature), u).toSeq)
           }
 
