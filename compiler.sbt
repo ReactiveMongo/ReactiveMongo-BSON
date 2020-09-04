@@ -55,10 +55,7 @@ scalacOptions in (Test, console) ~= {
 
 // Silencer
 ThisBuild / libraryDependencies ++= {
-  val silencerVersion = {
-    if (scalaBinaryVersion.value == "2.11") "1.7.1"
-    else "1.7.0"
-  }
+  val silencerVersion = "1.7.1"
 
   Seq(
     compilerPlugin(("com.github.ghik" %% "silencer-plugin" % silencerVersion).
