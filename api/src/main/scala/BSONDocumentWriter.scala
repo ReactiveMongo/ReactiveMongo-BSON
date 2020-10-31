@@ -144,6 +144,26 @@ object BSONDocumentWriter {
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONDocumentWriter]] that writes
+   * a single value as a [[BSONDocument]] with a single field.
+   *
+   * @param name the name of the field to be written
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocumentWriter
+   *
+   * val writer = BSONDocumentWriter.field[String]("foo")
+   *
+   * writer.writeTry("bar")
+   * // => Success: {'foo': 'bar'}
+   * }}}
+   */
+  def field[T](name: String)(implicit w: BSONWriter[T]): BSONDocumentWriter[T] =
+    BSONDocumentWriter[T] { value =>
+      BSONDocument(name -> value)
+    }
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentWriter]] that writes
    * tuple elements as [[BSONDocument]] fields.
    *
    * {{{
