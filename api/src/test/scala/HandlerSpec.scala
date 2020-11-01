@@ -956,6 +956,22 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     }
   }
 
+  "Field" should {
+    "be read" in {
+      val reader = BSONDocumentReader.field[String]("foo")
+
+      reader.readTry(BSONDocument("foo" -> "bar")).
+        aka("field") must beSuccessfulTry("bar")
+
+    } tag "wip"
+
+    "be written" in {
+      val writer = BSONDocumentWriter.field[Int]("bar")
+
+      writer.writeTry(2) must beSuccessfulTry(BSONDocument("bar" -> 2))
+    } tag "wip"
+  }
+
   "Tuple" should {
     "be read" >> {
       val invalidDoc = BSONDocument("ok" -> 0)

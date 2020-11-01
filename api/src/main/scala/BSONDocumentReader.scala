@@ -107,6 +107,25 @@ object BSONDocumentReader {
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
+   * a single document field.
+   *
+   * @param name the name of the field to be read
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONDocumentReader }
+   *
+   * val reader = BSONDocumentReader.field[String]("foo")
+   *
+   * val doc = BSONDocument("foo" -> "bar")
+   *
+   * reader.readTry(doc) // Success("bar")
+   * }}}
+   */
+  def field[T](name: String)(implicit r: BSONReader[T]): BSONDocumentReader[T] =
+    BSONDocumentReader.from[T](_.getAsTry[T](name))
+
+  /**
+   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
    * the specified document fields as tuple elements.
    *
    * {{{

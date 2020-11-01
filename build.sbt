@@ -1,8 +1,8 @@
 import Dependencies._
 
-ThisBuild / organization := "org.reactivemongo"
+organization := "org.reactivemongo"
 
-ThisBuild / autoAPIMappings := true
+autoAPIMappings := true
 
 val baseArtifact = "reactivemongo-bson"
 
@@ -11,8 +11,6 @@ name := "reactivemongo-biːsən"
 resolvers in ThisBuild ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository releases" at "https://repo.typesafe.com/typesafe/releases/")
-
-ThisBuild / mimaFailOnNoPrevious := false
 
 val commonSettings = Seq(
   scalacOptions in (Compile, doc) := (scalacOptions in Test).value ++ Seq(

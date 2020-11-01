@@ -3,7 +3,7 @@ ThisBuild / scalaVersion := "2.12.12"
 ThisBuild / crossScalaVersions := Seq(
   "2.11.12", scalaVersion.value, "2.13.3")
 
-ThisBuild / crossVersion := CrossVersion.binary
+crossVersion := CrossVersion.binary
 
 ThisBuild / scalacOptions ++= Seq(
   "-encoding", "UTF-8", "-target:jvm-1.8",
@@ -32,11 +32,19 @@ ThisBuild / scalacOptions ++= {
       "-Xmax-classfile-name", "128",
       "-Yopt:_", "-Ydead-code", "-Yclosure-elim", "-Yconst-opt")
   } else {
-    Seq("-Wmacros:after")
+    Seq(
+      "-explaintypes",
+      "-Werror",
+      "-Wnumeric-widen",
+      "-Wdead-code",
+      "-Wvalue-discard",
+      "-Wextra-implicit",
+      "-Wmacros:after",
+      "-Wunused")
   }
 }
 
-ThisBuild / scalacOptions in (Compile, console) ~= {
+scalacOptions in (Compile, console) ~= {
   _.filterNot(o =>
     o.startsWith("-X") || o.startsWith("-Y") || o.startsWith("-P:silencer"))
 }
