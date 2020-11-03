@@ -605,6 +605,10 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
       }
     }
 
+    "be read as Locale" in {
+      BSONString("fr-FR").asTry[Locale] must beSuccessfulTry(Locale.FRANCE)
+    }
+
     "be read as URL" in {
       BSONString("http://reactivemongo.org").
         asTry[URL] must beSuccessfulTry(new URL("http://reactivemongo.org"))
@@ -647,6 +651,11 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
     "be written #2" in {
       writer.beforeWrite((_: (Int, Int)).toString).writeTry(1 -> 2).
         aka("mapped BSON") must beSuccessfulTry(BSONString("(1,2)"))
+    }
+
+    "be written from Locale" in {
+      implicitly[BSONWriter[Locale]].
+        writeTry(Locale.FRANCE) must beSuccessfulTry(BSONString("fr-FR"))
     }
 
     "be written from URL" in {
@@ -963,13 +972,13 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
       reader.readTry(BSONDocument("foo" -> "bar")).
         aka("field") must beSuccessfulTry("bar")
 
-    } tag "wip"
+    }
 
     "be written" in {
       val writer = BSONDocumentWriter.field[Int]("bar")
 
       writer.writeTry(2) must beSuccessfulTry(BSONDocument("bar" -> 2))
-    } tag "wip"
+    }
   }
 
   "Tuple" should {
