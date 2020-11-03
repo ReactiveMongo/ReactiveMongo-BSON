@@ -1,36 +1,14 @@
 package reactivemongo
 
-import org.bson.{
-  BsonArray,
-  BsonBinary,
-  BsonBoolean,
-  BsonDateTime,
-  BsonDecimal128,
-  BsonDocument,
-  BsonDouble,
-  BsonInt32,
-  BsonInt64,
-  BsonJavaScript,
-  BsonJavaScriptWithScope,
-  BsonMaxKey,
-  BsonMinKey,
-  BsonNull,
-  BsonObjectId,
-  BsonRegularExpression,
-  BsonSymbol,
-  BsonString,
-  BsonTimestamp,
-  BsonUndefined
-}
-
-import org.bson.codecs._
-import org.bson.codecs.configuration.CodecRegistry
-import org.bson.json.JsonReader
-
 import reactivemongo.api.bson.BSONHandler
 import reactivemongo.api.bson.msb.HandlerConverters
 
 import org.specs2.specification.core.Fragment
+
+import org.bson.{ BsonArray, BsonBinary, BsonBoolean, BsonDateTime, BsonDecimal128, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonJavaScript, BsonJavaScriptWithScope, BsonMaxKey, BsonMinKey, BsonNull, BsonObjectId, BsonRegularExpression, BsonString, BsonSymbol, BsonTimestamp, BsonUndefined }
+import org.bson.codecs._
+import org.bson.codecs.configuration.CodecRegistry
+import org.bson.json.JsonReader
 
 final class HandlerConverterSpec
   extends org.specs2.mutable.Specification

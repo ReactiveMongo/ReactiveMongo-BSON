@@ -1,18 +1,9 @@
 package reactivemongo.api.bson
 
 import org.typelevel.discipline.specs2.mutable.Discipline
-
-import spire.laws.GroupLaws
-import spire.algebra.{
-  Additive,
-  AdditiveSemigroup,
-  AdditiveMonoid,
-  Eq,
-  Monoid,
-  Semigroup
-}
-
 import reactivemongo.BSONValueFixtures
+import spire.algebra.{ Additive, AdditiveMonoid, AdditiveSemigroup, Eq, Monoid, Semigroup }
+import spire.laws.GroupLaws
 
 final class BSONLawsSpecs
   extends org.specs2.mutable.Specification with Discipline {

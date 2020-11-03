@@ -2,9 +2,9 @@ package reactivemongo.api.bson
 
 import scala.util.Random
 
-import org.openjdk.jmh.annotations._
-
 import reactivemongo.api.bson.buffer.{ ReadableBuffer, WritableBuffer }
+
+import org.openjdk.jmh.annotations._
 
 @State(Scope.Benchmark)
 class WritableBufferBenchmark {

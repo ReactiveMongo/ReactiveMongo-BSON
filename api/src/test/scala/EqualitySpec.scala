@@ -1,12 +1,14 @@
 package reactivemongo
 package api.bson
 
-import org.specs2.specification.core.Fragments
-
 import reactivemongo.api.bson.buffer.{
   DefaultBufferHandler,
   WritableBuffer
-}, DefaultBufferHandler._
+}
+
+import org.specs2.specification.core.Fragments
+
+import DefaultBufferHandler._
 
 final class EqualitySpec extends org.specs2.mutable.Specification {
   "Equality" title

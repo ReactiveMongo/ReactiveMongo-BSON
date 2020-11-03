@@ -1,13 +1,13 @@
 package reactivemongo
 package api.bson
 
-import org.openjdk.jmh.annotations._
-
 import reactivemongo.api.bson.buffer.{
   DefaultBufferHandler,
   ReadableBuffer,
   WritableBuffer
 }
+
+import org.openjdk.jmh.annotations._
 
 sealed trait SerializationBenchmark {
   protected var value: BSONValue = _

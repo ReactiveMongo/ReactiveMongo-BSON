@@ -1,3 +1,4 @@
+// Scalariform
 import scalariform.formatter.preferences._
 import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
@@ -20,3 +21,14 @@ ScalariformKeys.preferences := ScalariformKeys.preferences.value.
   setPreference(SpaceInsideBrackets, false).
   setPreference(SpacesAroundMultiImports, true).
   setPreference(SpacesWithinPatternBinders, true)
+
+// Scalafix
+inThisBuild(
+  List(
+    //scalaVersion := "2.13.3",
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision,
+    scalafixDependencies ++= Seq(
+      "com.github.liancheng" %% "organize-imports" % "0.4.2")
+  )
+)

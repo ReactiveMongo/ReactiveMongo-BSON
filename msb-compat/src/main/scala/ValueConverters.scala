@@ -5,31 +5,7 @@ import scala.language.implicitConversions
 
 import scala.util.{ Failure, Success }
 
-import org.bson.{
-  BsonArray,
-  BsonBinary,
-  BsonBinarySubType,
-  BsonBoolean,
-  BsonDateTime,
-  BsonDecimal128,
-  BsonDocument,
-  BsonDouble,
-  BsonElement,
-  BsonInt32,
-  BsonInt64,
-  BsonJavaScript,
-  BsonJavaScriptWithScope,
-  BsonMaxKey,
-  BsonMinKey,
-  BsonNull,
-  BsonObjectId,
-  BsonRegularExpression,
-  BsonSymbol,
-  BsonString,
-  BsonTimestamp,
-  BsonUndefined,
-  BsonValue
-}
+import org.bson.{ BsonArray, BsonBinary, BsonBinarySubType, BsonBoolean, BsonDateTime, BsonDecimal128, BsonDocument, BsonDouble, BsonElement, BsonInt32, BsonInt64, BsonJavaScript, BsonJavaScriptWithScope, BsonMaxKey, BsonMinKey, BsonNull, BsonObjectId, BsonRegularExpression, BsonString, BsonSymbol, BsonTimestamp, BsonUndefined, BsonValue }
 import org.bson.types.{ Decimal128, ObjectId }
 
 /**

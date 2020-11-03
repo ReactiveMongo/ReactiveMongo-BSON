@@ -6,7 +6,8 @@ SCRIPT_DIR=`dirname $0 | sed -e "s|^\./|$PWD/|"`
 
 cd "$SCRIPT_DIR/.."
 
-sbt ++$SCALA_VERSION scalariformFormat test:scalariformFormat
+sbt ++$SCALA_VERSION ';scalafixAll -check ;scalariformFormat ;test:scalariformFormat'
+
 git diff --exit-code || (
   echo "ERROR: Scalariform check failed, see differences above."
   echo "To fix, format your sources using ./build scalariformFormat test:scalariformFormat before submitting a pull request."

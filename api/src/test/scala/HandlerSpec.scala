@@ -1,18 +1,10 @@
 package reactivemongo.api.bson
 
-import java.time.{
-  Instant,
-  LocalDate,
-  LocalDateTime,
-  LocalTime,
-  OffsetDateTime,
-  ZonedDateTime,
-  ZoneId
-}
+import java.util.{ Locale, UUID }
 
-import java.util.{ UUID, Locale }
+import java.net.{ URI, URL }
 
-import java.net.{ URL, URI }
+import java.time.{ Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZoneId, ZonedDateTime }
 
 import scala.util.Success
 

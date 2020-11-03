@@ -1,23 +1,15 @@
 package reactivemongo.api.bson
 
-import java.net.{ URI, URL }
-
 import java.util.{ Locale, UUID }
 
-import java.time.{
-  Instant,
-  LocalDate,
-  LocalDateTime,
-  LocalTime,
-  OffsetDateTime,
-  ZonedDateTime,
-  ZoneId
-}
+import java.net.{ URI, URL }
 
-import scala.collection.mutable.Builder
-import scala.collection.immutable.IndexedSeq
+import java.time.{ Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZoneId, ZonedDateTime }
 
 import scala.util.{ Failure, Success, Try }
+
+import scala.collection.immutable.IndexedSeq
+import scala.collection.mutable.Builder
 
 import exceptions.TypeDoesNotMatchException
 

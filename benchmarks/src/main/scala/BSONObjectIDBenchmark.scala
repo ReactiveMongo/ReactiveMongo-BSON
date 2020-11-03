@@ -2,10 +2,10 @@ package reactivemongo
 
 import scala.util.Try
 
+import reactivemongo.api.bson.BSONObjectID
+
 import org.openjdk.jmh.annotations._
 import org.openjdk.jmh.infra.Blackhole
-
-import reactivemongo.api.bson.BSONObjectID
 
 @State(Scope.Benchmark)
 class BSONObjectIDGenerateBenchmark {
