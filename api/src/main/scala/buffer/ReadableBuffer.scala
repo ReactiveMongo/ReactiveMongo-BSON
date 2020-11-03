@@ -2,9 +2,9 @@ package reactivemongo.api.bson.buffer
 
 import java.nio.{ ByteBuffer, ByteOrder }
 
-import reactivemongo.io.netty.buffer.{ ByteBuf, Unpooled }
-
 import scala.collection.mutable.ArrayBuffer
+
+import reactivemongo.io.netty.buffer.{ ByteBuf, Unpooled }
 
 /**
  * A readable buffer.

@@ -1,7 +1,7 @@
-import org.specs2.matcher.describe.{ PrimitiveDifference, PrimitiveIdentical }
-
 import reactivemongo.api.bson.{ BSONArray, BSONDocument, BSONString }
 import reactivemongo.api.bson.specs2._
+
+import org.specs2.matcher.describe.{ PrimitiveDifference, PrimitiveIdentical }
 
 final class DiffableSpec extends org.specs2.mutable.Specification {
   "Diffable" title

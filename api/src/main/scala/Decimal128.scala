@@ -2,9 +2,9 @@ package reactivemongo.api.bson
 
 import java.math.{ BigDecimal, BigInteger, MathContext }
 
-import scala.collection.immutable.Set
-
 import scala.util.{ Failure, Success, Try }
+
+import scala.collection.immutable.Set
 
 private[bson] object Decimal128 {
   // Masks

@@ -1,36 +1,18 @@
 import scala.util.{ Failure, Success, Try }
 
-import com.github.ghik.silencer.silent
-
-import reactivemongo.api.bson.{
-  BSON,
-  BSONDecimal,
-  BSONDocument,
-  BSONDocumentHandler,
-  BSONDocumentReader,
-  BSONDocumentWriter,
-  BSONHandler,
-  BSONInteger,
-  BSONNull,
-  BSONReader,
-  BSONString,
-  BSONValue,
-  BSONWriter,
-  FieldNaming,
-  Macros,
-  MacroConfiguration,
-  MacroOptions,
-  TypeNaming
-}
+import reactivemongo.api.bson.{ BSON, BSONDecimal, BSONDocument, BSONDocumentHandler, BSONDocumentReader, BSONDocumentWriter, BSONHandler, BSONInteger, BSONNull, BSONReader, BSONString, BSONValue, BSONWriter, FieldNaming, MacroConfiguration, MacroOptions, Macros, TypeNaming }
 import reactivemongo.api.bson.exceptions.{
   HandlerException,
   TypeDoesNotMatchException
 }
 
+import org.specs2.execute._
 import org.specs2.matcher.MatchResult
-
-import org.specs2.execute._, Typecheck._
 import org.specs2.matcher.TypecheckMatchers._
+
+import com.github.ghik.silencer.silent
+
+import Typecheck._
 
 final class MacroSpec extends org.specs2.mutable.Specification {
   "Macros" title

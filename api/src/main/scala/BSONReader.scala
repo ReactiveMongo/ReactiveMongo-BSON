@@ -1,7 +1,6 @@
 package reactivemongo.api.bson
 
 import scala.util.{ Failure, Success, Try }
-
 import scala.util.control.NonFatal
 
 /**

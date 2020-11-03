@@ -9,7 +9,6 @@ import scala.reflect.ClassTag
 
 import org.bson._
 import org.bson.codecs._
-
 import org.bson.codecs.configuration.CodecRegistry
 
 /**

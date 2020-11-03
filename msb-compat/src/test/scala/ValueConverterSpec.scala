@@ -1,31 +1,5 @@
 package reactivemongo
 
-import org.bson.{
-  BsonArray,
-  BsonBinary,
-  BsonBinarySubType,
-  BsonBoolean,
-  BsonDateTime,
-  BsonDecimal128,
-  BsonDocument,
-  BsonDouble,
-  BsonInt32,
-  BsonInt64,
-  BsonJavaScript,
-  BsonJavaScriptWithScope,
-  BsonMaxKey,
-  BsonMinKey,
-  BsonNull,
-  BsonObjectId,
-  BsonRegularExpression,
-  BsonSymbol,
-  BsonString,
-  BsonTimestamp,
-  BsonUndefined,
-  BsonValue
-}
-import org.bson.types.Decimal128
-
 import reactivemongo.api.bson.{
   BSONArray,
   BSONBinary,
@@ -52,6 +26,9 @@ import reactivemongo.api.bson.{
 }
 
 import org.specs2.specification.core.Fragment
+
+import org.bson.{ BsonArray, BsonBinary, BsonBinarySubType, BsonBoolean, BsonDateTime, BsonDecimal128, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonJavaScript, BsonJavaScriptWithScope, BsonMaxKey, BsonMinKey, BsonNull, BsonObjectId, BsonRegularExpression, BsonString, BsonSymbol, BsonTimestamp, BsonUndefined, BsonValue }
+import org.bson.types.Decimal128
 
 final class ValueConverterSpec
   extends org.specs2.mutable.Specification with ConverterFixtures {

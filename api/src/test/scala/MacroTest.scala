@@ -1,20 +1,6 @@
 import scala.util.{ Failure, Success, Try }
 
-import reactivemongo.api.bson.{
-  BSONArray,
-  BSONDocument,
-  BSONDocumentHandler,
-  BSONDocumentReader,
-  BSONDocumentWriter,
-  BSONHandler,
-  BSONInteger,
-  BSONReader,
-  BSONString,
-  BSONObjectID,
-  BSONWriter,
-  Macros,
-  MacroOptions
-}
+import reactivemongo.api.bson.{ BSONArray, BSONDocument, BSONDocumentHandler, BSONDocumentReader, BSONDocumentWriter, BSONHandler, BSONInteger, BSONObjectID, BSONReader, BSONString, BSONWriter, MacroOptions, Macros }
 import reactivemongo.api.bson.Macros.Annotations.{
   DefaultValue,
   Flatten,

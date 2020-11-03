@@ -1,31 +1,5 @@
 package reactivemongo
 
-import org.bson.{
-  BsonArray,
-  BsonBinary,
-  BsonBinarySubType,
-  BsonBoolean,
-  BsonDateTime,
-  BsonDecimal128,
-  BsonDocument,
-  BsonDouble,
-  BsonInt32,
-  BsonInt64,
-  BsonJavaScript,
-  BsonJavaScriptWithScope,
-  BsonMaxKey,
-  BsonMinKey,
-  BsonNull,
-  BsonObjectId,
-  BsonRegularExpression,
-  BsonSymbol,
-  BsonString,
-  BsonTimestamp,
-  BsonUndefined,
-  BsonValue
-}
-import org.bson.types.{ Decimal128, ObjectId }
-
 import reactivemongo.api.bson.{
   BSONArray,
   BSONBinary,
@@ -49,6 +23,9 @@ import reactivemongo.api.bson.{
   BSONUndefined,
   BSONValue
 }
+
+import org.bson.{ BsonArray, BsonBinary, BsonBinarySubType, BsonBoolean, BsonDateTime, BsonDecimal128, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonJavaScript, BsonJavaScriptWithScope, BsonMaxKey, BsonMinKey, BsonNull, BsonObjectId, BsonRegularExpression, BsonString, BsonSymbol, BsonTimestamp, BsonUndefined, BsonValue }
+import org.bson.types.{ Decimal128, ObjectId }
 
 trait ConverterFixtures {
   val time = System.currentTimeMillis()

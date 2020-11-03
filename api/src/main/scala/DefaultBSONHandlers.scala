@@ -1,23 +1,15 @@
 package reactivemongo.api.bson
 
+import java.util.{ Locale, UUID }
+
 import java.net.{ URI, URL }
 
-import java.util.UUID
-
-import java.time.{
-  Instant,
-  LocalDate,
-  LocalDateTime,
-  LocalTime,
-  OffsetDateTime,
-  ZonedDateTime,
-  ZoneId
-}
-
-import scala.collection.mutable.Builder
-import scala.collection.immutable.IndexedSeq
+import java.time.{ Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZoneId, ZonedDateTime }
 
 import scala.util.{ Failure, Success, Try }
+
+import scala.collection.immutable.IndexedSeq
+import scala.collection.mutable.Builder
 
 import exceptions.TypeDoesNotMatchException
 
@@ -258,6 +250,19 @@ private[bson] trait DefaultBSONHandlers
     }
 
     def safeWrite(uuid: UUID) = BSONString(uuid.toString)
+  }
+
+  implicit object BSONLocaleHandler
+    extends BSONHandler[Locale] with SafeBSONWriter[Locale] {
+
+    def readTry(bson: BSONValue): Try[Locale] = bson match {
+      case BSONString(repr) => Try(Locale forLanguageTag repr)
+
+      case _ => Failure(TypeDoesNotMatchException(
+        "BSONString", bson.getClass.getSimpleName))
+    }
+
+    def safeWrite(locale: Locale) = BSONString(locale.toLanguageTag)
   }
 }
 

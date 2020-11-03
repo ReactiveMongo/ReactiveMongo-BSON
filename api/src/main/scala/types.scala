@@ -1,28 +1,26 @@
 package reactivemongo.api.bson
 
-import java.math.{ BigDecimal => JBigDec }
+import java.nio.ByteBuffer
 
 import java.util.UUID
 
-import java.time.Instant
+import java.math.{ BigDecimal => JBigDec }
 
-import java.nio.ByteBuffer
+import java.time.Instant
 
 import scala.language.implicitConversions
 
 import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
+import scala.collection.immutable.{ HashMap, IndexedSeq, LinearSeq }
 import scala.collection.mutable.{
   Builder => MBuilder,
   HashMap => MMap,
   HashSet => MSet
 }
 
-import scala.collection.immutable.{ HashMap, IndexedSeq, LinearSeq }
-
 import buffer._
-
 import exceptions.{ BSONValueNotFoundException, TypeDoesNotMatchException }
 
 sealed trait Producer[T] {

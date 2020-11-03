@@ -2,67 +2,14 @@ package reactivemongo
 
 import java.lang.{ Boolean => JBool }
 
-import org.bson.{
-  BsonArray,
-  BsonBinary,
-  BsonBoolean,
-  BsonBinarySubType,
-  BsonDateTime,
-  BsonDecimal128,
-  BsonDocument,
-  BsonDouble,
-  BsonInt32,
-  BsonInt64,
-  BsonJavaScript,
-  BsonJavaScriptWithScope,
-  BsonMaxKey,
-  BsonMinKey,
-  BsonNull,
-  BsonObjectId,
-  BsonRegularExpression,
-  BsonSymbol,
-  BsonString,
-  BsonTimestamp,
-  BsonUndefined,
-  BsonValue
-}
-
-import org.bson.codecs._
-
-import org.bson.types.{ Binary, Decimal128 }
-
-import reactivemongo.api.bson.{
-  BSONArray,
-  BSONBinary,
-  BSONDateTime,
-  BSONDocument,
-  BSONBoolean,
-  BSONDouble,
-  BSONDecimal,
-  BSONHandler,
-  BSONInteger,
-  BSONJavaScript,
-  BSONJavaScriptWS,
-  BSONLong,
-  BSONMaxKey,
-  BSONMinKey,
-  BSONNull,
-  BSONObjectID,
-  BSONValue,
-  BSONRegex,
-  BSONSymbol,
-  BSONString,
-  BSONTimestamp,
-  BSONUndefined,
-  BSONWriter,
-  maxKey,
-  minKey,
-  `null`,
-  undefined
-}
+import reactivemongo.api.bson.{ `null`, maxKey, minKey, undefined, BSONArray, BSONBinary, BSONBoolean, BSONDateTime, BSONDecimal, BSONDocument, BSONDouble, BSONHandler, BSONInteger, BSONJavaScript, BSONJavaScriptWS, BSONLong, BSONMaxKey, BSONMinKey, BSONNull, BSONObjectID, BSONRegex, BSONString, BSONSymbol, BSONTimestamp, BSONUndefined, BSONValue, BSONWriter }
 import reactivemongo.api.bson.msb.HandlerConverters
 
 import org.specs2.specification.core.Fragment
+
+import org.bson.{ BsonArray, BsonBinary, BsonBinarySubType, BsonBoolean, BsonDateTime, BsonDecimal128, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonJavaScript, BsonJavaScriptWithScope, BsonMaxKey, BsonMinKey, BsonNull, BsonObjectId, BsonRegularExpression, BsonString, BsonSymbol, BsonTimestamp, BsonUndefined, BsonValue }
+import org.bson.codecs._
+import org.bson.types.{ Binary, Decimal128 }
 
 private[reactivemongo] trait EncoderConverterSpec {
   specs: HandlerConverterSpec =>

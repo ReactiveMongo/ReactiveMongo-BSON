@@ -2,8 +2,8 @@ package reactivemongo.api.bson.buffer
 
 import scala.util.{ Failure, Success, Try }
 
-import scala.collection.mutable.{ Map => MMap }
 import scala.collection.immutable.IndexedSeq
+import scala.collection.mutable.{ Map => MMap }
 
 import reactivemongo.api.bson._
 

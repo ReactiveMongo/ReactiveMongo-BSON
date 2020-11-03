@@ -5,9 +5,9 @@ import scala.util.Random
 
 import scala.collection.immutable.IndexedSeq
 
-import org.openjdk.jmh.annotations._
-
 import reactivemongo.api.bson.buffer.{ ReadableBuffer, WritableBuffer }
+
+import org.openjdk.jmh.annotations._
 
 @State(Scope.Benchmark)
 class BSONArrayBenchmark {

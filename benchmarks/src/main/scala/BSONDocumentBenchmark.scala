@@ -3,13 +3,13 @@ package api.bson
 
 import scala.language.implicitConversions
 
-import org.openjdk.jmh.annotations._
-
 import reactivemongo.api.bson.buffer.{
   DefaultBufferHandler,
   ReadableBuffer,
   WritableBuffer
 }
+
+import org.openjdk.jmh.annotations._
 
 @State(Scope.Benchmark)
 class BSONDocumentBenchmark {

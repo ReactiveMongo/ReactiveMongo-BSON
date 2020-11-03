@@ -1,6 +1,6 @@
-import reactivemongo.api.bson._
-
 import scala.util.{ Failure, Success }
+
+import reactivemongo.api.bson._
 
 import reactivemongo.BSONValueFixtures
 
