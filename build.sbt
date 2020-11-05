@@ -45,7 +45,7 @@ val spireLaws = Def.setting[ModuleID] {
     case _ => "x"
   }
 
-  ("org.typelevel" %% "spire-laws" % "0.17.0-M1").
+  ("org.typelevel" %% "spire-laws" % "0.17.0").
     exclude("org.typelevel", s"discipline-scalatest_${sm}"),
 }
 
