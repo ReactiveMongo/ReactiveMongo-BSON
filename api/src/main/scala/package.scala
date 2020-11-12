@@ -1,7 +1,6 @@
 package reactivemongo.api
 
 // TODO: relocate handler
-// TODO: Document handler for scalar type from nested field
 
 /**
  * BSON main API
