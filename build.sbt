@@ -44,8 +44,12 @@ val spireLaws = Def.setting[ModuleID] {
     case Some((major, minor)) => s"${major}.${minor}"
     case _ => "x"
   }
+  val ver = {
+    if (scalaBinaryVersion.value == "2.11") "0.16.2"
+    else "0.17.0"
+  }
 
-  ("org.typelevel" %% "spire-laws" % "0.17.0").
+  ("org.typelevel" %% "spire-laws" % ver).
     exclude("org.typelevel", s"discipline-scalatest_${sm}"),
 }
 
