@@ -3,7 +3,61 @@ import reactivemongo.api.bson._
 final class BSONDocumentSpec extends org.specs2.mutable.Specification {
   "BSONDocument" title
 
+  "Empty document" should {
+    "be created" in {
+      BSONDocument().elements must beEmpty and {
+        BSONDocument.empty.elements must beEmpty
+      } and {
+        document.elements must beEmpty
+      } and {
+        document().elements must beEmpty
+      } and {
+        BSONDocument.empty.contains("foo") must beFalse
+      }
+    }
+
+    "be appended with a new element " in {
+      val doc = BSONDocument.empty ++ ("foo" -> 1)
+
+      doc must_=== BSONDocument("foo" -> 1) and (
+        doc.contains("foo") must beTrue)
+    }
+  }
+
   "Creation" should {
+    "be successful" in {
+      val elements = Seq(
+        BSONElement("foo", BSONInteger(1)),
+        BSONElement("bar", BSONDouble(2D)))
+
+      BSONDocument("foo" -> 1, "bar" -> 2D).elements must_=== elements and {
+        BSONDocument.safe("foo" -> 1, "bar" -> 2D).
+          map(_.elements) must beSuccessfulTry(elements)
+      }
+    }
+
+    {
+      type Foo = Tuple2[Int, String]
+      implicit val failingWriter = BSONWriter[Foo] { _ =>
+        throw new Exception("failing writer")
+      }
+
+      val elements = Seq(BSONElement("field2", BSONString("bar")))
+
+      "ignore element with failing conversion" in {
+        BSONDocument(
+          "field1" -> (1 -> "value"),
+          "field2" -> "bar").elements must_=== elements
+      }
+
+      "fail on writer error" in {
+        BSONDocument.safe(
+          "field1" -> (1 -> "value"),
+          "field2" -> "bar") must beFailedTry[BSONDocument].
+          withThrowable[Exception]("failing writer")
+      }
+    }
+
     "skip duplicate element" in {
       BSONDocument("foo" -> 1, "foo" -> 1) must_=== BSONDocument("foo" -> 1)
     }
@@ -13,6 +67,24 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
       eqSpec(strict1, "#1", expected) and {
         eqSpec(strict2, "#2", expected)
+      }
+    }
+
+    "be done using builder" in {
+      val builder1 = BSONDocument.newBuilder += ("foo" -> 1)
+      val builder2 = BSONDocument.newBuilder
+
+      builder2 ++= Option[ElementProducer]("bar" -> 2)
+
+      builder1.result() must_=== BSONDocument("foo" -> 1) and {
+        builder2.result() must_=== BSONDocument("bar" -> 2)
+      } and {
+        builder1 ++= Seq("ipsum" -> 3.45D, "dolor" -> 6L)
+
+        builder1.result() must_=== BSONDocument(
+          "foo" -> 1,
+          "ipsum" -> 3.45D,
+          "dolor" -> 6L)
       }
     }
   }

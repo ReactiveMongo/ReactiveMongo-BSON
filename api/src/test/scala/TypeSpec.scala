@@ -12,45 +12,6 @@ final class TypeSpec extends org.specs2.mutable.Specification {
     case Failure(cause) => throw cause
   }
 
-  "BSON document" should {
-    "be empty" in {
-      BSONDocument().elements must beEmpty and {
-        BSONDocument.empty.elements must beEmpty
-      } and {
-        document.elements must beEmpty
-      } and {
-        document().elements must beEmpty
-      } and {
-        BSONDocument.empty.contains("foo") must beFalse
-      }
-    }
-
-    "be created with a new element " in {
-      val doc = BSONDocument.empty ++ ("foo" -> 1)
-
-      doc must_=== BSONDocument("foo" -> 1) and (
-        doc.contains("foo") must beTrue)
-    }
-
-    "be created using builder" in {
-      val builder1 = BSONDocument.newBuilder += ("foo" -> 1)
-      val builder2 = BSONDocument.newBuilder
-
-      builder2 ++= Option[ElementProducer]("bar" -> 2)
-
-      builder1.result() must_=== BSONDocument("foo" -> 1) and {
-        builder2.result() must_=== BSONDocument("bar" -> 2)
-      } and {
-        builder1 ++= Seq("ipsum" -> 3.45D, "dolor" -> 6L)
-
-        builder1.result() must_=== BSONDocument(
-          "foo" -> 1,
-          "ipsum" -> 3.45D,
-          "dolor" -> 6L)
-      }
-    }
-  }
-
   "BSON array" should {
     "be empty" in {
       BSONArray().values must beEmpty and (
@@ -62,6 +23,25 @@ final class TypeSpec extends org.specs2.mutable.Specification {
 
     "be created with a new element " in {
       BSONArray.empty.++("foo", "bar") must_=== BSONArray("foo", "bar")
+    }
+
+    {
+      type Foo = Tuple2[Int, String]
+      implicit val failingWriter = BSONWriter[Foo] { _ =>
+        throw new Exception("failing writer")
+      }
+
+      val values =
+        scala.collection.immutable.IndexedSeq[BSONValue](BSONString("bar"))
+
+      "ignore value with failing conversion" in {
+        BSONArray((1 -> "value"), "bar").values must_=== values
+      }
+
+      "fail on writer error" in {
+        BSONArray.safe((1 -> "value"), "bar") must beFailedTry[BSONArray].
+          withThrowable[Exception]("failing writer")
+      }
     }
 
     "be returned with a added element" in {
