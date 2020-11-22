@@ -25,6 +25,20 @@ import exceptions.{ BSONValueNotFoundException, TypeDoesNotMatchException }
 
 sealed trait Producer[T] {
   private[bson] def generate(): Iterable[T]
+
+  private[bson] def generateTry(): Try[Iterable[T]]
+}
+
+private[bson] sealed trait SafeProducer[T] extends Producer[T] {
+  final private[bson] def generateTry(): Try[Iterable[T]] =
+    Success(generate())
+}
+
+private[bson] sealed trait UnsafeProducer[T] extends Producer[T] {
+  final private[bson] def generate(): Iterable[T] = generateTry() match {
+    case Success(produced) => produced
+    case _ => Seq.empty[T]
+  }
 }
 
 /** A [[https://docs.mongodb.com/manual/reference/bson-types/ BSON]] value */
@@ -170,8 +184,9 @@ object BSONValue extends BSONValueLowPriority1 {
   // ---
 
   protected final class SomeValueProducer(
-    private val value: BSONValue) extends Producer[BSONValue] {
-    private[bson] def generate() = Seq(value)
+    private val value: BSONValue) extends SafeProducer[BSONValue] {
+    private lazy val produced = Seq(value)
+    @inline private[bson] def generate() = produced
   }
 }
 
@@ -179,29 +194,46 @@ object BSONValue extends BSONValueLowPriority1 {
 private[bson] sealed trait BSONValueLowPriority1
   extends BSONValueLowPriority2 { _: BSONValue.type =>
 
-  implicit def optionProducer[T](value: Option[T])(implicit writer: BSONWriter[T]): Producer[BSONValue] = value.flatMap(writer.writeOpt) match {
-    case Some(bson) => new SomeValueProducer(bson)
+  implicit def safeOptionProducer[T](value: Option[T])(implicit writer: SafeBSONWriter[T]): Producer[BSONValue] = value match {
+    case Some(v) => new SomeValueProducer(writer safeWrite v)
     case _ => NoneValueProducer
   }
+
+  implicit def safeValueProducer[T](value: T)(implicit writer: SafeBSONWriter[T]): Producer[BSONValue] = new SomeValueProducer(writer safeWrite value)
 
   implicit val noneProducer: None.type => Producer[BSONValue] =
     _ => NoneValueProducer
 
   // ---
 
-  protected object NoneValueProducer extends Producer[BSONValue] {
+  protected object NoneValueProducer extends SafeProducer[BSONValue] {
     private val underlying = Seq.empty[BSONValue]
     @inline private[bson] def generate() = underlying
   }
 }
 
-private[bson] sealed trait BSONValueLowPriority2 {
+private[bson] sealed trait BSONValueLowPriority2
+  extends BSONValueLowPriority3 {
   _: BSONValue.type with BSONValueLowPriority1 =>
 
-  implicit def valueProducer[T](value: T)(implicit writer: BSONWriter[T]): Producer[BSONValue] = writer.writeOpt(value) match {
-    case Some(v) => new SomeValueProducer(v)
+  implicit def optionProducer[T](value: Option[T])(
+    implicit
+    writer: BSONWriter[T]): Producer[BSONValue] = value match {
+    case Some(v) => new UnsafeValueProducer(writer writeTry v)
     case _ => NoneValueProducer
   }
+
+  protected final class UnsafeValueProducer(
+    f: => Try[BSONValue]) extends UnsafeProducer[BSONValue] {
+    private lazy val produced: Try[Iterable[BSONValue]] = f.map(Some(_))
+    @inline private[bson] def generateTry() = produced
+  }
+}
+
+private[bson] sealed trait BSONValueLowPriority3 {
+  _: BSONValue.type with BSONValueLowPriority2 =>
+
+  implicit def valueProducer[T](value: T)(implicit writer: BSONWriter[T]): Producer[BSONValue] = new UnsafeValueProducer(writer writeTry value)
 }
 
 /**
@@ -643,6 +675,7 @@ object BSONArray {
 
   /**
    * $factoryDescr.
+   * In case of conversion error for a field value, the field is ignored.
    *
    * {{{
    * reactivemongo.api.bson.BSONArray("foo", 1L)
@@ -663,6 +696,34 @@ object BSONArray {
     new BSONArray {
       lazy val values = init
     }
+  }
+
+  /**
+   * $factoryDescr.
+   * Fails if any error occurs while converting the values.
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONArray.safe("foo", 1L)
+   * // Success: [ 'foo', NumberLong(1) ]
+   * }}}
+   */
+  def safe(values: Producer[BSONValue]*): Try[BSONArray] = {
+    @annotation.tailrec def prepare(
+      in: Seq[Producer[BSONValue]],
+      vs: List[BSONValue]): Try[List[BSONValue]] = in.headOption match {
+      case Some(producer) => producer.generateTry() match {
+        case Success(pvs) =>
+          prepare(in.tail, pvs.foldLeft(vs) { (ls, v) => v :: ls })
+
+        case Failure(err) =>
+          Failure(err)
+      }
+
+      case _ =>
+        Success(vs.reverse)
+    }
+
+    prepare(values, List.empty).map(BSONArray(_))
   }
 
   /**
@@ -1783,7 +1844,7 @@ object BSONMaxKey extends BSONMaxKey {
  * @define keyParam the key to be found in the document
  */
 sealed abstract class BSONDocument
-  extends BSONValue with ElementProducer
+  extends BSONValue with ElementProducer with SafeProducer[BSONElement]
   with BSONDocumentLowPriority with BSONDocumentExperimental { self =>
 
   val code = 0x03
@@ -2337,7 +2398,7 @@ private[bson] sealed trait BSONStrictDocumentLowPriority {
  * reactivemongo.api.bson.BSONDocument("foo" -> 1, "bar" -> "lorem")
  * }}}
  *
- * @define elementsFactoryDescr Creates a new [[BSONDocument]] containing the unique elements from the given collection (only one instance of a same element, same name & value, is kept).
+ * @define elementsFactoryDescr Creates a new [[BSONDocument]] containing the unique elements from the given collection (only one instance of a same element, same name & value, is kept)
  *
  * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the last is kept for a same name). Then append operations on such document will maintain element unicity by field name (see `BSONStrictDocument.++`).
  */
@@ -2360,7 +2421,8 @@ object BSONDocument {
   }
 
   /**
-   * $elementsFactoryDescr
+   * $elementsFactoryDescr.
+   * In case of conversion error for a field value, the field is ignored.
    *
    * {{{
    * reactivemongo.api.bson.BSONDocument(
@@ -2376,7 +2438,47 @@ object BSONDocument {
   }
 
   /**
-   * $elementsFactoryDescr
+   * '''EXPERIMENTAL:''' $elementsFactoryDescr.
+   * Fails if any error occurs while converting the field values.
+   *
+   * {{{
+   * reactivemongo.api.bson.BSONDocument.safe(
+   *   "foo" -> 1, "bar" -> "lorem"
+   * ) // => Success: { 'foo': 1, 'bar': 'lorem' }
+   * }}}
+   */
+  def safe(elms: ElementProducer*): Try[BSONDocument] = {
+    @annotation.tailrec
+    def prepare(
+      in: Seq[ElementProducer],
+      fs: List[(String, BSONValue)]): Try[List[(String, BSONValue)]] =
+      in.headOption match {
+        case Some(BSONElement(n, v)) =>
+          prepare(in.tail, (n -> v) :: fs)
+
+        case Some(producer) =>
+          producer.generateTry() match {
+            case Success(BSONElement(n, v)) =>
+              prepare(in.tail, (n -> v) :: fs)
+
+            case Success(es) =>
+              prepare(
+                in.tail,
+                es.foldLeft(fs) {
+                  case (ls, BSONElement(n, v)) => (n -> v) :: ls
+                })
+
+            case Failure(err) => Failure(err)
+          }
+
+        case _ => Success(fs.reverse)
+      }
+
+    prepare(elms, List.empty).map(BSONDocument(_))
+  }
+
+  /**
+   * $elementsFactoryDescr.
    *
    * {{{
    * import reactivemongo.api.bson._
@@ -2578,7 +2680,9 @@ object BSONDocument {
  * BSONElement("name", BSONString("value"))
  * }}}
  */
-sealed abstract class BSONElement extends ElementProducer {
+sealed abstract class BSONElement
+  extends ElementProducer with SafeProducer[BSONElement] {
+
   /** Element (field) name */
   def name: String
 
@@ -2645,6 +2749,7 @@ object BSONElement extends BSONElementLowPriority {
 }
 
 private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
+
   /**
    * Returns a [[ElementProducer]] for the given name and value.
    *
@@ -2656,17 +2761,22 @@ private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
    * }}}
    */
   def apply[T](name: String, value: T)(implicit ev: T => Producer[BSONValue]): ElementProducer = {
-    val produced = ev(value).generate()
+    lazy val produced = ev(value).generateTry()
 
-    produced.headOption match {
-      case Some(v) if produced.tail.isEmpty =>
-        BSONElement(name, v)
+    produced match {
+      case Success(vs) => vs.headOption match {
+        case Some(v) if vs.tail.isEmpty =>
+          BSONElement(name, v)
 
-      case Some(_) =>
-        BSONDocument(produced.map { name -> _ })
+        case None =>
+          ElementProducer.Empty
 
-      case _ =>
-        ElementProducer.Empty
+        case _ =>
+          BSONDocument(vs.map(name -> _))
+      }
+
+      case Failure(cause) =>
+        new FailingElementProducer(cause)
     }
   }
 
@@ -2687,19 +2797,28 @@ private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
 /** See [[BSONDocument]] */
 sealed trait ElementProducer extends Producer[BSONElement]
 
-object ElementProducer extends ElementProducerLowPriority {
+private[bson] final class FailingElementProducer(
+  cause: Throwable) extends ElementProducer with UnsafeProducer[BSONElement] {
+  private[bson] def generateTry() = Failure(cause)
+
+  override def toString = "<fail to prepare elements>"
+}
+
+object ElementProducer extends ElementProducerLowPriority1 {
   /**
    * An empty instance for the [[ElementProducer]] kind.
    * Can be used as `id` with the element [[Composition]] to form
    * an additive monoid.
    */
-  private[bson] object Empty extends ElementProducer {
+  private[bson] object Empty
+    extends ElementProducer with SafeProducer[BSONElement] {
+
     private val underlying = Seq.empty[BSONElement]
-    def generate() = underlying
+    @inline def generate() = underlying
   }
 
   private[bson] def apply(elements: Iterable[BSONElement]): ElementProducer =
-    new ElementProducer {
+    new ElementProducer with SafeProducer[BSONElement] {
       def generate() = elements
 
       override def equals(that: Any): Boolean = that match {
@@ -2779,14 +2898,35 @@ object ElementProducer extends ElementProducerLowPriority {
    * )
    * }}}
    */
+  implicit def safeNameOptionValue2ElementProducer[T](element: (String, Option[T]))(implicit writer: SafeBSONWriter[T]): ElementProducer =
+    element._2.map(writer safeWrite _) match {
+      case Some(b) => BSONElement(element._1, b)
+      case _ => ElementProducer.Empty
+    }
+}
+
+private[bson] sealed trait ElementProducerLowPriority1
+  extends ElementProducerLowPriority2 { _: ElementProducer.type =>
+
+  /**
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument(
+   *   "foo" -> Some(1), // tuple as BSONElement("foo", BSONInteger(1))
+   *   "bar" -> Option.empty[Int] // tuple as empty ElementProducer (no field)
+   * )
+   * }}}
+   */
   implicit def nameOptionValue2ElementProducer[T](element: (String, Option[T]))(implicit writer: BSONWriter[T]): ElementProducer = (for {
     v <- element._2
     b <- writer.writeOpt(v)
   } yield BSONElement(element._1, b)).getOrElse(ElementProducer.Empty)
 }
 
-private[bson] sealed trait ElementProducerLowPriority {
-  _: ElementProducer.type =>
+private[bson] sealed trait ElementProducerLowPriority2
+  extends ElementProducerLowPriority3 {
+  _: ElementProducerLowPriority1 =>
 
   /**
    * {{{
@@ -2797,9 +2937,24 @@ private[bson] sealed trait ElementProducerLowPriority {
    * )
    * }}}
    */
-  implicit def tuple2ElementProducer[T](pair: (String, T))(implicit writer: BSONWriter[T]): ElementProducer = writer.writeOpt(pair._2) match {
-    case Some(v) => BSONElement(pair._1, v)
-    case _ => ElementProducer.Empty
+  implicit def safeTuple2ElementProducer[T](pair: (String, T))(implicit writer: SafeBSONWriter[T]): ElementProducer = BSONElement(pair._1, writer.safeWrite(pair._2))
+}
+
+private[bson] sealed trait ElementProducerLowPriority3 {
+  _: ElementProducerLowPriority2 =>
+
+  /**
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * BSONDocument(
+   *   "foo" -> 1 // tuple as BSONElement("foo", BSONInteger(1))
+   * )
+   * }}}
+   */
+  implicit def tuple2ElementProducer[T](pair: (String, T))(implicit writer: BSONWriter[T]): ElementProducer = writer.writeTry(pair._2) match {
+    case Success(v) => BSONElement(pair._1, v)
+    case Failure(e) => new FailingElementProducer(e)
   }
 }
 
