@@ -249,7 +249,9 @@ private[bson] class MacroImpl(val c: Context) {
         }
 
         val subHelper = createSubHelper(aTpe)
-        val cases: List[CaseDef] = preparedTypes.map {
+
+        @SuppressWarnings(Array("ListAppend"))
+        def cases: List[CaseDef] = (preparedTypes.map {
           case (typ, pattern, _) =>
             val body = subHelper.readBodyFromImplicit(typ)(resolve).getOrElse {
 
@@ -262,9 +264,14 @@ private[bson] class MacroImpl(val c: Context) {
             }
 
             cq"${Ident(pattern)} => $body"
+        }) :+ {
+          val ftn = TermName(c freshName "tpe")
+
+          cq"""${ftn} => ${utilPkg}.Failure(
+            ${exceptionsPkg}.HandlerException("Invalid type: " + ${ftn}))"""
         }
 
-        val dt = TermName(c.freshName("discriminator"))
+        val dt = TermName(c freshName "discriminator")
         val da = q"val $dt: _root_.java.lang.String"
 
         val typePats = preparedTypes.map {
@@ -343,6 +350,7 @@ private[bson] class MacroImpl(val c: Context) {
         val tpeArgs: List[c.Type] = tpe match {
           case TypeRef(_, _, args) => args
           case i @ ClassInfoType(_, _, _) => i.typeArgs
+          case _ => List.empty[c.Type]
         }
 
         lazyZip(constructor.typeParams, tpeArgs).foreach {
@@ -757,6 +765,7 @@ private[bson] class MacroImpl(val c: Context) {
         val tpeArgs: List[c.Type] = tpe match {
           case TypeRef(_, _, args) => args
           case i @ ClassInfoType(_, _, _) => i.typeArgs
+          case _ => List.empty[c.Type]
         }
 
         lazyZip(constructor.typeParams, tpeArgs).map {
@@ -1346,6 +1355,7 @@ private[bson] class MacroImpl(val c: Context) {
         case RefinedType(types, _) =>
           types.filter(_ <:< unionOption).flatMap {
             case TypeRef(_, _, args) => args
+            case _ => List.empty
           }.headOption
 
         case _ => None

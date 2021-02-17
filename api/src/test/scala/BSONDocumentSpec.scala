@@ -213,7 +213,7 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
   @inline def eqSpec(d: BSONDocument, l: String, expected: BSONDocument) = {
     d must_=== expected
   } and {
-    d.toMap.toSeq.sorted aka l must_=== d.elements.map {
+    d.toMap.toSeq.sorted aka l must_=== d.elements.collect {
       case BSONElement(k, v) => k -> v
     }.toSeq.sorted
   }

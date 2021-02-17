@@ -53,7 +53,10 @@ trait ValueConverters extends LowPriorityConverters {
     val bson = new BsonDocument()
 
     doc.elements.foreach {
-      case BSONElement(k, v) => bson.append(k, fromValue(v))
+      case BSONElement(k, v) =>
+        bson.append(k, fromValue(v))
+
+      case _ =>
     }
 
     bson

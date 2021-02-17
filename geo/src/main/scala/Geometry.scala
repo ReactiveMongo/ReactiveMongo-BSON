@@ -350,6 +350,10 @@ object GeoMultiPoint {
       case BSONArray(values) =>
         GeoPosition.readSeq(values).map(GeoMultiPoint(_))
 
+      case bson =>
+        Failure(exceptions.TypeDoesNotMatchException(
+          "BSONArray", bson.getClass.getSimpleName))
+
     }
 
   implicit val writer: BSONDocumentWriter[GeoMultiPoint] =

@@ -51,6 +51,8 @@ class BSONArrayBenchmark {
           case _1 :: _2 :: _ =>
             value1 = _1
             value2 = _2
+
+          case _ =>
         }
 
         smallSet = a

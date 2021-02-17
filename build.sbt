@@ -100,6 +100,7 @@ lazy val geo = (project in file("geo")).settings(
 
 lazy val benchmarks = (project in file("benchmarks")).
   enablePlugins(JmhPlugin).settings(
+    mimaPreviousArtifacts := Set.empty,
     libraryDependencies ++= reactivemongoShaded.value,
     publish := ({}),
     publishTo := None,
@@ -131,7 +132,8 @@ lazy val msbCompat = (project in file("msb-compat")).settings(
 
 lazy val root = (project in file(".")).settings(
   publish := ({}),
-  publishTo := None
+  publishTo := None,
+  mimaPreviousArtifacts := Set.empty
 ).aggregate(api, specs2, benchmarks, msbCompat, geo, monocle).
   dependsOn(api, specs2/* for compiled code samples */)
 // !! Do not aggregate msbCompat as not 2.13

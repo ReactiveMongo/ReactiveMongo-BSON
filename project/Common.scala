@@ -2,7 +2,8 @@ import sbt.Keys._
 import sbt._
 import sbt.plugins.JvmPlugin
 
-import com.typesafe.tools.mima.plugin.MimaKeys.mimaFailOnNoPrevious
+import com.typesafe.tools.mima.plugin.MimaKeys._
+import com.typesafe.tools.mima.core._, ProblemFilters._
 
 object Common extends AutoPlugin {
   override def trigger = allRequirements
@@ -68,6 +69,25 @@ object Common extends AutoPlugin {
       Resolver.sonatypeRepo("staging"),
       Resolver.sonatypeRepo("snapshots"),
       Resolver.typesafeRepo("releases")),
-    mimaFailOnNoPrevious := false
+    mimaFailOnNoPrevious := false,
+    mimaPreviousArtifacts := Set(
+      organization.value %% name.value.toLowerCase % "1.0.0"),
+    mimaBinaryIssueFilters ++= Seq(missingMethodInOld)
   )
+
+  private val missingMethodInOld: ProblemFilter = {
+    case ReversedAbstractMethodProblem(_) |
+        ReversedMissingMethodProblem(_) => false
+
+    case DirectMissingMethodProblem(old) => old.nonAccessible
+    case InheritedNewAbstractMethodProblem(_, _) => false
+    case IncompatibleResultTypeProblem(old, _) => old.nonAccessible
+    case IncompatibleMethTypeProblem(old, _) => old.nonAccessible
+    case MissingClassProblem(old) => !old.isPublic
+    case MissingTypesProblem(_, old) => !old.exists(_.isPublic)
+    case AbstractClassProblem(old) => !old.isPublic
+    case UpdateForwarderBodyProblem(old) => !old.isPublic
+    case _: NewMixinForwarderProblem => false
+    case _ => true
+  }
 }

@@ -1975,7 +1975,10 @@ sealed abstract class BSONDocument
       m ++= self.fields
 
       seq.foreach {
-        case BSONElement(name, value) => m.put(name, value)
+        case BSONElement(name, value) =>
+          m.put(name, value)
+
+        case _ =>
       }
 
       m.toMap
@@ -2355,7 +2358,10 @@ sealed trait BSONStrictDocument
       m ++= self.fields
 
       seq.foreach {
-        case BSONElement(name, value) => m.put(name, value)
+        case BSONElement(name, value) =>
+          m.put(name, value)
+
+        case _ =>
       }
 
       m.toMap
@@ -2458,14 +2464,15 @@ object BSONDocument {
 
         case Some(producer) =>
           producer.generateTry() match {
-            case Success(BSONElement(n, v)) =>
-              prepare(in.tail, (n -> v) :: fs)
-
             case Success(es) =>
               prepare(
                 in.tail,
                 es.foldLeft(fs) {
-                  case (ls, BSONElement(n, v)) => (n -> v) :: ls
+                  case (ls, BSONElement(n, v)) =>
+                    (n -> v) :: ls
+
+                  case (ls, _) =>
+                    ls
                 })
 
             case Failure(err) => Failure(err)
@@ -2637,7 +2644,10 @@ object BSONDocument {
       case _: ElementProducer.Empty.type => ()
 
       case p => p.generate().foreach {
-        case BSONElement(k, v) => m.put(k, v)
+        case BSONElement(k, v) =>
+          m.put(k, v)
+
+        case _ =>
       }
     }
 
@@ -2718,7 +2728,10 @@ object BSONElement extends BSONElementLowPriority {
    * import reactivemongo.api.bson.{ BSONDocument, BSONElement }
    *
    * def foo(doc: BSONDocument): Unit = doc.elements.foreach {
-   *   case BSONElement(name, bson) => println(s"- " + name + " = " + bson)
+   *   case BSONElement(name, bson) =>
+   *     println(s"- " + name + " = " + bson)
+   *
+   *   case _ =>
    * }
    * }}}
    */
