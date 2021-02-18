@@ -71,6 +71,8 @@ private[reactivemongo] trait BufferHandler {
         buffer.writeByte(v.code)
         buffer.writeCString(k)
         serialize(v, buffer)
+
+      case _ =>
     }
 
     buffer.setInt(szBefore, (buffer.size() - szBefore + 1)) // reset size

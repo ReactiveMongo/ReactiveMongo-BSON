@@ -28,13 +28,7 @@ fi
 
 TEST_ARGS="$TEST_ARGS ;warn"
 
-if [ "v$MONGO_VER" = "v2_6" ]; then
-  TEST_ARGS="$TEST_ARGS ;testOnly -- exclude gt_mongo32"
-else
-  TEST_ARGS="$TEST_ARGS ;testOnly -- exclude mongo2"
-fi
-
-if [ ! "v$SCALA_VERSION" = "v2.13.1" ]; then
+if [ ! `echo "n$SCALA_VERSION" | sed -e 's/2.13.*/o/'` = "no" ]; then
   TEST_ARGS="$TEST_ARGS ;msbCompat/testOnly"
 fi
 

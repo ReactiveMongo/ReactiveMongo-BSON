@@ -4,7 +4,7 @@ private[bson] object BSONIterator {
   def pretty(i: Int, it: Iterable[BSONElement], f: String => String = { name => s"'${name}': " }): String = {
     val indent = (0 to i).map { _ => "  " }.mkString("")
 
-    it.map {
+    it.collect {
       case BSONElement(name, value) =>
         pretty(i, indent, name, value, f)
 
