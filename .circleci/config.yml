@@ -6,7 +6,7 @@ commands:
     parameters:
       sbt_version:
         type: string
-        default: "1.3.9"
+        default: "1.4.7"
     steps:
       - restore_cache:
           keys:
@@ -96,9 +96,9 @@ commands:
                     sbt +publish
 
 jobs:
-  scala211_jdk10:
+  scala211_jdk11:
     docker:
-      - image: circleci/openjdk:10-jdk
+      - image: circleci/openjdk:11-jdk
 
     working_directory: ~/repo
 
@@ -130,9 +130,9 @@ jobs:
       - store_test_results:
           path: test-reports
 
-  scala213_jdk9:
+  scala213_jdk10:
     docker:
-      - image: circleci/openjdk:9-jdk
+      - image: circleci/openjdk:10-jdk
 
     working_directory: ~/repo
 
@@ -179,9 +179,9 @@ workflows:
 
   main_suite:
     jobs:
-      - scala211_jdk10
+      - scala211_jdk11
       - scala212_jdk8
-      - scala213_jdk9
+      - scala213_jdk10
 
       - publish_snapshots:
           filters:
@@ -189,9 +189,9 @@ workflows:
               only:
                 - master
           requires:
-            - scala211_jdk10
+            - scala211_jdk11
             - scala212_jdk8
-            - scala213_jdk9
+            - scala213_jdk10
 
       - trigger_dependent_builds:
           filters:
