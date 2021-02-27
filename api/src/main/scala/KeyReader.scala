@@ -45,6 +45,29 @@ object KeyReader {
   def from[T](readTry: String => Try[T]): KeyReader[T] = new Default[T](readTry)
 
   /**
+   * Creates a [[KeyReader]] based on the given `read` function.
+   */
+  def option[T](read: String => Option[T]): KeyReader[T] =
+    from[T] { value =>
+      read(value) match {
+        case Some(key) =>
+          Success(key)
+
+        case _ =>
+          Failure(exceptions.ValueDoesNotMatchException(value))
+      }
+    }
+
+  /**
+   * Creates a [[KeyReader]] based on the given partial function.
+   *
+   * A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure`
+   * for any BSON value that is not matched by the `read` function.
+   */
+  def collect[T](read: PartialFunction[String, T]): KeyReader[T] =
+    option[T] { read.lift(_) }
+
+  /**
    * Provides a [[KeyReader]] instance of any `T` type
    * that can be parsed from a `String`.
    */
