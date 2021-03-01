@@ -42,7 +42,7 @@ private[bson] sealed trait UnsafeProducer[T] extends Producer[T] {
 }
 
 /** A [[https://docs.mongodb.com/manual/reference/bson-types/ BSON]] value */
-sealed trait BSONValue { self =>
+sealed trait BSONValue extends Serializable { self =>
   /**
    * The code indicating the BSON type for this value
    */
@@ -244,7 +244,7 @@ private[bson] sealed trait BSONValueLowPriority3 {
  * }}}
  */
 final class BSONDouble private[bson] (val value: Double)
-  extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value {
+  extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value with Serializable {
 
   val code = 0x01
   val byteCode = 0x01: Byte
@@ -348,7 +348,7 @@ object BSONDouble {
  * reactivemongo.api.bson.BSONString("foo")
  * }}}
  */
-final class BSONString private[bson] (val value: String) extends BSONValue {
+final class BSONString private[bson] (val value: String) extends BSONValue with Serializable {
   val code = 0x02
   val byteCode = 0x02: Byte
 
@@ -423,7 +423,7 @@ object BSONString {
  *
  * @define indexParam the index to be found in the array (`0` being the first)
  */
-sealed abstract class BSONArray extends BSONValue {
+sealed abstract class BSONArray extends BSONValue with Serializable {
   /** The BSON values */
   def values: IndexedSeq[BSONValue]
 
@@ -803,7 +803,7 @@ object BSONArray {
  */
 final class BSONBinary private[bson] (
   private[bson] val value: ReadableBuffer,
-  val subtype: Subtype) extends BSONValue {
+  val subtype: Subtype) extends BSONValue with Serializable {
 
   val code = 0x05
   val byteCode = 0x05: Byte
@@ -896,7 +896,7 @@ object BSONBinary {
 }
 
 /** BSON undefined value */
-sealed trait BSONUndefined extends BSONValue with BSONBooleanLike.Value {
+sealed trait BSONUndefined extends BSONValue with BSONBooleanLike.Value with Serializable {
   val code = 0x06
   val byteCode = (0x06: Byte)
 
@@ -928,7 +928,7 @@ object BSONUndefined extends BSONUndefined {
  * | ---                 | ---                | ---               | ---
  * | 4 bytes             | 3 bytes            | 2 bytes           | 3 bytes
  */
-sealed abstract class BSONObjectID extends BSONValue {
+sealed abstract class BSONObjectID extends BSONValue with Serializable {
   import java.util.Arrays
 
   val code = 0x07
@@ -1161,7 +1161,7 @@ object BSONObjectID {
 
 /** BSON boolean value */
 final class BSONBoolean private[bson] (val value: Boolean)
-  extends BSONValue with BSONBooleanLike.Value {
+  extends BSONValue with BSONBooleanLike.Value with Serializable {
 
   val code = 0x08
   val byteCode = 0x08: Byte
@@ -1196,7 +1196,7 @@ object BSONBoolean {
 
 /** BSON date time value */
 final class BSONDateTime private[bson] (val value: Long)
-  extends BSONValue with BSONNumberLike.Value {
+  extends BSONValue with BSONNumberLike.Value with Serializable {
   val code = 0x09
   val byteCode = 0x09: Byte
 
@@ -1249,7 +1249,7 @@ object BSONDateTime {
 }
 
 /** BSON null value */
-sealed trait BSONNull extends BSONValue with BSONBooleanLike.Value {
+sealed trait BSONNull extends BSONValue with BSONBooleanLike.Value with Serializable {
   val code = 0x0A
   val byteCode = 0x0A: Byte
 
@@ -1272,7 +1272,7 @@ object BSONNull extends BSONNull {
  */
 final class BSONRegex private[bson] (
   val value: String, val flags: String)
-  extends BSONValue {
+  extends BSONValue with Serializable {
   val code = 0x0B
   val byteCode = 0x0B: Byte
 
@@ -1315,7 +1315,7 @@ object BSONRegex {
  *
  * @param value The JavaScript source code.
  */
-final class BSONJavaScript private[bson] (val value: String) extends BSONValue {
+final class BSONJavaScript private[bson] (val value: String) extends BSONValue with Serializable {
   val code = 0x0D
   val byteCode = 0x0D: Byte
 
@@ -1351,7 +1351,7 @@ object BSONJavaScript {
  *
  * @param value the symbol value (name)
  */
-final class BSONSymbol private[bson] (val value: String) extends BSONValue {
+final class BSONSymbol private[bson] (val value: String) extends BSONValue with Serializable {
   val code = 0x0E
   val byteCode = 0x0E: Byte
 
@@ -1389,7 +1389,7 @@ object BSONSymbol {
  */
 final class BSONJavaScriptWS private[bson] (
   val value: String,
-  val scope: BSONDocument) extends BSONValue {
+  val scope: BSONDocument) extends BSONValue with Serializable {
   val code = 0x0F
   val byteCode = 0x0F: Byte
 
@@ -1433,7 +1433,7 @@ object BSONJavaScriptWS {
 
 /** BSON Integer value */
 final class BSONInteger private[bson] (val value: Int)
-  extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value {
+  extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value with Serializable {
 
   val code = 0x10
   val byteCode = 0x10: Byte
@@ -1489,7 +1489,7 @@ object BSONInteger {
  * @param value
  */
 sealed abstract class BSONTimestamp
-  extends BSONValue with BSONNumberLike.Value {
+  extends BSONValue with BSONNumberLike.Value with Serializable {
 
   val code = 0x11
   val byteCode = 0x11: Byte
@@ -1575,7 +1575,7 @@ object BSONTimestamp {
 
 /** BSON Long value */
 final class BSONLong private[bson] (val value: Long)
-  extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value {
+  extends BSONValue with BSONNumberLike.Value with BSONBooleanLike.Value with Serializable {
 
   val code = 0x12
   val byteCode = 0x12: Byte
@@ -1646,7 +1646,7 @@ object BSONLong {
 final class BSONDecimal private[bson] (
   val high: Long,
   val low: Long) extends BSONValue
-  with BSONNumberLike.Value with BSONBooleanLike.Value {
+  with BSONNumberLike.Value with BSONBooleanLike.Value with Serializable {
 
   val code = 0x13
   val byteCode = 0x13: Byte
@@ -1807,7 +1807,7 @@ object BSONDecimal {
 }
 
 /** BSON Min key value */
-sealed trait BSONMinKey extends BSONValue {
+sealed trait BSONMinKey extends BSONValue with Serializable {
   val byteCode = 0xFF.toByte
   val code = byteCode.toInt
 
@@ -1820,7 +1820,7 @@ object BSONMinKey extends BSONMinKey {
 }
 
 /** BSON Max key value */
-sealed trait BSONMaxKey extends BSONValue {
+sealed trait BSONMaxKey extends BSONValue with Serializable {
   val code = 0x7F
   val byteCode = 0x7F: Byte
 
@@ -1845,7 +1845,7 @@ object BSONMaxKey extends BSONMaxKey {
  */
 sealed abstract class BSONDocument
   extends BSONValue with ElementProducer with SafeProducer[BSONElement]
-  with BSONDocumentLowPriority with BSONDocumentExperimental { self =>
+  with BSONDocumentLowPriority with BSONDocumentExperimental with Serializable { self =>
 
   val code = 0x03
   val byteCode = 0x03: Byte
