@@ -111,7 +111,7 @@ lazy val msbCompat = (project in file("msb-compat")).settings(
     name := s"${baseArtifact}-msb-compat",
     description := "Compatibility library with mongo-scala-bson",
     libraryDependencies += {
-      val v = if (scalaBinaryVersion.value != "2.13") "2.8.0" else "4.2.1"
+      val v = if (scalaBinaryVersion.value != "2.13") "2.8.0" else "4.2.2"
 
       "org.mongodb.scala" %% "mongo-scala-bson" % v % Provided
     },
