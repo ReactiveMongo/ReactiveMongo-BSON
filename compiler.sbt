@@ -1,22 +1,32 @@
 ThisBuild / scalaVersion := "2.12.15"
 
 ThisBuild / crossScalaVersions := Seq(
-  "2.11.12", scalaVersion.value, "2.13.6")
+  "2.11.12", scalaVersion.value, "2.13.6", dottyLatestNightlyBuild.get)
 
 crossVersion := CrossVersion.binary
 
 ThisBuild / scalacOptions ++= Seq(
-  "-encoding", "UTF-8", "-target:jvm-1.8",
+  "-encoding", "UTF-8",
   "-unchecked",
   "-deprecation",
   "-feature",
-  "-Xlint",
-  "-g:vars",
   "-Xfatal-warnings"
 )
 
 ThisBuild / scalacOptions ++= {
-  if (scalaBinaryVersion.value == "2.12") {
+  if (scalaBinaryVersion.value startsWith "2.") {
+    Seq(
+      "-target:jvm-1.8",
+      "-Xlint",
+      "-g:vars"
+    )
+  } else Seq.empty
+}
+
+ThisBuild / scalacOptions ++= {
+  val sv = scalaBinaryVersion.value
+
+  if (sv == "2.12") {
     Seq(
       "-Xmax-classfile-name", "128",
       "-Ywarn-numeric-widen",
@@ -27,11 +37,11 @@ ThisBuild / scalacOptions ++= {
       "-Ywarn-unused-import",
       "-Ywarn-macros:after"
     )
-  } else if (scalaBinaryVersion.value == "2.11") {
+  } else if (sv == "2.11") {
     Seq(
       "-Xmax-classfile-name", "128",
       "-Yopt:_", "-Ydead-code", "-Yclosure-elim", "-Yconst-opt")
-  } else {
+  } else if (sv == "2.13") {
     Seq(
       "-explaintypes",
       "-Werror",
@@ -41,6 +51,8 @@ ThisBuild / scalacOptions ++= {
       "-Wextra-implicit",
       "-Wmacros:after",
       "-Wunused")
+  } else {
+    Seq.empty
   }
 }
 
@@ -63,14 +75,20 @@ Test / console / scalacOptions ~= {
 
 // Silencer
 ThisBuild / libraryDependencies ++= {
-  val silencerVersion = "1.7.7"
+  if (!scalaBinaryVersion.value.startsWith("3.")) {
+    val silencerVersion = "1.7.7"
 
-  Seq(
-    compilerPlugin(("com.github.ghik" %% "silencer-plugin" % silencerVersion).
-      cross(CrossVersion.full)),
-    ("com.github.ghik" %% "silencer-lib" % silencerVersion % Provided).
-      cross(CrossVersion.full)
-  )
+    Seq(
+      compilerPlugin(("com.github.ghik" %% "silencer-plugin" % silencerVersion).
+        cross(CrossVersion.full)),
+      ("com.github.ghik" %% "silencer-lib" % silencerVersion % Provided).
+        cross(CrossVersion.full)
+    ).map(_.withDottyCompat(scalaVersion.value))
+  } else Seq.empty
 }
 
-ThisBuild / scalacOptions ++= Seq("-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used")
+ThisBuild / scalacOptions ++= {
+  if (scalaBinaryVersion.value startsWith "2.") {
+    Seq("-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used")
+  } else Seq.empty
+}

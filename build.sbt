@@ -64,10 +64,9 @@ lazy val api = (project in file("api")).settings(
       "org.specs2" %% "specs2-matcher-extra" % specsVer,
       "org.typelevel" %% "discipline-specs2" % "1.1.3",
       spireLaws.value,
-      "org.slf4j" % "slf4j-simple" % "1.7.32").map(_ % Test),
-    libraryDependencies ++= (
-      "org.scala-lang" % "scala-reflect" % scalaVersion.value) +: (
-      reactivemongoShaded.value)
+      "org.slf4j" % "slf4j-simple" % "1.7.32").map(
+      _.withDottyCompat(scalaVersion.value) % Test),
+    libraryDependencies ++= reactivemongoShaded.value
   ))
 
 lazy val specs2 = (project in file("specs2")).settings(
@@ -82,12 +81,12 @@ lazy val monocle = (project in file("monocle")).settings(
     name := s"${baseArtifact}-monocle",
     description := "Monocle utilities for BSON values",
     libraryDependencies ++= Seq(
-      "com.github.julien-truffaut" %% "monocle-core" % {
+      ("com.github.julien-truffaut" %% "monocle-core" % {
         val ver = scalaBinaryVersion.value
 
         if (ver == "2.11") "1.6.0-M1"
         else "2.1.0"
-      },
+      }).withDottyCompat(scalaVersion.value),
       slf4jApi % Test)
   )).dependsOn(api)
 
@@ -113,16 +112,21 @@ lazy val msbCompat = (project in file("msb-compat")).settings(
     name := s"${baseArtifact}-msb-compat",
     description := "Compatibility library with mongo-scala-bson",
     libraryDependencies += {
-      val v = if (scalaBinaryVersion.value != "2.13") "2.8.0" else "4.4.0"
+      val sv = scalaBinaryVersion.value
+      val v = {
+        if (sv == "2.13" || sv.startsWith("3.")) "4.3.3"
+        else "2.8.0"
+      }
 
-      "org.mongodb.scala" %% "mongo-scala-bson" % v % Provided
+      ("org.mongodb.scala" %% "mongo-scala-bson" % v % Provided).
+        withDottyCompat(scalaVersion.value)
     },
     scalacOptions := (Def.taskDyn {
       val opts = scalacOptions.value
-
+      val sv = scalaBinaryVersion.value
 
       Def.task {
-        if (scalaBinaryVersion.value == "2.13") {
+        if (sv == "2.13" || sv.startsWith("3.")) {
           opts.filterNot(_.startsWith("-W"))
         } else {
           opts

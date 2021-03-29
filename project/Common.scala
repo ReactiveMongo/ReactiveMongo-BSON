@@ -32,28 +32,7 @@ object Common extends AutoPlugin {
       else target.value / "noshaded"
     },
     testFrameworks ~= { _.filterNot(_ == TestFrameworks.ScalaTest) },
-    scalacOptions ++= {
-      val v = scalaBinaryVersion.value
-
-      if (v == "2.12") {
-        Seq(
-          "-Ywarn-numeric-widen",
-          "-Ywarn-dead-code",
-          "-Ywarn-value-discard",
-          "-Ywarn-infer-any",
-          "-Ywarn-unused",
-          "-Ywarn-unused-import",
-          "-Ywarn-macros:after"
-        )
-      } else if (v == "2.11") {
-        Seq("-Yopt:_", "-Ydead-code", "-Yclosure-elim", "-Yconst-opt")
-      } else if (v != "2.10") {
-        Seq("-Wmacros:after")
-      } else {
-        Seq.empty
-      }
-    },
-    Compile / doc / scalacOptions := (Test / scalacOptions).value ++ Seq(
+    scalacOptions in (Compile, doc) := (scalacOptions in Test).value ++ Seq(
       "-unchecked", "-deprecation",
       /*"-diagrams", */"-implicits", "-skip-packages", "highlightextractor") ++
       Opts.doc.title(name.value),
