@@ -1,5 +1,7 @@
 package reactivemongo.api
 
+import scala.math.Ordering
+
 // TODO: relocate handler
 
 /**
@@ -28,7 +30,8 @@ package reactivemongo.api
  *   - `reactivemongo.api.bson.bufferSizeBytes` (integer; default: `96`): Number of bytes used as initial size when allocating a new buffer.
  *   - `reactivemongo.api.bson.document.strict` (boolean; default: `false`): Flag to enable strict reading of document (filter duplicate fields, see [[BSONDocument.asStrict]]).
  */
-package object bson extends DefaultBSONHandlers with Aliases with Utils {
+package object bson extends DefaultBSONHandlers
+  with Aliases with Utils with PackageCompat {
   // DSL helpers:
 
   /**
@@ -97,56 +100,15 @@ package object bson extends DefaultBSONHandlers with Aliases with Utils {
    * Key/value ordering
    *
    * {{{
-   * import reactivemongo.api.bson.BSONString
+   * import reactivemongo.api.bson.{ BSONString, nameValueOrdering }
    *
    * Seq("foo" -> BSONString("1"), "bar" -> BSONString("1")).
    *   sorted // == [ "bar" -> .., "foo" -> .. ]
    * }}}
    */
-  implicit def nameValueOrdering[T <: BSONValue] =
-    new scala.math.Ordering[(String, T)] {
-
+  implicit def nameValueOrdering[T <: BSONValue]: Ordering[(String, T)] =
+    new Ordering[(String, T)] {
       def compare(x: (String, T), y: (String, T)): Int =
         x._1 compare y._1
     }
-
-  import com.github.ghik.silencer.silent
-
-  /**
-   * Evidence that `T` can be serialized as a BSON document.
-   */
-  @silent sealed trait DocumentClass[T]
-
-  /** See [[DocumentClass]] */
-  object DocumentClass {
-    import language.experimental.macros
-
-    private val unsafe = new DocumentClass[Nothing] {}
-
-    /** Un-checked factory */
-    @silent
-    @SuppressWarnings(Array("AsInstanceOf"))
-    def unchecked[T] = unsafe.asInstanceOf[DocumentClass[T]]
-
-    /**
-     * Implicit evidence of `DocumentClass` for `T`
-     * if `T` is a case class or a sealed trait.
-     */
-    @SuppressWarnings(Array("NullParameter"))
-    implicit def evidence[T]: DocumentClass[T] = macro MacroImpl.documentClass[T]
-  }
-
-  // ---
-
-  import language.experimental.macros
-
-  /**
-   * Keeps a `A` statement but raise a migration error at compile-time.
-   *
-   * The compilation error can be disabled by setting the system property
-   * `reactivemongo.api.migrationRequired.nonFatal` to `true`.
-   */
-  @SuppressWarnings(Array("NullParameter", "UnusedMethodParameter"))
-  def migrationRequired[A](details: String): A = macro reactivemongo.api.bson.
-    MacroImpl.migrationRequired[A]
 }

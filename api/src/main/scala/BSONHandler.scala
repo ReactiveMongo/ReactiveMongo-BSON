@@ -46,7 +46,7 @@ trait BSONHandler[T] extends BSONReader[T] with BSONWriter[T] {
 }
 
 /** [[BSONHandler]] factories */
-object BSONHandler {
+object BSONHandler extends BSONHandlerInstances {
   /**
    * Handler factory.
    *
@@ -57,7 +57,7 @@ object BSONHandler {
    *
    * val foo: BSONHandler[Foo] = BSONHandler(
    *   { _ => Foo("value") },
-   *   { f: Foo => BSONString(f.value) }
+   *   { (f: Foo) => BSONString(f.value) }
    * )
    * }}}
    */

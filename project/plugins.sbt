@@ -22,4 +22,6 @@ addSbtPlugin("com.dwijnand" % "sbt-dynver" % "4.1.1")
 
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.33")
 
+addSbtPlugin("cchantep" % "sbt-velocity" % "0.1")
+
 addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.5.5")

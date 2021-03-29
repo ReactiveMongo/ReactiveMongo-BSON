@@ -8,7 +8,7 @@ import spire.laws.GroupLaws
 final class BSONLawsSpecs
   extends org.specs2.mutable.Specification with Discipline {
 
-  "BSON laws" title
+  "BSON laws".title
 
   import BSONCheck._
   import LawEvidences._

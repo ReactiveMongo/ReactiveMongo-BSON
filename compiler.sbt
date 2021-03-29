@@ -52,7 +52,7 @@ ThisBuild / scalacOptions ++= {
       "-Wmacros:after",
       "-Wunused")
   } else {
-    Seq.empty
+    Seq("-language:implicitConversions")
   }
 }
 

@@ -42,7 +42,7 @@ object BSONDocumentWriter {
    * case class Foo(value: String)
    *
    * val foo: BSONDocumentWriter[Foo] =
-   *   BSONDocumentWriter { f: Foo => BSONDocument("value" -> f.value) }
+   *   BSONDocumentWriter { (f: Foo) => BSONDocument("value" -> f.value) }
    * }}}
    */
   def apply[T](write: T => BSONDocument): BSONDocumentWriter[T] = {
@@ -140,7 +140,7 @@ object BSONDocumentWriter {
    * }
    * }}}
    */
-  def collectFrom[T](write: PartialFunction[T, Try[BSONDocument]]): BSONDocumentWriter[T] = from[T] { v: T =>
+  def collectFrom[T](write: PartialFunction[T, Try[BSONDocument]]): BSONDocumentWriter[T] = from[T] { (v: T) =>
     write.lift(v) getOrElse {
       Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
     }

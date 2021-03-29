@@ -94,7 +94,7 @@ object KeyWriter extends LowPriorityKeyWriter {
   }
 }
 
-private[bson] sealed trait LowPriorityKeyWriter { _: KeyWriter.type =>
+private[bson] sealed trait LowPriorityKeyWriter { self: KeyWriter.type =>
   implicit def anyValKeyWriter[T <: AnyVal]: KeyWriter[T] =
     safe[T](_.toString)
 }

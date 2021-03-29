@@ -5,7 +5,7 @@ import reactivemongo.api.bson._
 import reactivemongo.BSONValueFixtures
 
 final class TypeSpec extends org.specs2.mutable.Specification {
-  "BSON types" title
+  "BSON types".title
 
   implicit def bsonValue[T](value: T)(implicit writer: BSONWriter[T]): BSONValue = writer.writeTry(value) match {
     case Success(bson) => bson

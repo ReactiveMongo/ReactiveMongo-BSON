@@ -3,7 +3,7 @@ package reactivemongo.api.bson
 import scala.util.{ Failure, Success, Try }
 
 private[bson] trait BSONIdentityHandlers
-  extends BSONIdentityLowPriorityHandlers { _: DefaultBSONHandlers =>
+  extends BSONIdentityLowPriorityHandlers { self: DefaultBSONHandlers =>
 
   import exceptions.TypeDoesNotMatchException
 
@@ -351,7 +351,9 @@ private[bson] trait BSONIdentityHandlers
   }
 }
 
-private[bson] trait BSONIdentityLowPriorityHandlers { _: BSONIdentityHandlers =>
+private[bson] trait BSONIdentityLowPriorityHandlers {
+  self: DefaultBSONHandlers =>
+
   implicit object BSONValueIdentity
     extends BSONReader[BSONValue] with BSONWriter[BSONValue] {
 

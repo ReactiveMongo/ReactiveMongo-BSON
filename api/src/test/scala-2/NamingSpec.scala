@@ -1,7 +1,7 @@
 import reactivemongo.api.bson.{ BSONString, FieldNaming, TypeNaming }
 
 final class NamingSpec extends org.specs2.mutable.Specification {
-  "Naming" title
+  "Naming".title
 
   "Naming for property fooBar" should {
     "be preserved with Identity" in {

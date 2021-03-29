@@ -11,7 +11,7 @@ package reactivemongo.api.bson
  * val cfg2 = MacroConfiguration(typeNaming = TypeNaming.FullName)
  *
  * val cfg3 = MacroConfiguration(
- *   typeNaming = TypeNaming { cls: Class[_] =>
+ *   typeNaming = TypeNaming { (cls: Class[_]) =>
  *     "_" + cls.getSimpleName
  *   })
  * }}}
@@ -76,7 +76,7 @@ object TypeNaming {
    * import reactivemongo.api.bson.{ MacroConfiguration, TypeNaming }
    *
    * val configWithCustomNaming = MacroConfiguration(
-   *   typeNaming = TypeNaming { cls: Class[_] =>
+   *   typeNaming = TypeNaming { (cls: Class[_]) =>
    *     "custom:" + cls.getSimpleName
    *   })
    * }}}

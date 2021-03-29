@@ -11,7 +11,7 @@ import scala.util.Success
 import org.specs2.specification.core.Fragments
 
 final class HandlerSpec extends org.specs2.mutable.Specification {
-  "Handler" title
+  "Handler".title
 
   import exceptions.TypeDoesNotMatchException
 
@@ -114,12 +114,12 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
       } and {
         val reader3: BSONDocumentReader[Unit] = reader1.afterRead(_ => ())
 
-        reader3.readTry(doc) must beSuccessfulTry({})
+        reader3.readTry(doc) must_=== Success({})
       }
     }
 
     "be written" in {
-      val writer1 = BSONDocumentWriter { s: String =>
+      val writer1 = BSONDocumentWriter { (s: String) =>
         BSONDocument(f"$$foo" -> s)
       }
       val expected1 = BSONDocument(f"$$foo" -> "bar")
@@ -279,15 +279,18 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
 
     "with structured values" >> {
       case class Foo(label: String, count: Int)
-      implicit val fooWriter = BSONDocumentWriter[Foo] { foo =>
-        BSONDocument("label" -> foo.label, "count" -> foo.count)
-      }
-      implicit val fooReader = BSONDocumentReader.from[Foo] { document =>
-        for {
-          label <- document.getAsTry[String]("label")
-          count <- document.getAsTry[Int]("count")
-        } yield Foo(label, count)
-      }
+      implicit val fooWriter: BSONDocumentWriter[Foo] =
+        BSONDocumentWriter[Foo] { foo =>
+          BSONDocument("label" -> foo.label, "count" -> foo.count)
+        }
+
+      implicit val fooReader: BSONDocumentReader[Foo] =
+        BSONDocumentReader.from[Foo] { document =>
+          for {
+            label <- document.getAsTry[String]("label")
+            count <- document.getAsTry[Int]("count")
+          } yield Foo(label, count)
+        }
 
       "write" in {
         val expectedResult = BSONDocument(
@@ -306,7 +309,7 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           "b" -> BSONDocument("label" -> "foo2", "count" -> 20))
         val handler = implicitly[BSONReader[Map[String, Foo]]]
 
-        handler.readTry(input) must beSuccessfulTry(expectedResult)
+        handler.readTry(input) must_=== Success(expectedResult)
       }
 
       "fail" in {
@@ -643,7 +646,7 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
       BSONString(uuid.toString).asTry[UUID] must beSuccessfulTry(uuid)
     }
 
-    val writer = BSONWriter { str: String => BSONString(str) }
+    val writer = BSONWriter { BSONString(_: String) }
 
     "be provided as safe writer" in {
       SafeBSONWriter.unapply(implicitly[BSONWriter[String]]).
@@ -854,8 +857,8 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           BSONDocument("b" -> 1),
           BSONDocument("a" -> "B", "b" -> 2))
 
-        seqReader.readTry(arr1) must beSuccessfulTry(seq1) and {
-          seqReader.readOpt(arr1) must beSome(seq1)
+        seqReader.readTry(arr1) must_=== Success(seq1) and {
+          seqReader.readOpt(arr1) must_=== Some(seq1)
         } and {
           seqReader.readTry(arr2) must beFailedTry[Seq[(String, Int)]]
         } and {
@@ -1181,7 +1184,7 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
 
   implicit def albumHandler: BSONDocumentHandler[Album] =
     BSONDocumentHandler.from[Album](
-      read = { doc: BSONDocument =>
+      read = { (doc: BSONDocument) =>
         for {
           n <- doc.getAsTry[String]("name")
           r <- doc.getAsTry[Int]("releaseYear")
@@ -1189,7 +1192,7 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           t <- doc.getAsTry[List[String]]("tracks")
         } yield new Album(n, r, c, t)
       },
-      write = { album: Album =>
+      write = { (album: Album) =>
         Success(BSONDocument(
           "name" -> album.name,
           "releaseYear" -> album.releaseYear,
@@ -1199,14 +1202,14 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
 
   implicit def artistHandler: BSONDocumentHandler[Artist] =
     BSONDocumentHandler.from[Artist](
-      read = { doc: BSONDocument =>
+      read = { (doc: BSONDocument) =>
         for {
           name <- doc.getAsTry[String]("name")
           birthDate <- doc.getAsTry[Instant]("birthDate")
           arts <- doc.getAsTry[List[Album]]("albums")
         } yield Artist(name, birthDate, arts)
       },
-      write = { artist: Artist =>
+      write = { (artist: Artist) =>
         Success(BSONDocument(
           "name" -> artist.name,
           "birthDate" -> artist.birthDate,

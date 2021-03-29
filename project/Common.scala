@@ -32,6 +32,7 @@ object Common extends AutoPlugin {
       else target.value / "noshaded"
     },
     testFrameworks ~= { _.filterNot(_ == TestFrameworks.ScalaTest) },
+    /* TODO:
     scalacOptions in (Compile, doc) := (scalacOptions in Test).value ++ Seq(
       "-unchecked", "-deprecation",
       /*"-diagrams", */"-implicits", "-skip-packages", "highlightextractor") ++
@@ -43,14 +44,19 @@ object Common extends AutoPlugin {
         case Some((2, n)) if n >= 13 => base / "scala-2.13+"
         case _                       => base / "scala-2.13-"
       }
-    },
+    }, */
     resolvers ++= Seq(
       Resolver.sonatypeRepo("staging"),
       Resolver.sonatypeRepo("snapshots"),
       Resolver.typesafeRepo("releases")),
     mimaFailOnNoPrevious := false,
-    mimaPreviousArtifacts := Set(
-      organization.value %% name.value.toLowerCase % "1.0.0"),
+    mimaPreviousArtifacts := {
+      if (scalaBinaryVersion.value startsWith "2.") {
+        Set(organization.value %% name.value.toLowerCase % "1.0.0")
+      } else {
+        Set.empty
+      }
+    },
     mimaBinaryIssueFilters ++= Seq(missingMethodInOld)
   )
 

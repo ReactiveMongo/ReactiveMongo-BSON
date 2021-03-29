@@ -6,7 +6,7 @@ import reactivemongo.api.bson.buffer._
 import org.specs2.specification.core.Fragments
 
 final class SerializationSpec extends org.specs2.mutable.Specification {
-  "Serialization" title
+  "Serialization".title
 
   import SerializationFixtures._
   import DefaultBufferHandler.{ readDocument, writeArray, writeDocument }

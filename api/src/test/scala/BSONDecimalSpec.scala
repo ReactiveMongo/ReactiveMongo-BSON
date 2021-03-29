@@ -9,7 +9,7 @@ import reactivemongo.api.bson.buffer.WritableBuffer
 import org.specs2.specification.core.Fragments
 
 final class BSONDecimalSpec extends org.specs2.mutable.Specification {
-  "BSON decimal (128bits)" title
+  "BSON decimal (128bits)".title
 
   import buffer.DefaultBufferHandler.{
     readDecimal,

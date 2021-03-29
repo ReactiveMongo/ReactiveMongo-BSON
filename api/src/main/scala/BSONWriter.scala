@@ -110,7 +110,7 @@ trait BSONWriter[T] {
  * @define createWriterBasedOn Creates a [[BSONWriter]] based on
  * @define valueDoesNotMatchException A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
  */
-object BSONWriter extends BSONWriterCompat {
+object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
   /**
    * $createWriterBasedOn the given `write` function.
    * This function is called within a [[scala.util.Try]].
@@ -120,7 +120,7 @@ object BSONWriter extends BSONWriterCompat {
    *
    * case class Foo(value: String)
    *
-   * val foo: BSONWriter[Foo] = BSONWriter { f: Foo => BSONString(f.value) }
+   * val foo: BSONWriter[Foo] = BSONWriter { f => BSONString(f.value) }
    * }}}
    */
   def apply[T](write: T => BSONValue): BSONWriter[T] = {
@@ -218,7 +218,7 @@ object BSONWriter extends BSONWriterCompat {
    * }}}
    */
   def collectFrom[T](write: PartialFunction[T, Try[BSONValue]]): BSONWriter[T] =
-    from[T] { v: T =>
+    from[T] { (v: T) =>
       write.lift(v) getOrElse {
         Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
       }
@@ -260,14 +260,14 @@ object BSONWriter extends BSONWriterCompat {
    * and applying the given safe `write` function to each element value.
    *
    * {{{
-   * import reactivemongo.api.bson.{ BSONWriter, Macros }
+   * import reactivemongo.api.bson.BSONWriter
    *
    * case class Element(str: String, v: Int)
    *
-   * val elementHandler = Macros.handler[Element]
+   * def elementWriter: BSONWriter[Element] = ???
    *
    * val seqWriter: BSONWriter[Seq[Element]] =
-   *   BSONWriter.sequence[Element](elementHandler writeTry _)
+   *   BSONWriter.sequence[Element](elementWriter writeTry _)
    * }}}
    */
   def sequence[T](write: T => Try[BSONValue]): BSONWriter[Seq[T]] =
@@ -353,8 +353,6 @@ private[reactivemongo] trait SafeBSONWriter[T] { writer: BSONWriter[T] =>
 
 private[reactivemongo] object SafeBSONWriter {
   @com.github.ghik.silencer.silent
-  def unapply[T](w: BSONWriter[T]): Option[SafeBSONWriter[T]] = w match {
-    case s: SafeBSONWriter[T] => Some(s)
-    case _ => None
-  }
+  def unapply[T](w: BSONWriter[T]): Option[SafeBSONWriter[T]] =
+    implicitly[scala.reflect.ClassTag[SafeBSONWriter[T]]].unapply(w)
 }

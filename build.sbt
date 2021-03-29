@@ -21,8 +21,14 @@ val commonSettings = Seq(
     val base = (Compile / sourceDirectory).value
 
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, n)) if n >= 13 => base / "scala-2.13+"
-      case _                       => base / "scala-2.13-"
+      case Some((2, n)) if n >= 13 =>
+        base / "scala-2.13+"
+
+      case Some((3, _)) =>
+        base / "scala-2.13+"
+
+      case _ =>
+        base / "scala-2.13-"
     }
   }
 )
@@ -55,8 +61,9 @@ val spireLaws = Def.setting[ModuleID] {
 
 ThisBuild / libraryDependencies ++= specsDeps.map(_ % Test)
 
-lazy val api = (project in file("api")).settings(
-  commonSettings ++ Seq(
+lazy val api = (project in file("api")).
+  enablePlugins(VelocityPlugin).
+  settings(commonSettings ++ Seq(
     name := s"${baseArtifact}-api",
     description := "New BSON API",
     libraryDependencies ++= Seq(
@@ -66,6 +73,13 @@ lazy val api = (project in file("api")).settings(
       spireLaws.value,
       "org.slf4j" % "slf4j-simple" % "1.7.32").map(
       _.withDottyCompat(scalaVersion.value) % Test),
+    libraryDependencies ++= {
+      if (scalaBinaryVersion.value startsWith "2.") {
+        Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+      } else {
+        Seq.empty
+      }
+    },
     libraryDependencies ++= reactivemongoShaded.value
   ))
 
@@ -73,7 +87,7 @@ lazy val specs2 = (project in file("specs2")).settings(
   commonSettings ++ Seq(
     name := s"${baseArtifact}-specs2",
     description := "Specs2 utility for BSON",
-    libraryDependencies ++= specsDeps)
+    libraryDependencies ++= specsDeps.value)
 ).dependsOn(api)
 
 lazy val monocle = (project in file("monocle")).settings(

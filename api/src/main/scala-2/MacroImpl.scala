@@ -6,7 +6,7 @@ import scala.collection.immutable.Set
 
 import scala.reflect.macros.blackbox.Context
 
-private[bson] class MacroImpl(val c: Context) {
+private[api] class MacroImpl(val c: Context) {
   import c.universe._
 
   import Macros.Annotations, Annotations.{
@@ -61,7 +61,7 @@ private[bson] class MacroImpl(val c: Context) {
   def configuredHandler[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentHandler[A]] = handlerWithConfig[A, Opts](withOptionsConfig)
 
   def documentClass[A: c.WeakTypeTag]: c.Expr[DocumentClass[A]] = {
-    val aTpe = c.weakTypeOf[A].dealias
+    val aTpe = c.weakTypeOf[A].dealias // TODO: Scala-3 inline?
     val tpeSym = aTpe.typeSymbol.asClass
     val bsonValueTpe = c.typeOf[BSONValue]
     val bsonDocTpe = c.typeOf[BSONDocument]
@@ -87,7 +87,7 @@ private[bson] class MacroImpl(val c: Context) {
     }
   }
 
-  @com.github.ghik.silencer.silent("dead\\ code")
+  @com.github.ghik.silencer.silent("dead\\ code") // TODO: Scala-3 inline?
   def migrationRequired[A: c.WeakTypeTag](
     details: c.Expr[String]): c.Expr[A] = {
 
@@ -179,7 +179,7 @@ private[bson] class MacroImpl(val c: Context) {
    */
   private abstract class Helper[C <: Context, A](
     val config: c.Expr[MacroConfiguration]) extends ImplicitResolver {
-    _: MacroHelpers with ReaderHelpers with WriterHelpers =>
+    self: MacroHelpers with ReaderHelpers with WriterHelpers =>
 
     lazy val readBody: c.Expr[UTry[A]] = {
       val nme = TermName("macroDoc")
@@ -861,8 +861,8 @@ private[bson] class MacroImpl(val c: Context) {
 
       val tupleElement: Int => Tree = {
         val tuple = Ident(tupleName)
-        if (types.length == 1) { _: Int => tuple }
-        else { i: Int => Select(tuple, TermName("_" + (i + 1))) }
+        if (types.length == 1) { (_: Int) => tuple }
+        else { (i: Int) => Select(tuple, TermName("_" + (i + 1))) }
       }
 
       val bufOk = TermName(c.freshName("ok"))
@@ -1042,7 +1042,7 @@ private[bson] class MacroImpl(val c: Context) {
     }
   }
 
-  sealed trait MacroHelpers { _: ImplicitResolver =>
+  sealed trait MacroHelpers { _i: ImplicitResolver =>
     /* Type of compile-time options; See [[MacroOptions]] */
     protected def optsTpe: Type
 
@@ -1164,7 +1164,7 @@ private[bson] class MacroImpl(val c: Context) {
       }
 
     /* Some(A) for Option[A] else None */
-    protected final object OptionTypeParameter {
+    protected object OptionTypeParameter {
       def unapply(tpe: c.Type): Option[c.Type] = {
         if (isOptionalType(tpe)) {
           tpe match {
@@ -1175,10 +1175,10 @@ private[bson] class MacroImpl(val c: Context) {
       }
     }
 
-    @inline protected final def isSingleton(tpe: Type): Boolean =
+    @inline protected def isSingleton(tpe: Type): Boolean =
       tpe <:< typeOf[Singleton]
 
-    @inline protected final def companion(tpe: Type): Symbol =
+    @inline protected def companion(tpe: Type): Symbol =
       tpe.typeSymbol.companion
 
     private def applyMethod(implicit tpe: Type): Option[Symbol] =
@@ -1303,7 +1303,7 @@ private[bson] class MacroImpl(val c: Context) {
     protected final lazy val warn: String => Unit = {
       if (hasOption[MacroOptions.DisableWarnings]) {
         (_: String) => ()
-      } else { msg: String =>
+      } else { (msg: String) =>
         c.warning(c.enclosingPosition, msg)
       }
     }
@@ -1312,7 +1312,7 @@ private[bson] class MacroImpl(val c: Context) {
     protected final lazy val debug: String => Unit = {
       if (!hasOption[MacroOptions.Verbose]) {
         (_: String) => ()
-      } else { msg: String =>
+      } else { (msg: String) =>
         c.echo(c.enclosingPosition, msg)
       }
     }
@@ -1321,7 +1321,7 @@ private[bson] class MacroImpl(val c: Context) {
       c.abort(c.enclosingPosition, msg)
   }
 
-  sealed trait MacroTopHelpers extends MacroHelpers { _: ImplicitResolver =>
+  sealed trait MacroTopHelpers extends MacroHelpers { _i: ImplicitResolver =>
     protected def config: c.Expr[MacroConfiguration]
 
     protected final override lazy val macroCfgInit: Tree =

@@ -10,28 +10,28 @@ sealed trait Subtype {
 
 object Subtype {
   sealed class GenericBinarySubtype extends Subtype { val value = 0x00 }
-  object GenericBinarySubtype extends GenericBinarySubtype
+  case object GenericBinarySubtype extends GenericBinarySubtype
 
   sealed class FunctionSubtype extends Subtype { val value = 0x01 }
-  object FunctionSubtype extends FunctionSubtype
+  case object FunctionSubtype extends FunctionSubtype
 
   sealed class OldBinarySubtype extends Subtype { val value = 0x02 }
-  object OldBinarySubtype extends OldBinarySubtype
+  case object OldBinarySubtype extends OldBinarySubtype
 
   sealed class OldUuidSubtype extends Subtype { val value = 0x03 }
-  object OldUuidSubtype extends OldUuidSubtype
+  case object OldUuidSubtype extends OldUuidSubtype
 
   sealed class UuidSubtype extends Subtype { val value = 0x04 }
-  object UuidSubtype extends UuidSubtype
+  case object UuidSubtype extends UuidSubtype
 
   sealed class Md5Subtype extends Subtype { val value = 0x05 }
-  object Md5Subtype extends Md5Subtype
+  case object Md5Subtype extends Md5Subtype
 
   sealed class UserDefinedSubtype extends Subtype {
     val value = 0x80.toByte.toInt
   }
 
-  object UserDefinedSubtype extends UserDefinedSubtype
+  case object UserDefinedSubtype extends UserDefinedSubtype
 
   def apply(code: Byte) = code match {
     case 0 => GenericBinarySubtype

@@ -1,3 +1,6 @@
+## -*- mode: scala -*-
+#set ( $dollar = "$" )
+#set ( $hash = "#" )
 package reactivemongo.api.bson
 
 import java.nio.ByteBuffer
@@ -192,7 +195,7 @@ object BSONValue extends BSONValueLowPriority1 {
 
 // Conversions (for BSONArray factories)
 private[bson] sealed trait BSONValueLowPriority1
-  extends BSONValueLowPriority2 { _: BSONValue.type =>
+  extends BSONValueLowPriority2 { self: BSONValue.type =>
 
   implicit def safeOptionProducer[T](value: Option[T])(implicit writer: SafeBSONWriter[T]): Producer[BSONValue] = value match {
     case Some(v) => new SomeValueProducer(writer safeWrite v)
@@ -201,12 +204,17 @@ private[bson] sealed trait BSONValueLowPriority1
 
   implicit def safeValueProducer[T](value: T)(implicit writer: SafeBSONWriter[T]): Producer[BSONValue] = new SomeValueProducer(writer safeWrite value)
 
+#if( $scalaVersion.indexOf("2.") == 0 )
   implicit val noneProducer: None.type => Producer[BSONValue] =
     _ => NoneValueProducer
+#else
+  given noneProducer: Conversion[None.type, Producer[BSONValue]] =
+    _ => BSONValue.NoneValueProducer
+#end
 
   // ---
 
-  protected object NoneValueProducer extends SafeProducer[BSONValue] {
+  protected[bson] object NoneValueProducer extends SafeProducer[BSONValue] {
     private val underlying = Seq.empty[BSONValue]
     @inline private[bson] def generate() = underlying
   }
@@ -214,7 +222,7 @@ private[bson] sealed trait BSONValueLowPriority1
 
 private[bson] sealed trait BSONValueLowPriority2
   extends BSONValueLowPriority3 {
-  _: BSONValue.type with BSONValueLowPriority1 =>
+  self: BSONValue.type with BSONValueLowPriority1 =>
 
   implicit def optionProducer[T](value: Option[T])(
     implicit
@@ -231,7 +239,7 @@ private[bson] sealed trait BSONValueLowPriority2
 }
 
 private[bson] sealed trait BSONValueLowPriority3 {
-  _: BSONValue.type with BSONValueLowPriority2 =>
+  self: BSONValue.type with BSONValueLowPriority2 =>
 
   implicit def valueProducer[T](value: T)(implicit writer: BSONWriter[T]): Producer[BSONValue] = new UnsafeValueProducer(writer writeTry value)
 }
@@ -618,7 +626,7 @@ sealed abstract class BSONArray extends BSONValue {
 
   override def hashCode: Int = values.hashCode
 
-  override def toString: String = s"BSONArray(<${if (isEmpty) "empty" else "non-empty"}>)"
+  override def toString: String = s"BSONArray(<${dollar}{if (isEmpty) "empty" else "non-empty"}>)"
 
   private[reactivemongo] lazy val byteSize: Int =
     values.zipWithIndex.foldLeft(5) {
@@ -773,7 +781,7 @@ object BSONArray {
    * }}}
    */
   def pretty(array: BSONArray): String =
-    s"[\n${BSONIterator.pretty(0, array.values)}\n]"
+    s"[\n${dollar}{BSONIterator.pretty(0, array.values)}\n]"
 
   /**
    * An empty BSONArray.
@@ -819,7 +827,7 @@ final class BSONBinary private[bson] (
   override lazy val hashCode: Int = {
     import scala.util.hashing.MurmurHash3
 
-    val nh = MurmurHash3.mix(MurmurHash3.productSeed, subtype.##)
+    val nh = MurmurHash3.mix(MurmurHash3.productSeed, subtype.${hash}${hash})
 
     MurmurHash3.mixLast(nh, value.hashCode)
   }
@@ -1245,7 +1253,7 @@ object BSONDateTime {
 
   /** Returns a string representation for the given [[BSONDateTime]]. */
   @inline def pretty(time: BSONDateTime): String =
-    s"ISODate('${java.time.Instant ofEpochMilli time.value}')"
+    s"ISODate('${dollar}{java.time.Instant ofEpochMilli time.value}')"
 }
 
 /** BSON null value */
@@ -1282,7 +1290,7 @@ final class BSONRegex private[bson] (
   override lazy val hashCode: Int = {
     import scala.util.hashing.MurmurHash3
 
-    val nh = MurmurHash3.mix(MurmurHash3.productSeed, value.##)
+    val nh = MurmurHash3.mix(MurmurHash3.productSeed, value.${hash}${hash})
 
     MurmurHash3.mixLast(nh, flags.hashCode)
   }
@@ -1966,28 +1974,30 @@ sealed abstract class BSONDocument
    * // { 'foo': 1, 'bar': 'lorem' }
    * }}}
    */
+#if( $scalaVersion.indexOf("3.") == 0 )
+  @scala.annotation.targetName("appendElements")
+#end
   def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
-    val elements = (toLazy(self.elements) ++ toLazy(seq)).distinct
+      val elements = (toLazy(self.elements) ++ toLazy(seq)).distinct
 
-    lazy val fields = {
-      val m = MMap.empty[String, BSONValue]
+      lazy val fields = {
+        val m = MMap.empty[String, BSONValue]
 
-      m ++= self.fields
+        m ++= self.fields
 
-      seq.foreach {
-        case BSONElement(name, value) =>
-          m.put(name, value)
+        seq.foreach {
+          case BSONElement(name, value) =>
+            m.put(name, value)
 
-        case _ =>
+          case _ =>
+        }
+
+        m.toMap
       }
 
-      m.toMap
+      @inline def headOption = self.headOption
+      val isEmpty = self.isEmpty && seq.isEmpty
     }
-
-    @inline def headOption = self.headOption
-    val isEmpty = self.isEmpty && seq.isEmpty
-  }
-
   /**
    * Returns a set without the values corresponding to the specified keys.
    *
@@ -2174,6 +2184,30 @@ sealed abstract class BSONDocument
   }
 }
 
+private[bson] sealed trait BSONDocumentLowPriority { self: BSONDocument =>
+  /**
+   * Creates a new [[BSONDocument]] containing all the elements
+   * of this one and the specified element producers.
+   *
+   * {{{
+   * import reactivemongo.api.bson.BSONDocument
+   *
+   * val doc = BSONDocument("foo" -> 1)
+   *
+   * doc ++ ("bar" -> "lorem") // { 'foo': 1, 'bar': 'lorem' }
+   * }}}
+   */
+  def ++(producers: ElementProducer*): BSONDocument = new BSONDocument {
+    val elements = (toLazy(self.elements) ++ toLazy(
+      producers).flatMap(_.generate())).distinct
+
+    lazy val fields = BSONDocument.toMap(elements)
+
+    val isEmpty = self.elements.isEmpty && producers.isEmpty
+    @inline def headOption = self.elements.headOption
+  }
+}
+
 /**
  * @define getFieldIf '''EXPERIMENTAL:''' Returns the named element from the current document, if the element is
  */
@@ -2186,7 +2220,8 @@ private[bson] sealed trait BSONDocumentExperimental { self: BSONDocument =>
       case arr: BSONArray => arr.values
     }
 
-  final def values[T](name: String)(implicit r: BSONReader[T]): Option[Seq[T]] = document.getAsOpt[Seq[T]](name)
+  final def values[T](name: String)(implicit r: BSONReader[T]): Option[Seq[T]] =
+    document.getAsOpt[Seq[T]](name)
 
   /**
    * $getFieldIf a binary field.
@@ -2266,36 +2301,16 @@ private[bson] sealed trait BSONDocumentExperimental { self: BSONDocument =>
     val ns = MSet.empty[String]
     val elms = self.elements.reverse.filter { ns add _.name }.reverse
 
+#if( $scalaVersion.indexOf("2.") == 0 )
     new BSONDocument with BSONStrictDocument {
+#else
+    new BSONStrictDocument {
+#end
       val elements = elms
       lazy val fields = BSONDocument.toMap(elms)
       val isEmpty = elms.isEmpty
       @inline def headOption = self.elements.headOption
     }
-  }
-}
-
-private[bson] sealed trait BSONDocumentLowPriority { self: BSONDocument =>
-  /**
-   * Creates a new [[BSONDocument]] containing all the elements
-   * of this one and the specified element producers.
-   *
-   * {{{
-   * import reactivemongo.api.bson.BSONDocument
-   *
-   * val doc = BSONDocument("foo" -> 1)
-   *
-   * doc ++ ("bar" -> "lorem") // { 'foo': 1, 'bar': 'lorem' }
-   * }}}
-   */
-  def ++(producers: ElementProducer*): BSONDocument = new BSONDocument {
-    val elements = (toLazy(self.elements) ++ toLazy(
-      producers).flatMap(_.generate())).distinct
-
-    lazy val fields = BSONDocument.toMap(elements)
-
-    val isEmpty = elements.isEmpty
-    @inline def headOption = self.elements.headOption
   }
 }
 
@@ -2314,8 +2329,13 @@ private[bson] sealed trait BSONDocumentLowPriority { self: BSONDocument =>
  * assert(strict1 == strict2)
  * }}}
  */
+#if( $scalaVersion.indexOf("2.") == 0 )
 sealed trait BSONStrictDocument
   extends BSONStrictDocumentLowPriority { self: BSONDocument =>
+#else
+sealed abstract class BSONStrictDocument extends BSONDocument
+  with BSONStrictDocumentLowPriority { self =>
+#end
 
   /**
    * Concatenate the two documents, maintaining field unicity
@@ -2328,15 +2348,20 @@ sealed trait BSONStrictDocument
    * // { 'foo': 4, 'bar': 2 }
    * }}}
    */
-  final override def ++(doc: BSONDocument): BSONDocument = new BSONDocument {
-    lazy val fields: Map[String, BSONValue] = self.fields ++ doc.fields
+  final override def ++(doc: BSONDocument): BSONDocument =
+#if( $scalaVersion.indexOf("2.") == 0 )
+    new BSONDocument with BSONStrictDocument {
+#else
+    new BSONStrictDocument {
+#end
+      lazy val fields: Map[String, BSONValue] = self.fields ++ doc.fields
 
-    val elements = BSONDocument.dedupElements(
-      toLazy(self.elements) ++ toLazy(doc.elements))
+      val elements = BSONDocument.dedupElements(
+        toLazy(self.elements) ++ toLazy(doc.elements))
 
-    @inline def headOption = self.headOption
-    val isEmpty = self.isEmpty && doc.isEmpty
-  }
+      @inline def headOption = self.headOption
+      val isEmpty = self.isEmpty && doc.isEmpty
+    }
 
   /**
    * Appends the given elements to the current document,
@@ -2348,31 +2373,43 @@ sealed trait BSONStrictDocument
    * // { 'foo': 4, 'bar': 2 }
    * }}}
    */
-  final override def ++(seq: BSONElement*): BSONDocument = new BSONDocument {
-    val elements = BSONDocument.dedupElements(
-      toLazy(self.elements) ++ toLazy(seq))
+#if( $scalaVersion.indexOf("3.") == 0 )
+  @scala.annotation.targetName("appendElements")
+#end
+  final override def ++(seq: BSONElement*): BSONDocument.Strict =
+#if( $scalaVersion.indexOf("2.") == 0 )
+    new BSONDocument with BSONStrictDocument {
+#else
+    new BSONStrictDocument {
+#end
+      val elements = BSONDocument.dedupElements(
+        toLazy(self.elements) ++ toLazy(seq))
 
-    lazy val fields = {
-      val m = MMap.empty[String, BSONValue]
+      lazy val fields = {
+        val m = MMap.empty[String, BSONValue]
 
-      m ++= self.fields
+        m ++= self.fields
 
-      seq.foreach {
-        case BSONElement(name, value) =>
-          m.put(name, value)
+        seq.foreach {
+          case BSONElement(name, value) =>
+            m.put(name, value)
 
-        case _ =>
+          case _ =>
+        }
+
+        m.toMap
       }
 
-      m.toMap
+      @inline def headOption = self.headOption
+      val isEmpty = self.isEmpty && seq.isEmpty
     }
 
-    @inline def headOption = self.headOption
-    val isEmpty = self.isEmpty && seq.isEmpty
-  }
-
   final override def --(keys: String*): BSONDocument.Strict =
+#if( $scalaVersion.indexOf("2.") == 0 )
     new BSONDocument with BSONStrictDocument {
+#else
+    new BSONStrictDocument {
+#end
       val fields = self.fields -- keys
       lazy val elements = self.elements.filterNot { e => keys.contains(e.name) }
       @inline def headOption = elements.headOption
@@ -2382,17 +2419,21 @@ sealed trait BSONStrictDocument
   final override val asStrict: BSONDocument.Strict = this
 }
 
-private[bson] sealed trait BSONStrictDocumentLowPriority {
+private[bson] trait BSONStrictDocumentLowPriority {
   self: BSONDocument.Strict =>
 
-  final override def ++(producers: ElementProducer*): BSONDocument =
-    new BSONDocument {
+  final override def ++(producers: ElementProducer*): BSONDocument.Strict =
+#if( $scalaVersion.indexOf("2.") == 0 )
+    new BSONDocument with BSONStrictDocument {
+#else
+    new BSONStrictDocument {
+#end
       val elements = BSONDocument.dedupProducers(
         toLazy(self.elements) ++ toLazy(producers).flatMap(_.generate()))
 
       lazy val fields = BSONDocument.toMap(elements)
 
-      val isEmpty = elements.isEmpty
+      val isEmpty = self.elements.isEmpty && producers.isEmpty
       @inline def headOption = self.elements.headOption
     }
 }
@@ -2526,7 +2567,11 @@ object BSONDocument {
    * }}}
    */
   def strict(elms: ElementProducer*): BSONDocument.Strict =
+#if( $scalaVersion.indexOf("2.") == 0 )
     new BSONDocument with BSONStrictDocument {
+#else
+    new BSONStrictDocument {
+#end
       val elements = dedupProducers(toLazy(elms))
       lazy val fields = BSONDocument.toMap(elements)
       val isEmpty = elements.isEmpty
@@ -2545,7 +2590,13 @@ object BSONDocument {
    * }}}
    */
   def strict(elms: Iterable[(String, BSONValue)]): BSONDocument.Strict =
+#if( $scalaVersion.indexOf("2.") == 0 )
     new BSONDocument with BSONStrictDocument {
+#else
+    new BSONStrictDocument {
+#end
+      override def toString = "Strict"
+
       val pairs = {
         val ns = MSet.empty[String]
 
@@ -2601,7 +2652,11 @@ object BSONDocument {
   private[bson] def strict(
     elms: Seq[BSONElement],
     fs: Map[String, BSONValue]): BSONDocument.Strict =
+#if( $scalaVersion.indexOf("2.") == 0 )
     new BSONDocument with BSONStrictDocument {
+#else
+    new BSONStrictDocument {
+#end
       val elements = elms
       lazy val fields = fs
       val isEmpty = elms.isEmpty
@@ -2704,7 +2759,7 @@ sealed abstract class BSONElement
   override final lazy val hashCode: Int = {
     import scala.util.hashing.MurmurHash3
 
-    val nh = MurmurHash3.mix(MurmurHash3.productSeed, name.##)
+    val nh = MurmurHash3.mix(MurmurHash3.productSeed, name.${hash}${hash})
 
     MurmurHash3.mixLast(nh, value.hashCode)
   }
@@ -2761,7 +2816,7 @@ object BSONElement extends BSONElementLowPriority {
     val value: BSONValue) extends BSONElement
 }
 
-private[bson] sealed trait BSONElementLowPriority { _: BSONElement.type =>
+private[bson] sealed trait BSONElementLowPriority { self: BSONElement.type =>
 
   /**
    * Returns a [[ElementProducer]] for the given name and value.
@@ -2899,7 +2954,11 @@ object ElementProducer extends ElementProducerLowPriority1 {
    * )
    * }}}
    */
+#if( $scalaVersion.indexOf("2.") == 0 )
   implicit val noneValue2ElementProducer: ((String, None.type)) => ElementProducer = _ => ElementProducer.Empty
+#else
+  given noneValue2ElementProducer: Conversion[(String, None.type), ElementProducer] = _ => ElementProducer.Empty
+#end
 
   /**
    * {{{
@@ -2919,7 +2978,7 @@ object ElementProducer extends ElementProducerLowPriority1 {
 }
 
 private[bson] sealed trait ElementProducerLowPriority1
-  extends ElementProducerLowPriority2 { _: ElementProducer.type =>
+  extends ElementProducerLowPriority2 { self: ElementProducer.type =>
 
   /**
    * {{{
@@ -2939,7 +2998,7 @@ private[bson] sealed trait ElementProducerLowPriority1
 
 private[bson] sealed trait ElementProducerLowPriority2
   extends ElementProducerLowPriority3 {
-  _: ElementProducerLowPriority1 =>
+  self: ElementProducer.type =>
 
   /**
    * {{{
@@ -2954,7 +3013,7 @@ private[bson] sealed trait ElementProducerLowPriority2
 }
 
 private[bson] sealed trait ElementProducerLowPriority3 {
-  _: ElementProducerLowPriority2 =>
+  self: ElementProducer.type =>
 
   /**
    * {{{

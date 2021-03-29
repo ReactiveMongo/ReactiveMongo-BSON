@@ -21,7 +21,7 @@ import scala.util.{ Failure, Success, Try }
  *     new Foo(str.stripPrefix("foo:"))
  *   }
  *
- * reactivemongo.api.bson.BSON.readDocument(bson)
+ * reactivemongo.api.bson.BSON.readDocument[Map[Foo, Int]](bson)
  * // Success: Map[Foo, Int](
  * //  (new Foo("key") -> 1),
  * //  (new Foo("name") -> 2))

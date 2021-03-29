@@ -65,7 +65,7 @@ trait BSONReader[T] { self =>
    * def fromBSON[T](bson: BSONValue)(
    *   implicit r: BSONReader[T], n: Numeric[T]): Try[Int] = {
    *   val r2: BSONReader[Int] = r.afterRead { v => n.toInt(v) + 1 }
-   *  r2.readTry(bson)
+   *   r2.readTry(bson)
    * }
    * }}}
    *
@@ -129,7 +129,7 @@ trait BSONReader[T] { self =>
 }
 
 /** [[BSONReader]] factories */
-object BSONReader extends BSONReaderCompat {
+object BSONReader extends BSONReaderCompat with BSONReaderInstances {
   /**
    * Creates a [[BSONReader]] based on the given `read` function.
    *

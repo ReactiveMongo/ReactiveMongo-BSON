@@ -223,7 +223,7 @@ private[reactivemongo] trait BufferHandler {
   }
 }
 
-private[reactivemongo] trait PlainBufferHandler { _: BufferHandler =>
+private[reactivemongo] trait PlainBufferHandler { self: BufferHandler =>
   private[bson] def readDocument(buffer: ReadableBuffer): BSONDocument = {
     val _ = buffer.readInt() // length
 
@@ -255,7 +255,7 @@ private[reactivemongo] trait PlainBufferHandler { _: BufferHandler =>
   }
 }
 
-private[reactivemongo] trait StrictBufferHandler { _: BufferHandler =>
+private[reactivemongo] trait StrictBufferHandler { self: BufferHandler =>
   private[bson] def readDocument(buffer: ReadableBuffer): BSONDocument = {
     val _ = buffer.readInt() // length
 

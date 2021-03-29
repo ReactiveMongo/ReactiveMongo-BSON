@@ -1,7 +1,9 @@
 import reactivemongo.api.bson._
 
+import scala.util.Success
+
 final class BSONDocumentSpec extends org.specs2.mutable.Specification {
-  "BSONDocument" title
+  "BSONDocument".title
 
   "Empty document" should {
     "be created" in {
@@ -44,7 +46,7 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
       BSONDocument("foo" -> 1, "bar" -> 2D).elements must_=== elements and {
         BSONDocument.safe("foo" -> 1, "bar" -> 2D).
-          map(_.elements) must beSuccessfulTry(elements)
+          map(_.elements) must_=== Success(elements)
       }
     }
 

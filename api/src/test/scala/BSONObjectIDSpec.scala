@@ -1,7 +1,7 @@
 package reactivemongo.api.bson
 
 final class BSONObjectIDSpec extends org.specs2.mutable.Specification {
-  "BSONObjectID" title
+  "BSONObjectID".title
 
   "Object ID" should {
     "equal when created with string" in {

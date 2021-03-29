@@ -10,14 +10,14 @@ private[bson] trait BSONWriterCompat { self: BSONWriter.type =>
    * and applying the given safe `write` function to each element value.
    *
    * {{{
-   * import reactivemongo.api.bson.{ BSONWriter, Macros }
+   * import reactivemongo.api.bson.BSONWriter
    *
    * case class Element(str: String, v: Int)
    *
-   * val elementHandler = Macros.handler[Element]
+   * def elementWriter: BSONWriter[Element] = ???
    *
    * val setWriter: BSONWriter[Set[Element]] =
-   *   BSONWriter.iterable[Element, Set](elementHandler writeTry _)
+   *   BSONWriter.iterable[Element, Set](elementWriter writeTry _)
    * }}}
    */
   def iterable[T, M[_]](

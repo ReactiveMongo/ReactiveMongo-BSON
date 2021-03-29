@@ -11,7 +11,7 @@ import org.specs2.specification.core.Fragments
 import DefaultBufferHandler._
 
 final class EqualitySpec extends org.specs2.mutable.Specification {
-  "Equality" title
+  "Equality".title
 
   section("unit")
 
