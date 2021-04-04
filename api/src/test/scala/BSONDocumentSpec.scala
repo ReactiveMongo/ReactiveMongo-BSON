@@ -5,14 +5,26 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
   "Empty document" should {
     "be created" in {
-      BSONDocument().elements must beEmpty and {
-        BSONDocument.empty.elements must beEmpty
+      def spec(f: => BSONDocument) = {
+        val doc = f
+
+        doc.elements must beEmpty and {
+          doc.isEmpty must beTrue
+        } and {
+          doc.contains("foo") must beFalse
+        }
+      }
+
+      spec(BSONDocument()) and {
+        spec(BSONDocument.empty)
       } and {
-        document.elements must beEmpty
+        spec(BSONDocument("foo" -> None))
       } and {
-        document().elements must beEmpty
+        spec(BSONDocument.empty ++ BSONDocument("foo" -> None))
       } and {
-        BSONDocument.empty.contains("foo") must beFalse
+        spec(document)
+      } and {
+        spec(document())
       }
     }
 

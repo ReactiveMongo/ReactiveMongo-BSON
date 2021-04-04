@@ -2294,7 +2294,7 @@ private[bson] sealed trait BSONDocumentLowPriority { self: BSONDocument =>
 
     lazy val fields = BSONDocument.toMap(elements)
 
-    val isEmpty = self.elements.isEmpty && producers.isEmpty
+    val isEmpty = elements.isEmpty
     @inline def headOption = self.elements.headOption
   }
 }
@@ -2392,7 +2392,7 @@ private[bson] sealed trait BSONStrictDocumentLowPriority {
 
       lazy val fields = BSONDocument.toMap(elements)
 
-      val isEmpty = self.elements.isEmpty && producers.isEmpty
+      val isEmpty = elements.isEmpty
       @inline def headOption = self.elements.headOption
     }
 }
@@ -2439,7 +2439,7 @@ object BSONDocument {
   def apply(elms: ElementProducer*): BSONDocument = new BSONDocument {
     val elements = toLazy(elms).distinct.flatMap(_.generate())
     lazy val fields = BSONDocument.toMap(elms)
-    val isEmpty = elms.isEmpty
+    val isEmpty = elements.isEmpty
     @inline def headOption = elements.headOption
   }
 
@@ -2529,7 +2529,7 @@ object BSONDocument {
     new BSONDocument with BSONStrictDocument {
       val elements = dedupProducers(toLazy(elms))
       lazy val fields = BSONDocument.toMap(elements)
-      val isEmpty = elms.isEmpty
+      val isEmpty = elements.isEmpty
       @inline def headOption = elements.headOption
     }
 
