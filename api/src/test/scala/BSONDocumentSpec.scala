@@ -26,7 +26,7 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
       } and {
         spec(document())
       }
-    } tag "wip"
+    }
 
     "be appended with a new element " in {
       val doc = BSONDocument.empty ++ ("foo" -> 1)
