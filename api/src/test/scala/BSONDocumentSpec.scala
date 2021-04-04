@@ -1,4 +1,4 @@
-import reactivemongo.api.bson._
+import reactivemongo.api.bson.{ BSONDocument, _ }
 
 final class BSONDocumentSpec extends org.specs2.mutable.Specification {
   "BSONDocument" title
@@ -13,14 +13,88 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
         document().elements must beEmpty
       } and {
         BSONDocument.empty.contains("foo") must beFalse
+      } and {
+        val doc = BSONDocument("foo" -> Option.empty[Int])
+        doc.elements must_== Seq.empty[BSONElement]
+        doc.isEmpty must beTrue
+      } and {
+        val doc = BSONDocument("foo" -> Option.empty[Int], "bar" -> Option.empty[Int])
+        doc.elements must_== Seq.empty[BSONElement]
+        doc.isEmpty must beTrue
+      } and {
+        val doc = BSONDocument.empty ++ BSONDocument("foo" -> Option.empty[Int])
+        doc.elements must_== Seq.empty[BSONElement]
+        doc.isEmpty must beTrue
+      } and {
+        val doc = BSONDocument.empty ++ BSONDocument("foo" -> Option.empty[Int], "bar" -> Option.empty[Int])
+        doc.elements must_== Seq.empty[BSONElement]
+        doc.isEmpty must beTrue
+      } /*and {
+        /*
+        Casting error:
+        java.lang.ClassCastException: class reactivemongo.api.bson.ElementProducer$Empty$ cannot be cast to
+        class reactivemongo.api.bson.BSONElement (reactivemongo.api.bson.ElementProducer$Empty$ and reactivemongo.api.bson.BSONElement
+        are in unnamed module of loader 'app')
+
+        incorrect variant ++(BSONElement*), gets invoked (correct one ++(ElementProducers*))
+         */
+        val p: ElementProducer = BSONElement("foo", Option.empty[Int])
+        val doc = BSONDocument.empty ++ p
+        doc.elements must_== Seq.empty[BSONElement]
+        doc.isEmpty must beTrue
+      } and {
+        /*
+        Casting error:
+        java.lang.ClassCastException: class reactivemongo.api.bson.ElementProducer$Empty$ cannot be cast to
+        class reactivemongo.api.bson.BSONElement (reactivemongo.api.bson.ElementProducer$Empty$ and reactivemongo.api.bson.BSONElement
+        are in unnamed module of loader 'app')
+
+        incorrect variant ++(BSONElement*), gets invoked (correct one ++(ElementProducers*))
+         */
+        val doc = BSONDocument.empty ++ ("foo" -> Option.empty[Int])
+        println {
+          doc.elements.head // ClassCastException
+        }
+        doc.elements must_== Seq.empty[BSONElement]
+        doc.isEmpty must beTrue
+      }*/
+    }
+
+    "be appended with a new tuple " in {
+      val ep: ElementProducer = ("foo" -> 1)
+      val doc = BSONDocument.empty ++ ep
+
+      (doc must_=== BSONDocument("foo" -> 1)) and {
+        doc.contains("foo") must beTrue
+      } and {
+        doc.headOption must beSome
+      } and {
+        doc.isEmpty must beFalse
       }
     }
 
     "be appended with a new element " in {
-      val doc = BSONDocument.empty ++ ("foo" -> 1)
+      val doc = BSONDocument.empty ++ BSONElement("foo", BSONInteger(1))
 
-      doc must_=== BSONDocument("foo" -> 1) and (
-        doc.contains("foo") must beTrue)
+      (doc must_=== BSONDocument("foo" -> 1)) and {
+        doc.contains("foo") must beTrue
+      } and {
+        doc.headOption must beSome
+      } and {
+        doc.isEmpty must beFalse
+      }
+    }
+
+    "be appended with a new document " in {
+      val doc = BSONDocument.empty ++ BSONDocument("foo" -> 1)
+
+      (doc must_=== BSONDocument("foo" -> 1)) and {
+        doc.contains("foo") must beTrue
+      } and {
+        doc.headOption must beSome
+      } and {
+        doc.isEmpty must beFalse
+      }
     }
   }
 
