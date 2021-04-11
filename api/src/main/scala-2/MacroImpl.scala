@@ -61,7 +61,7 @@ private[api] class MacroImpl(val c: Context) {
   def configuredHandler[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentHandler[A]] = handlerWithConfig[A, Opts](withOptionsConfig)
 
   def documentClass[A: c.WeakTypeTag]: c.Expr[DocumentClass[A]] = {
-    val aTpe = c.weakTypeOf[A].dealias // TODO: Scala-3 inline?
+    val aTpe = c.weakTypeOf[A].dealias
     val tpeSym = aTpe.typeSymbol.asClass
     val bsonValueTpe = c.typeOf[BSONValue]
     val bsonDocTpe = c.typeOf[BSONDocument]

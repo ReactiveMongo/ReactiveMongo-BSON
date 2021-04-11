@@ -1014,7 +1014,7 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       "Int" in {
         typecheck("implicitly[DocumentClass[Int]]") must failWith(
           "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[Int\\]")
-      }
+      } tag "wip"
 
       "BSONValue" in {
         typecheck("implicitly[DocumentClass[BSONValue]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONValue\\]")

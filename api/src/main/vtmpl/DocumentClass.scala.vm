@@ -1,3 +1,4 @@
+## -*- mode: scala -*-
 package reactivemongo.api.bson
 
 import com.github.ghik.silencer.silent
@@ -9,8 +10,6 @@ import com.github.ghik.silencer.silent
 
 /** See [[DocumentClass]] */
 object DocumentClass {
-  import language.experimental.macros
-
   private val unsafe = new DocumentClass[Nothing] {}
 
   /** Un-checked factory */
@@ -22,6 +21,11 @@ object DocumentClass {
    * Implicit evidence of `DocumentClass` for `T`
    * if `T` is a case class or a sealed trait.
    */
+#if( $scalaVersion.indexOf("2.") == 0 )
   @SuppressWarnings(Array("NullParameter"))
   implicit def evidence[T]: DocumentClass[T] = macro MacroImpl.documentClass[T]
+#else
+  inline given evidence[T]: DocumentClass[T] =
+    ${ reactivemongo.api.bson.MacroImpl.documentClass[T] }
+#end
 }
