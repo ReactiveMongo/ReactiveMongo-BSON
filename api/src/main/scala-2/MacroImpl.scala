@@ -87,7 +87,7 @@ private[api] class MacroImpl(val c: Context) {
     }
   }
 
-  @com.github.ghik.silencer.silent("dead\\ code") // TODO: Scala-3 inline?
+  @com.github.ghik.silencer.silent("dead\\ code")
   def migrationRequired[A: c.WeakTypeTag](
     details: c.Expr[String]): c.Expr[A] = {
 
