@@ -4,7 +4,7 @@ resolvers ++= Seq(
 
 addSbtPlugin("org.scalariform" % "sbt-scalariform" % "1.8.3")
 
-addSbtPlugin("cchantep" % "sbt-scaladoc-compiler" % "0.2")
+//addSbtPlugin("cchantep" % "sbt-scaladoc-compiler" % "0.2")
 
 addSbtPlugin("cchantep" % "sbt-hl-compiler" % "0.8")
 

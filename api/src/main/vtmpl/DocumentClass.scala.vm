@@ -22,6 +22,8 @@ object DocumentClass {
    * if `T` is a case class or a sealed trait.
    */
 #if( $scalaVersion.indexOf("2.") == 0 )
+  import scala.language.experimental.macros
+
   @SuppressWarnings(Array("NullParameter"))
   implicit def evidence[T]: DocumentClass[T] = macro MacroImpl.documentClass[T]
 #else

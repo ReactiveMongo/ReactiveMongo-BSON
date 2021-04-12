@@ -147,6 +147,23 @@ jobs:
       - store_test_results:
           path: test-reports
 
+  scala3_jdk11:
+    docker:
+      - image: circleci/openjdk:11-jdk
+
+    working_directory: ~/repo
+    
+    steps:
+      - checkout
+      - setup_sbt
+      - |
+        export SCALA_VERSION=`sbt 'show api/crossScalaVersions' 2>&1 | tail -n 1 | sed -e 's/^.*3.0./3.0./'`
+        echo "Dotty version: $SCALA_VERSION"
+      - build_n_tests
+      - collect_test_reports
+      - store_test_results:
+          path: test-reports
+
   publish_snapshots:
     docker:
       - image: circleci/openjdk:8-jdk
