@@ -1,6 +1,20 @@
 import scala.util.{ Failure, Success, Try }
 
-import reactivemongo.api.bson.{ BSONArray, BSONDocument, BSONDocumentHandler, BSONDocumentReader, BSONDocumentWriter, BSONHandler, BSONInteger, BSONObjectID, BSONReader, BSONString, BSONWriter, MacroOptions, Macros }
+import reactivemongo.api.bson.{
+  BSONArray,
+  BSONDocument,
+  BSONDocumentHandler,
+  BSONDocumentReader,
+  BSONDocumentWriter,
+  BSONHandler,
+  BSONInteger,
+  BSONObjectID,
+  BSONReader,
+  BSONString,
+  BSONWriter,
+  MacroOptions,
+  Macros
+}
 import reactivemongo.api.bson.Macros.Annotations.{
   DefaultValue,
   Flatten,
@@ -12,11 +26,20 @@ import reactivemongo.api.bson.Macros.Annotations.{
 }
 
 object MacroTest {
-  type Handler[A] = BSONDocumentReader[A] with BSONDocumentWriter[A] with BSONHandler[A]
+
+  type Handler[A] = BSONDocumentReader[A]
+    with BSONDocumentWriter[A]
+    with BSONHandler[A]
 
   case class Person(firstName: String, lastName: String)
   case class Pet(name: String, owner: Person)
-  case class Primitives(dbl: Double, str: String, bl: Boolean, int: Int, long: Long)
+
+  case class Primitives(
+      dbl: Double,
+      str: String,
+      bl: Boolean,
+      int: Int,
+      long: Long)
 
   case class Optional(name: String, value: Option[String])
   case class OptionalAsNull(name: String, @NoneAsNull value: Option[String])
@@ -38,8 +61,8 @@ object MacroTest {
   case class WithImplicit2[N: Numeric](ident: String, value: N)
 
   case class RenamedId(
-    @Key("_id") myID: BSONObjectID = BSONObjectID.generate(),
-    @CustomAnnotation value: String)
+      @Key("_id") myID: BSONObjectID = BSONObjectID.generate(),
+      @CustomAnnotation value: String)
 
   case class Foo[T](bar: T, lorem: String)
   case class Bar(name: String, next: Option[Bar])
@@ -51,6 +74,7 @@ object MacroTest {
   }
 
   case class OverloadedApply(string: String)
+
   object OverloadedApply {
     val apply: Int => Unit = _ => (); //println(n)
 
@@ -59,11 +83,13 @@ object MacroTest {
   }
 
   case class OverloadedApply2(string: String, number: Int)
+
   object OverloadedApply2 {
     def apply(string: String): OverloadedApply2 = OverloadedApply2(string, 0)
   }
 
   case class OverloadedApply3(string: String, number: Int)
+
   object OverloadedApply3 {
     def apply(): OverloadedApply3 = OverloadedApply3("", 0)
   }
@@ -73,9 +99,10 @@ object MacroTest {
     case class UA(n: Int) extends UT
 
     class UB(val s: String) extends UT {
+
       override def equals(that: Any): Boolean = that match {
         case other: UB => s == other.s
-        case _ => false
+        case _         => false
       }
 
       override def hashCode: Int = s.hashCode
@@ -143,6 +170,7 @@ object MacroTest {
       private val helper: Handler[Leaf] = Macros.handler[Leaf]
 
       implicit val bson: Handler[Leaf] = new BSONDocumentHandler[Leaf] {
+
         def writeTry(t: Leaf): Try[BSONDocument] =
           helper.writeTry(Leaf("hai"))
 
@@ -195,8 +223,8 @@ object MacroTest {
   case class Pair(@Ignore left: String = "_left", right: String)
 
   case class IgnoredAndKey(
-    @Ignore @DefaultValue(Person("first", "last")) a: Person,
-    @Key("second") b: String)
+      @Ignore @DefaultValue(Person("first", "last")) a: Person,
+      @Key("second") b: String)
 
   case class Range(start: Int, end: Int)
 
@@ -206,31 +234,31 @@ object MacroTest {
 
   // Flatten
   case class LabelledRange(
-    name: String,
-    @Flatten range: Range)
+      name: String,
+      @Flatten range: Range)
 
   case class InvalidRecursive(
-    property: String,
-    @Flatten parent: InvalidRecursive)
+      property: String,
+      @Flatten parent: InvalidRecursive)
 
   case class InvalidNonDoc(@Flatten name: String)
 
   // ---
 
   case class WithDefaultValues1(
-    id: Int,
-    title: String = "default1",
-    score: Option[Float] = Some(1.23F),
-    range: Range = Range(3, 5))
+      id: Int,
+      title: String = "default1",
+      score: Option[Float] = Some(1.23F),
+      range: Range = Range(3, 5))
 
   case class WithDefaultValues2(
-    id: Int,
-    @DefaultValue("default2") title: String,
-    @DefaultValue(Some(45.6F)) score: Option[Float],
-    @DefaultValue(Range(7, 11)) range: Range)
+      id: Int,
+      @DefaultValue("default2") title: String,
+      @DefaultValue(Some(45.6F)) score: Option[Float],
+      @DefaultValue(Range(7, 11)) range: Range)
 
   case class WithDefaultValues3(
-    @DefaultValue(1 /* type mismatch */ ) name: String)
+      @DefaultValue(1 /* type mismatch */ ) name: String)
 
   // ---
 
@@ -240,9 +268,7 @@ object MacroTest {
     case BSONString(st) => st
   }
 
-  val scoreWriter = BSONWriter[Float] { f =>
-    BSONString(f.toString)
-  }
+  val scoreWriter = BSONWriter[Float] { f => BSONString(f.toString) }
 
   val descrReader = BSONReader.collect[Option[String]] {
     case BSONInteger(0) => None
@@ -251,7 +277,7 @@ object MacroTest {
 
   val descrWriter = BSONWriter[Option[String]] {
     case Some(str) => BSONString(str)
-    case _ => BSONInteger(0)
+    case _         => BSONInteger(0)
   }
 
   val rangeSeqReader = BSONDocumentReader.from[Range] { doc =>
@@ -269,34 +295,34 @@ object MacroTest {
   }
 
   case class PerField1[T](
-    id: Long,
-    @Reader(strStatusReader) status: String,
-    @Writer(scoreWriter) score: Float,
-    @Writer(descrWriter)@Reader(descrReader) description: Option[String],
-    @Flatten @Writer(rangeSeqWriter)@Reader(rangeSeqReader) range: Range,
-    foo: T)
+      id: Long,
+      @Reader(strStatusReader) status: String,
+      @Writer(scoreWriter) score: Float,
+      @Writer(descrWriter) @Reader(descrReader) description: Option[String],
+      @Flatten @Writer(rangeSeqWriter) @Reader(rangeSeqReader) range: Range,
+      foo: T)
 
   case class PerField2(
-    @Reader(implicitly[BSONReader[Int]])@Writer(descrWriter) name: String)
+      @Reader(implicitly[BSONReader[Int]]) @Writer(descrWriter) name: String)
 
   final class FooVal(val v: Int) extends AnyVal
 
   final class BarVal(val v: Exception) extends AnyVal
 
   case class WithMap1(
-    name: String,
-    localizedDescription: Map[java.util.Locale, String])
+      name: String,
+      localizedDescription: Map[java.util.Locale, String])
 
   case class WithMap2(
-    name: String,
-    values: Map[FooVal, String])
+      name: String,
+      values: Map[FooVal, String])
 
   case class Person2(
-    name: String,
-    age: Int,
-    phoneNum: Long,
-    itemList: Seq[Item],
-    list: Seq[Int])
+      name: String,
+      age: Int,
+      phoneNum: Long,
+      itemList: Seq[Item],
+      list: Seq[Int])
 
   case class Item(name: String, number: FooVal)
 }

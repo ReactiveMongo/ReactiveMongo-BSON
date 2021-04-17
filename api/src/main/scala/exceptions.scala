@@ -181,9 +181,7 @@ final class HandlerException private[bson] (
   }
 
   def suppress(other: Iterable[HandlerException]): HandlerException =
-    other.foldLeft(this) { (m, o) =>
-      m.addSuppressed(o); m
-    }
+    other.foldLeft(this) { (m, o) => m.addSuppressed(o); m }
 }
 
 object HandlerException {

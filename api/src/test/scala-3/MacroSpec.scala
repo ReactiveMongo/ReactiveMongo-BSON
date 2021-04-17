@@ -15,8 +15,11 @@ import reactivemongo.api.bson.{
   BSONReader,
   BSONString,
   BSONValue,
-  BSONWriter
+  BSONWriter,
+  FieldNaming,
+  MacroConfiguration
 }
+import reactivemongo.api.bson.Macros, Macros.Annotations.NoneAsNull
 import reactivemongo.api.bson.exceptions.{
   HandlerException,
   TypeDoesNotMatchException
@@ -30,10 +33,16 @@ import com.github.ghik.silencer.silent
 
 import Typecheck._
 
-case class Person(firstName: String, lastName: String)
+object MacroTest {
+  case class Person(firstName: String, lastName: String)
 
-object Union {
-  abstract class UT
+  object Union {
+    sealed trait UT
+  }
+
+  final class FooVal(val v: Int) extends AnyVal
+
+  case class OptionalAsNull(name: String, @NoneAsNull value: Option[String])
 }
 
 import reactivemongo.api.bson.TestUtils.typecheck
@@ -42,49 +51,7 @@ import reactivemongo.api.bson.TestUtils.typecheck
 class MacroSpec extends org.specs2.mutable.Specification:
   "Macros".title
 
-  "DocumentClass" should {
-    import reactivemongo.api.bson.DocumentClass
-
-    "be proved for case class Person" in {
-      implicitly[DocumentClass[Person]] must not(beNull)
-    }
-
-    "be proved for sealed trait UT" in {
-      implicitly[DocumentClass[Union.UT]] must not(beNull)
-    }
-
-    "be proved for BSONDocument" in {
-      implicitly[DocumentClass[BSONDocument]] must not(beNull)
-    }
-
-    "not be proved for" >> {
-      import scala.compiletime.testing.*
-
-      "Int" in {
-        typecheck("implicitly[DocumentClass[Int]]") must failWith(
-          "no\\ implicit\\ .*DocumentClass\\[Int\\].*"
-        )
-      }
-
-      "BSONValue" in {
-        typecheck("implicitly[DocumentClass[BSONValue]]") must failWith(
-          "no\\ implicit\\ .*DocumentClass\\[.*BSONValue\\].*"
-        )
-      }
-
-      "BSONDateTime" in {
-        typecheck("implicitly[DocumentClass[BSONDateTime]]") must failWith(
-          "no\\ implicit\\ .*DocumentClass\\[.*BSONDateTime\\].*"
-        )
-      }
-
-      "BSONLong" in {
-        typecheck("implicitly[DocumentClass[BSONLong]]") must failWith(
-          "no\\ implicit\\ .*DocumentClass\\[.*BSONLong\\].*"
-        )
-      }
-    }
-  }
+  import MacroTest._
 
   "Utility macros" should {
     "provide 'migrationRequired' compilation error" in {
@@ -95,3 +62,40 @@ class MacroSpec extends org.specs2.mutable.Specification:
       )
     }
   }
+
+  "Configuration" should {
+    import reactivemongo.api.bson.MacroCompilation.WithConfig
+
+    "be resolved from the call site" in {
+      val resolved = WithConfig.resolve
+
+      resolved must_=== MacroConfiguration(
+        fieldNaming = FieldNaming.SnakeCase
+      ) and {
+        resolved must not(beEqualTo(MacroConfiguration()))
+      }
+    }
+
+    "be resolved from implicit scope" in {
+      implicit def conf: MacroConfiguration = WithConfig.config
+
+      val resolved = WithConfig.implicitConf
+
+      resolved must_=== MacroConfiguration(
+        fieldNaming = FieldNaming.SnakeCase
+      ) and {
+        resolved must not(beEqualTo(MacroConfiguration()))
+      }
+    }
+  }
+
+  "Formatter" should {
+    "write empty option as null" in {
+      Macros
+        .writer[OptionalAsNull]
+        .writeTry(OptionalAsNull("asNull", None)) must beSuccessfulTry(
+        BSONDocument("name" -> "asNull", "value" -> BSONNull)
+      )
+    } tag "wip"
+  }
+end MacroSpec

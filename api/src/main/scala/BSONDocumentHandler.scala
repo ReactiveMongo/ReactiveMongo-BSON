@@ -13,15 +13,21 @@ trait BSONDocumentHandler[T]
     ): BSONDocumentHandler[T] =
     BSONDocumentHandler.provided[T](reader = super.beforeRead(f), writer = this)
 
+  final override def beforeReadTry(
+      f: BSONDocument => Try[BSONDocument]
+    ): BSONDocumentHandler[T] = BSONDocumentHandler
+    .provided[T](reader = super.beforeReadTry(f), writer = this)
+
   final override def afterWrite(
       f: BSONDocument => BSONDocument
     ): BSONDocumentHandler[T] =
     BSONDocumentHandler.provided[T](reader = this, writer = super.afterWrite(f))
 
-  final override def afterWriteTry(f: BSONDocument => Try[BSONDocument]): BSONDocumentHandler[T] =
-    BSONDocumentHandler.provided[T](
-      reader = this,
-      writer = super.afterWriteTry(f))
+  final override def afterWriteTry(
+      f: BSONDocument => Try[BSONDocument]
+    ): BSONDocumentHandler[T] =
+    BSONDocumentHandler
+      .provided[T](reader = this, writer = super.afterWriteTry(f))
 
   @SuppressWarnings(Array("AsInstanceOf"))
   final override def widen[U >: T]: BSONDocumentHandler[U] =

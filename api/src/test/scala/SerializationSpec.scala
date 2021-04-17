@@ -84,7 +84,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
         .serialize(expected, WritableBuffer.empty)
         .toReadableBuffer()
 
-      DefaultBufferHandler.readValue(buffer, expected.byteCode)
+      DefaultBufferHandler.readValue(buffer, expected.byteCode.toInt)
     }.toOption
 
     "serialize a BSON decimal" in {

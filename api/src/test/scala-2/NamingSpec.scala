@@ -19,8 +19,9 @@ final class NamingSpec extends org.specs2.mutable.Specification {
 
   "Naming for type BSONString" should {
     "be full name" in {
-      TypeNaming.FullName(classOf[BSONString]) must_=== (
-        "reactivemongo.api.bson.BSONString")
+      TypeNaming.FullName(
+        classOf[BSONString]
+      ) must_=== ("reactivemongo.api.bson.BSONString")
     }
 
     "be simple name" in {

@@ -39,7 +39,7 @@ private[reactivemongo] trait BufferHandler {
     }
 
   private[bson] def deserialize(buffer: ReadableBuffer): Try[BSONValue] =
-    Try(readValue(buffer, code = buffer.readByte()))
+    Try(readValue(buffer, code = buffer.readByte().toInt))
 
   def writeArray(vs: IndexedSeq[BSONValue], buffer: WritableBuffer) = {
     val szBefore = buffer.size()
@@ -110,7 +110,7 @@ private[reactivemongo] trait BufferHandler {
         // Last is 0 (see writeArray#write_1)
         buffer.skipUntil(_ == (0x0: Byte)) // C string delimiter
 
-        builder += readValue(buffer, code)
+        builder += readValue(buffer, code.toInt)
 
         makeSeq()
       } else builder.result()
@@ -194,7 +194,7 @@ private[reactivemongo] trait BufferHandler {
     BSONDecimal(low = buffer.readLong(), high = buffer.readLong())
   }
 
-  private[bson] def readValue(buffer: ReadableBuffer, code: Byte): BSONValue = {
+  private[bson] def readValue(buffer: ReadableBuffer, code: Int): BSONValue = {
     if (buffer.readable() > 0) {
       (code: @annotation.switch) match {
         case 0x01 => readDouble(buffer)
@@ -247,7 +247,7 @@ private[reactivemongo] trait PlainBufferHandler { self: BufferHandler =>
         // Last is 0 (see readDocument#write_1)
 
         val name = buffer.readCString()
-        val v = readValue(buffer, code)
+        val v = readValue(buffer, code.toInt)
 
         elms += BSONElement(name, v)
         fields.put(name, v)
@@ -279,7 +279,7 @@ private[reactivemongo] trait StrictBufferHandler { self: BufferHandler =>
         // Last is 0 (see readDocument#write_1)
 
         val name = buffer.readCString()
-        val v = readValue(buffer, code)
+        val v = readValue(buffer, code.toInt)
 
         fields.put(name, v)
 

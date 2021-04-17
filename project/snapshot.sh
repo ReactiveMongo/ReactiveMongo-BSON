@@ -9,4 +9,6 @@ echo "Password: "
 read PASS
 export PUBLISH_PASS="$PASS"
 
-sbt
+sbt +publish
+
+REACTIVEMONGO_SHADED=false sbt +publish

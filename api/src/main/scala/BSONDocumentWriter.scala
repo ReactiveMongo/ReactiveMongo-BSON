@@ -11,12 +11,15 @@ trait BSONDocumentWriter[T] extends BSONWriter[T] { self =>
   final override def beforeWrite[U](f: U => T): BSONDocumentWriter[U] =
     BSONDocumentWriter.from[U] { u => writeTry(f(u)) }
 
+  // TODO: f: => Try[Doc]
   def afterWrite(f: BSONDocument => BSONDocument): BSONDocumentWriter[T] =
     BSONDocumentWriter.from[T] {
       self.writeTry(_).map(f)
     }
 
-  def afterWriteTry(f: BSONDocument => Try[BSONDocument]): BSONDocumentWriter[T] = BSONDocumentWriter.from[T] {
+  def afterWriteTry(
+      f: BSONDocument => Try[BSONDocument]
+    ): BSONDocumentWriter[T] = BSONDocumentWriter.from[T] {
     self.writeTry(_).flatMap(f)
   }
 

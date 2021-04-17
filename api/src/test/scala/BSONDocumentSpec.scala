@@ -1,6 +1,6 @@
-import reactivemongo.api.bson._
-
 import scala.util.Success
+
+import reactivemongo.api.bson._
 
 final class BSONDocumentSpec extends org.specs2.mutable.Specification {
   "BSONDocument".title

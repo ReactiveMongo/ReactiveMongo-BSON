@@ -13,6 +13,7 @@ import org.openjdk.jmh.annotations._
 
 @State(Scope.Benchmark)
 class BSONDocumentBenchmark {
+
   val values: Seq[BSONDocument] =
     BSONValueFixtures.bsonDocFixtures.filterNot(_.isEmpty)
 
@@ -35,18 +36,19 @@ class BSONDocumentBenchmark {
     "quis nostrud exercitation ullamco laboris nisi" -> "ut aliquip ex ea commodo consequat",
     "Duis aute irure dolor in reprehenderit in voluptate velit" -> "esse cillum dolore eu fugiat nulla pariatur",
     "Excepteur sint occaecat" -> "cupidatat non proident",
-    "sunt in culpa" -> "qui officia deserunt mollit anim id est laborum")
+    "sunt in culpa" -> "qui officia deserunt mollit anim id est laborum"
+  )
 
   private val otherMap = Map(
     "foo" -> BigDecimal("123.45"),
     "bar lorem" -> BigDecimal(0L),
-    "ipsum" -> BigDecimal(10000))
+    "ipsum" -> BigDecimal(10000)
+  )
 
-  private val complexMap: Map[Int, String] = (safeMap ++ otherMap.map {
-    case (k, v) => k -> v.toString
-  }).map {
-    case (k, v) => k.hashCode -> v
-  }
+  private val complexMap: Map[Int, String] =
+    (safeMap ++ otherMap.map { case (k, v) => k -> v.toString }).map {
+      case (k, v) => k.hashCode -> v
+    }
 
   protected var key: String = _
 
@@ -90,7 +92,8 @@ class BSONDocumentBenchmark {
   @Setup(Level.Invocation)
   def setupInvocation(): Unit = {
     serializedBuffer = WritableBuffer(
-      SerializationFixtures.expectedWholeDocumentBytes).toReadableBuffer()
+      SerializationFixtures.expectedWholeDocumentBytes
+    ).toReadableBuffer()
   }
 
   @Benchmark
@@ -288,14 +291,15 @@ class BSONDocumentBenchmark {
 
   @Benchmark
   def getAsUnflattenedTry() = {
-    assert(bigSet.getAsUnflattenedTry[BSONValue](key).
-      toOption.flatten.isDefined)
+    assert(
+      bigSet.getAsUnflattenedTry[BSONValue](key).toOption.flatten.isDefined
+    )
 
-    assert(bigSet.getAsUnflattenedTry[String]("_null").
-      toOption.flatten.isEmpty)
+    assert(bigSet.getAsUnflattenedTry[String]("_null").toOption.flatten.isEmpty)
 
-    assert(smallSet.getAsUnflattenedTry[BSONValue](key).
-      toOption.flatten.isEmpty)
+    assert(
+      smallSet.getAsUnflattenedTry[BSONValue](key).toOption.flatten.isEmpty
+    )
   }
 
   @Benchmark
@@ -332,6 +336,7 @@ class BSONDocumentBenchmark {
 }
 
 object BSONDocumentBenchmark {
+
   private[bson] def bigDocument(): BSONDocument = {
     val m = Map.newBuilder[String, BSONValue]
     def values() = BSONValueFixtures.bsonValueFixtures.iterator

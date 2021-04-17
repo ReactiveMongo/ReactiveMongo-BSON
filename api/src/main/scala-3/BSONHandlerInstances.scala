@@ -6,8 +6,8 @@ import java.net.{ URI, URL }
 
 import java.time.{
   Instant,
-  LocalDateTime,
   LocalDate,
+  LocalDateTime,
   LocalTime,
   OffsetDateTime,
   ZonedDateTime
@@ -54,3 +54,4 @@ private[bson] trait BSONHandlerInstances:
   given uuidHandler: BSONHandler[UUID] = BSONUUIDHandler
 
   given localeHandler: BSONHandler[Locale] = BSONLocaleHandler
+end BSONHandlerInstances

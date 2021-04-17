@@ -9,12 +9,14 @@ import org.openjdk.jmh.infra.Blackhole
 
 @State(Scope.Benchmark)
 class BSONObjectIDGenerateBenchmark {
+
   @Benchmark
   def generate(): BSONObjectID = BSONObjectID.generate()
 }
 
 @State(Scope.Benchmark)
 class BSONObjectIDStringReprBenchmark {
+
   private def gen(): Seq[BSONObjectID] =
     scala.util.Random.shuffle(BSONValueFixtures.bsonOidFixtures)
 

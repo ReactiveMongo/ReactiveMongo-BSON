@@ -1,12 +1,18 @@
 ThisBuild / scalaVersion := "2.12.15"
 
 ThisBuild / crossScalaVersions := Seq(
-  "2.11.12", scalaVersion.value, "2.13.6", dottyLatestNightlyBuild.get)
+  "2.11.12",
+  scalaVersion.value,
+  "2.13.6",
+  "3.1.2-RC1-bin-20211022-f7abd32-NIGHTLY"
+  //"3.0.3-RC1-bin-SNAPSHOT" //"3.1.1-RC1-bin-20211011-1ed25ce-NIGHTLY"
+)
 
 crossVersion := CrossVersion.binary
 
 ThisBuild / scalacOptions ++= Seq(
-  "-encoding", "UTF-8",
+  "-encoding",
+  "UTF-8",
   "-unchecked",
   "-deprecation",
   "-feature",
@@ -28,7 +34,8 @@ ThisBuild / scalacOptions ++= {
 
   if (sv == "2.12") {
     Seq(
-      "-Xmax-classfile-name", "128",
+      "-Xmax-classfile-name",
+      "128",
       "-Ywarn-numeric-widen",
       "-Ywarn-dead-code",
       "-Ywarn-value-discard",
@@ -39,8 +46,13 @@ ThisBuild / scalacOptions ++= {
     )
   } else if (sv == "2.11") {
     Seq(
-      "-Xmax-classfile-name", "128",
-      "-Yopt:_", "-Ydead-code", "-Yclosure-elim", "-Yconst-opt")
+      "-Xmax-classfile-name",
+      "128",
+      "-Yopt:_",
+      "-Ydead-code",
+      "-Yclosure-elim",
+      "-Yconst-opt"
+    )
   } else if (sv == "2.13") {
     Seq(
       "-explaintypes",
@@ -50,40 +62,44 @@ ThisBuild / scalacOptions ++= {
       "-Wvalue-discard",
       "-Wextra-implicit",
       "-Wmacros:after",
-      "-Wunused")
+      "-Wunused"
+    )
   } else {
-    Seq("-language:implicitConversions")
+    Seq("-Wunused:all", "-language:implicitConversions")
   }
 }
 
 Compile / console / scalacOptions ~= {
   _.filterNot(o =>
-    o.startsWith("-X") || o.startsWith("-Y") || o.startsWith("-P:silencer"))
+    o.startsWith("-X") || o.startsWith("-Y") || o.startsWith("-P:silencer")
+  )
 }
 
 Test / scalacOptions ~= {
   _.filterNot(_ == "-Xfatal-warnings")
 }
 
-Compile / console / scalacOptions ~= {
+val filteredScalacOpts: Seq[String] => Seq[String] = {
   _.filterNot { opt => opt.startsWith("-X") || opt.startsWith("-Y") }
 }
 
-Test / console / scalacOptions ~= {
-  _.filterNot { opt => opt.startsWith("-X") || opt.startsWith("-Y") }
-}
+Compile / console / scalacOptions ~= filteredScalacOpts
+
+Test / console / scalacOptions ~= filteredScalacOpts
 
 // Silencer
 ThisBuild / libraryDependencies ++= {
-  if (!scalaBinaryVersion.value.startsWith("3.")) {
+  if (!scalaBinaryVersion.value.startsWith("3")) {
     val silencerVersion = "1.7.7"
 
     Seq(
-      compilerPlugin(("com.github.ghik" %% "silencer-plugin" % silencerVersion).
-        cross(CrossVersion.full)),
-      ("com.github.ghik" %% "silencer-lib" % silencerVersion % Provided).
-        cross(CrossVersion.full)
-    ).map(_.withDottyCompat(scalaVersion.value))
+      compilerPlugin(
+        ("com.github.ghik" %% "silencer-plugin" % silencerVersion)
+          .cross(CrossVersion.full)
+      ),
+      ("com.github.ghik" %% "silencer-lib" % silencerVersion % Provided)
+        .cross(CrossVersion.full)
+    )
   } else Seq.empty
 }
 

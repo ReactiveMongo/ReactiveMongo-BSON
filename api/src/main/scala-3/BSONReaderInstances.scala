@@ -6,8 +6,8 @@ import java.net.{ URI, URL }
 
 import java.time.{
   Instant,
-  LocalDateTime,
   LocalDate,
+  LocalDateTime,
   LocalTime,
   OffsetDateTime,
   ZonedDateTime
@@ -87,3 +87,4 @@ private[bson] trait BSONReaderInstances:
     bsonJavaScriptWSReader,
     collectionReader
   }
+end BSONReaderInstances

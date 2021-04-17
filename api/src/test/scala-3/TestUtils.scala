@@ -1,8 +1,8 @@
 package reactivemongo.api.bson
 
-import scala.compiletime.testing.{ Error, typeCheckErrors }
+import scala.compiletime.testing.{ typeCheckErrors, Error }
 
-import org.specs2.execute.{ Typechecked, TypecheckError, TypecheckSuccess }
+import org.specs2.execute.{ TypecheckError, TypecheckSuccess, Typechecked }
 
 object TestUtils:
 

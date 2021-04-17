@@ -2,12 +2,63 @@ package reactivemongo
 
 import java.lang.{ Boolean => JBool }
 
-import reactivemongo.api.bson.{ `null`, maxKey, minKey, undefined, BSONArray, BSONBinary, BSONBoolean, BSONDateTime, BSONDecimal, BSONDocument, BSONDouble, BSONHandler, BSONInteger, BSONJavaScript, BSONJavaScriptWS, BSONLong, BSONMaxKey, BSONMinKey, BSONNull, BSONObjectID, BSONRegex, BSONString, BSONSymbol, BSONTimestamp, BSONUndefined, BSONValue, BSONWriter }
+import reactivemongo.api.bson.{
+  maxKey,
+  minKey,
+  `null`,
+  undefined,
+  BSONArray,
+  BSONBinary,
+  BSONBoolean,
+  BSONDateTime,
+  BSONDecimal,
+  BSONDocument,
+  BSONDouble,
+  BSONHandler,
+  BSONInteger,
+  BSONJavaScript,
+  BSONJavaScriptWS,
+  BSONLong,
+  BSONMaxKey,
+  BSONMinKey,
+  BSONNull,
+  BSONObjectID,
+  BSONRegex,
+  BSONString,
+  BSONSymbol,
+  BSONTimestamp,
+  BSONUndefined,
+  BSONValue,
+  BSONWriter
+}
 import reactivemongo.api.bson.msb.HandlerConverters
 
 import org.specs2.specification.core.Fragment
 
-import org.bson.{ BsonArray, BsonBinary, BsonBinarySubType, BsonBoolean, BsonDateTime, BsonDecimal128, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonJavaScript, BsonJavaScriptWithScope, BsonMaxKey, BsonMinKey, BsonNull, BsonObjectId, BsonRegularExpression, BsonString, BsonSymbol, BsonTimestamp, BsonUndefined, BsonValue }
+import org.bson.{
+  BsonArray,
+  BsonBinary,
+  BsonBinarySubType,
+  BsonBoolean,
+  BsonDateTime,
+  BsonDecimal128,
+  BsonDocument,
+  BsonDouble,
+  BsonInt32,
+  BsonInt64,
+  BsonJavaScript,
+  BsonJavaScriptWithScope,
+  BsonMaxKey,
+  BsonMinKey,
+  BsonNull,
+  BsonObjectId,
+  BsonRegularExpression,
+  BsonString,
+  BsonSymbol,
+  BsonTimestamp,
+  BsonUndefined,
+  BsonValue
+}
 import org.bson.codecs._
 import org.bson.types.{ Binary, Decimal128 }
 
@@ -23,13 +74,16 @@ private[reactivemongo] trait EncoderConverterSpec {
       val bytes = "Test".getBytes("UTF-8")
       val enc = new org.bson.codecs.BinaryCodec
 
-      Fragment.foreach(Seq[(BsonBinarySubType, Array[Byte])](
-        BsonBinarySubType.UUID_STANDARD -> uuidBytes,
-        BsonBinarySubType.BINARY -> bytes)) {
+      Fragment.foreach(
+        Seq[(BsonBinarySubType, Array[Byte])](
+          BsonBinarySubType.UUID_STANDARD -> uuidBytes,
+          BsonBinarySubType.BINARY -> bytes
+        )
+      ) {
         case (subtpe, data) =>
           s"from $subtpe(sz=${data.size})" in {
-            encode(new Binary(subtpe, data), enc).
-              aka("encoded") must beSuccessfulTry(new BsonBinary(subtpe, data))
+            encode(new Binary(subtpe, data), enc)
+              .aka("encoded") must beSuccessfulTry(new BsonBinary(subtpe, data))
           }
 
       }
@@ -100,17 +154,21 @@ private[reactivemongo] trait EncoderConverterSpec {
         val writer: BSONWriter[BsonBoolean] = enc
         val handler: BSONHandler[BsonBoolean] = codec
 
-        writer.writeTry(BsonBoolean.TRUE).
-          aka("true1") must beSuccessfulTry(BSONBoolean(true)) and {
-            writer.writeTry(BsonBoolean.FALSE).
-              aka("false1") must beSuccessfulTry(BSONBoolean(false))
-          } and {
-            handler.writeTry(BsonBoolean.FALSE).
-              aka("false2") must beSuccessfulTry(BSONBoolean(false))
-          } and {
-            handler.writeTry(BsonBoolean.TRUE).
-              aka("true2") must beSuccessfulTry(BSONBoolean(true))
-          }
+        writer.writeTry(BsonBoolean.TRUE).aka("true1") must beSuccessfulTry(
+          BSONBoolean(true)
+        ) and {
+          writer.writeTry(BsonBoolean.FALSE).aka("false1") must beSuccessfulTry(
+            BSONBoolean(false)
+          )
+        } and {
+          handler
+            .writeTry(BsonBoolean.FALSE)
+            .aka("false2") must beSuccessfulTry(BSONBoolean(false))
+        } and {
+          handler.writeTry(BsonBoolean.TRUE).aka("true2") must beSuccessfulTry(
+            BSONBoolean(true)
+          )
+        }
       }
 
       "for BsonDateTime" in {
@@ -160,11 +218,13 @@ private[reactivemongo] trait EncoderConverterSpec {
 
         val raw = 3.4D
 
-        writer.writeTry(new BsonDouble(raw)).
-          aka("double1") must beSuccessfulTry(BSONDouble(raw)) and {
-            handler.writeTry(new BsonDouble(raw)).
-              aka("double2") must beSuccessfulTry(BSONDouble(raw))
-          }
+        writer
+          .writeTry(new BsonDouble(raw))
+          .aka("double1") must beSuccessfulTry(BSONDouble(raw)) and {
+          handler
+            .writeTry(new BsonDouble(raw))
+            .aka("double2") must beSuccessfulTry(BSONDouble(raw))
+        }
       }
 
       "for BsonInt32" in {
@@ -176,11 +236,13 @@ private[reactivemongo] trait EncoderConverterSpec {
 
         val raw = 45
 
-        writer.writeTry(new BsonInt32(raw)).
-          aka("BSONValue1") must beSuccessfulTry(BSONInteger(raw)) and {
-            handler.writeTry(new BsonInt32(raw)).
-              aka("BSONValue2") must beSuccessfulTry(BSONInteger(raw))
-          }
+        writer
+          .writeTry(new BsonInt32(raw))
+          .aka("BSONValue1") must beSuccessfulTry(BSONInteger(raw)) and {
+          handler
+            .writeTry(new BsonInt32(raw))
+            .aka("BSONValue2") must beSuccessfulTry(BSONInteger(raw))
+        }
       }
 
       "for BsonInt64" in {
@@ -192,11 +254,13 @@ private[reactivemongo] trait EncoderConverterSpec {
 
         val raw = 678L
 
-        writer.writeTry(new BsonInt64(raw)).
-          aka("BSONLong1") must beSuccessfulTry(BSONLong(raw)) and {
-            handler.writeTry(new BsonInt64(raw)).
-              aka("BSONLong2") must beSuccessfulTry(BSONLong(raw))
-          }
+        writer
+          .writeTry(new BsonInt64(raw))
+          .aka("BSONLong1") must beSuccessfulTry(BSONLong(raw)) and {
+          handler
+            .writeTry(new BsonInt64(raw))
+            .aka("BSONLong2") must beSuccessfulTry(BSONLong(raw))
+        }
       }
 
       "for BsonJavaScript" in {
@@ -208,16 +272,21 @@ private[reactivemongo] trait EncoderConverterSpec {
 
         val raw = "foo()"
 
-        writer.writeTry(new BsonJavaScript(raw)).
-          aka("BSONJavaScript1") must beSuccessfulTry(BSONJavaScript(raw)) and {
-            handler.writeTry(new BsonJavaScript(raw)).
-              aka("BSONJavaScript2") must beSuccessfulTry(BSONJavaScript(raw))
-          }
+        writer
+          .writeTry(new BsonJavaScript(raw))
+          .aka("BSONJavaScript1") must beSuccessfulTry(
+          BSONJavaScript(raw)
+        ) and {
+          handler
+            .writeTry(new BsonJavaScript(raw))
+            .aka("BSONJavaScript2") must beSuccessfulTry(BSONJavaScript(raw))
+        }
       }
 
       "for BsonJavaScriptWithScope" in {
         val codec = new org.bson.codecs.BsonJavaScriptWithScopeCodec(
-          new org.bson.codecs.BsonDocumentCodec)
+          new org.bson.codecs.BsonDocumentCodec
+        )
 
         val enc: Encoder[BsonJavaScriptWithScope] = codec
 
@@ -227,13 +296,17 @@ private[reactivemongo] trait EncoderConverterSpec {
         val code = "bar(this.lorem)"
         val scope = new BsonDocument().append("lorem", new BsonInt64(2L))
 
-        writer.writeTry(new BsonJavaScriptWithScope(code, scope)).
-          aka("BSONJavaScriptWS1") must beSuccessfulTry(
-            BSONJavaScriptWS(code, BSONDocument("lorem" -> 2L))) and {
-              handler.writeTry(new BsonJavaScriptWithScope(code, scope)).
-                aka("BSONJavaScriptWS2") must beSuccessfulTry(
-                  BSONJavaScriptWS(code, BSONDocument("lorem" -> 2L)))
-            }
+        writer
+          .writeTry(new BsonJavaScriptWithScope(code, scope))
+          .aka("BSONJavaScriptWS1") must beSuccessfulTry(
+          BSONJavaScriptWS(code, BSONDocument("lorem" -> 2L))
+        ) and {
+          handler
+            .writeTry(new BsonJavaScriptWithScope(code, scope))
+            .aka("BSONJavaScriptWS2") must beSuccessfulTry(
+            BSONJavaScriptWS(code, BSONDocument("lorem" -> 2L))
+          )
+        }
       }
 
       "for BsonMaxKey" in {
@@ -303,13 +376,14 @@ private[reactivemongo] trait EncoderConverterSpec {
         val writer: BSONWriter[BsonSymbol] = enc
         val handler: BSONHandler[BsonSymbol] = codec
 
-        writer.writeTry(
-          new BsonSymbol("sym1")) must beSuccessfulTry[BSONValue](
-            BSONSymbol("sym1")) and {
-              handler.writeTry(
-                new BsonSymbol("sym2")) must beSuccessfulTry[BSONValue](
-                  BSONSymbol("sym2"))
-            }
+        writer.writeTry(new BsonSymbol("sym1")) must beSuccessfulTry[BSONValue](
+          BSONSymbol("sym1")
+        ) and {
+          handler
+            .writeTry(new BsonSymbol("sym2")) must beSuccessfulTry[BSONValue](
+            BSONSymbol("sym2")
+          )
+        }
       }
 
       "for BsonString" in {
@@ -319,13 +393,14 @@ private[reactivemongo] trait EncoderConverterSpec {
         val writer: BSONWriter[BsonString] = enc
         val handler: BSONHandler[BsonString] = codec
 
-        writer.writeTry(
-          new BsonString("str1")) must beSuccessfulTry[BSONValue](
-            BSONString("str1")) and {
-              handler.writeTry(
-                new BsonString("str2")) must beSuccessfulTry[BSONValue](
-                  BSONString("str2"))
-            }
+        writer.writeTry(new BsonString("str1")) must beSuccessfulTry[BSONValue](
+          BSONString("str1")
+        ) and {
+          handler
+            .writeTry(new BsonString("str2")) must beSuccessfulTry[BSONValue](
+            BSONString("str2")
+          )
+        }
       }
 
       "for BsonTimestamp" in {
@@ -347,11 +422,13 @@ private[reactivemongo] trait EncoderConverterSpec {
         val writer: BSONWriter[BsonUndefined] = enc
         val handler: BSONHandler[BsonUndefined] = codec
 
-        writer.writeTry(new BsonUndefined).
-          aka("undefined1") must beSuccessfulTry(undefined) and {
-            handler.writeTry(new BsonUndefined).
-              aka("undefined2") must beSuccessfulTry(undefined)
-          }
+        writer
+          .writeTry(new BsonUndefined)
+          .aka("undefined1") must beSuccessfulTry(undefined) and {
+          handler
+            .writeTry(new BsonUndefined)
+            .aka("undefined2") must beSuccessfulTry(undefined)
+        }
       }
 
       "for opaque BsonValue" >> {
@@ -362,11 +439,12 @@ private[reactivemongo] trait EncoderConverterSpec {
         val handler: BSONHandler[BsonValue] = codec
 
         Fragment.foreach(fixtures) {
-          case (org, bson) => s"for $org" in {
-            writer.writeTry(org) must beSuccessfulTry[BSONValue](bson) and {
-              handler.writeTry(org) must beSuccessfulTry[BSONValue](bson)
+          case (org, bson) =>
+            s"for $org" in {
+              writer.writeTry(org) must beSuccessfulTry[BSONValue](bson) and {
+                handler.writeTry(org) must beSuccessfulTry[BSONValue](bson)
+              }
             }
-          }
         }
       }
     }
@@ -407,17 +485,21 @@ private[reactivemongo] trait EncoderConverterSpec {
         val codec: Codec[BSONBoolean] = handler
         val enc: Encoder[BSONBoolean] = writer
 
-        encode(BSONBoolean(true), enc).
-          aka("true1") must beSuccessfulTry(BsonBoolean.TRUE) and {
-            encode(BSONBoolean(false), enc).
-              aka("false1") must beSuccessfulTry(BsonBoolean.FALSE)
-          } and {
-            encode(BSONBoolean(false), codec).
-              aka("false2") must beSuccessfulTry(BsonBoolean.FALSE)
-          } and {
-            encode(BSONBoolean(true), codec).
-              aka("true2") must beSuccessfulTry(BsonBoolean.TRUE)
-          }
+        encode(BSONBoolean(true), enc).aka("true1") must beSuccessfulTry(
+          BsonBoolean.TRUE
+        ) and {
+          encode(BSONBoolean(false), enc).aka("false1") must beSuccessfulTry(
+            BsonBoolean.FALSE
+          )
+        } and {
+          encode(BSONBoolean(false), codec).aka("false2") must beSuccessfulTry(
+            BsonBoolean.FALSE
+          )
+        } and {
+          encode(BSONBoolean(true), codec).aka("true2") must beSuccessfulTry(
+            BsonBoolean.TRUE
+          )
+        }
       }
 
       "for BSONDateTime" in {
@@ -467,11 +549,13 @@ private[reactivemongo] trait EncoderConverterSpec {
 
         val raw = 3.4D
 
-        encode(BSONDouble(raw), enc).
-          aka("double1") must beSuccessfulTry(new BsonDouble(raw)) and {
-            encode(BSONDouble(raw), codec).
-              aka("double2") must beSuccessfulTry(new BsonDouble(raw))
-          }
+        encode(BSONDouble(raw), enc).aka("double1") must beSuccessfulTry(
+          new BsonDouble(raw)
+        ) and {
+          encode(BSONDouble(raw), codec).aka("double2") must beSuccessfulTry(
+            new BsonDouble(raw)
+          )
+        }
       }
 
       "for BSONInteger" in {
@@ -483,11 +567,12 @@ private[reactivemongo] trait EncoderConverterSpec {
 
         val raw = 45
 
-        encode(BSONInteger(raw), enc).
-          aka("BSONValue1") must beSuccessfulTry(new BsonInt32(raw)) and {
-            encode(BSONInteger(raw), codec).
-              aka("BSONValue2") must beSuccessfulTry(new BsonInt32(raw))
-          }
+        encode(BSONInteger(raw), enc).aka("BSONValue1") must beSuccessfulTry(
+          new BsonInt32(raw)
+        ) and {
+          encode(BSONInteger(raw), codec)
+            .aka("BSONValue2") must beSuccessfulTry(new BsonInt32(raw))
+        }
       }
 
       "for BSONLong" in {
@@ -499,11 +584,13 @@ private[reactivemongo] trait EncoderConverterSpec {
 
         val raw = 678L
 
-        encode(BSONLong(raw), enc).
-          aka("BSONLong1") must beSuccessfulTry(new BsonInt64(raw)) and {
-            encode(BSONLong(raw), codec).
-              aka("BSONLong2") must beSuccessfulTry(new BsonInt64(raw))
-          }
+        encode(BSONLong(raw), enc).aka("BSONLong1") must beSuccessfulTry(
+          new BsonInt64(raw)
+        ) and {
+          encode(BSONLong(raw), codec).aka("BSONLong2") must beSuccessfulTry(
+            new BsonInt64(raw)
+          )
+        }
       }
 
       "for BsonJavaScript" in {
@@ -516,10 +603,12 @@ private[reactivemongo] trait EncoderConverterSpec {
         val raw = "foo()"
 
         encode(BSONJavaScript(raw), enc) must beSuccessfulTry(
-          new BsonJavaScript(raw)) and {
-            encode(BSONJavaScript(raw), codec) must beSuccessfulTry(
-              new BsonJavaScript(raw))
-          }
+          new BsonJavaScript(raw)
+        ) and {
+          encode(BSONJavaScript(raw), codec) must beSuccessfulTry(
+            new BsonJavaScript(raw)
+          )
+        }
       }
 
       "for BSONJavaScriptWS" in {
@@ -532,13 +621,14 @@ private[reactivemongo] trait EncoderConverterSpec {
         val code = "bar(this.lorem)"
         val scope = new BsonDocument().append("lorem", new BsonInt64(2L))
 
-        encode(BSONJavaScriptWS(code, BSONDocument("lorem" -> 2L)), enc).
-          aka("BSONJavaScriptWS1") must beSuccessfulTry(
-            new BsonJavaScriptWithScope(code, scope)) and {
-              encode(BSONJavaScriptWS(
-                code, BSONDocument("lorem" -> 2L)), codec) must beSuccessfulTry(
-                new BsonJavaScriptWithScope(code, scope))
-            }
+        encode(BSONJavaScriptWS(code, BSONDocument("lorem" -> 2L)), enc).aka(
+          "BSONJavaScriptWS1"
+        ) must beSuccessfulTry(new BsonJavaScriptWithScope(code, scope)) and {
+          encode(
+            BSONJavaScriptWS(code, BSONDocument("lorem" -> 2L)),
+            codec
+          ) must beSuccessfulTry(new BsonJavaScriptWithScope(code, scope))
+        }
       }
 
       "for BSONMaxKey" in {
@@ -609,11 +699,12 @@ private[reactivemongo] trait EncoderConverterSpec {
         val enc: Encoder[BSONSymbol] = writer
 
         encode(BSONSymbol("sym1"), enc) must beSuccessfulTry[BsonValue](
-          new BsonSymbol("sym1")) and {
-            encode(
-              BSONSymbol("sym2"), codec) must beSuccessfulTry[BsonValue](
-                new BsonSymbol("sym2"))
-          }
+          new BsonSymbol("sym1")
+        ) and {
+          encode(BSONSymbol("sym2"), codec) must beSuccessfulTry[BsonValue](
+            new BsonSymbol("sym2")
+          )
+        }
       }
 
       "for BSONString" in {
@@ -624,10 +715,12 @@ private[reactivemongo] trait EncoderConverterSpec {
         val enc: Encoder[BSONString] = writer
 
         encode(BSONString("str1"), enc) must beSuccessfulTry[BsonValue](
-          new BsonString("str1")) and {
-            encode(BSONString("str2"), codec) must beSuccessfulTry[BsonValue](
-              new BsonString("str2"))
-          }
+          new BsonString("str1")
+        ) and {
+          encode(BSONString("str2"), codec) must beSuccessfulTry[BsonValue](
+            new BsonString("str2")
+          )
+        }
       }
 
       "for BSONTimestamp" in {
@@ -662,11 +755,12 @@ private[reactivemongo] trait EncoderConverterSpec {
         val enc: Encoder[BSONValue] = writer
 
         Fragment.foreach(fixtures) {
-          case (org, bson) => s"for $org" in {
-            encode(bson, enc) must beSuccessfulTry[BsonValue](org) and {
-              encode(bson, codec) must beSuccessfulTry[BsonValue](org)
+          case (org, bson) =>
+            s"for $org" in {
+              encode(bson, enc) must beSuccessfulTry[BsonValue](org) and {
+                encode(bson, codec) must beSuccessfulTry[BsonValue](org)
+              }
             }
-          }
         }
       }
     }

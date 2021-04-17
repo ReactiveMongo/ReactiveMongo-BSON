@@ -1,8 +1,9 @@
 resolvers ++= Seq(
   Resolver.bintrayIvyRepo("typesafe", "sbt-plugins"),
-  "Tatami Releases" at "https://raw.github.com/cchantep/tatami/master/releases")
+  "Tatami Releases" at "https://raw.github.com/cchantep/tatami/master/releases"
+)
 
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.2")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.3")
 
 //addSbtPlugin("cchantep" % "sbt-scaladoc-compiler" % "0.2")
 
@@ -23,5 +24,3 @@ addSbtPlugin("com.dwijnand" % "sbt-dynver" % "4.1.1")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.33")
 
 addSbtPlugin("cchantep" % "sbt-velocity" % "0.1")
-
-addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.5.5")

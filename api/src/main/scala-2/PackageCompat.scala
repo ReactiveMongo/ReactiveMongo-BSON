@@ -10,6 +10,6 @@ private[api] trait PackageCompat {
    * `reactivemongo.api.migrationRequired.nonFatal` to `true`.
    */
   @SuppressWarnings(Array("NullParameter", "UnusedMethodParameter"))
-  def migrationRequired[A](details: String): A = macro reactivemongo.api.bson.
-    MacroImpl.migrationRequired[A]
+  def migrationRequired[A](details: String): A =
+    macro reactivemongo.api.bson.MacroImpl.migrationRequired[A]
 }

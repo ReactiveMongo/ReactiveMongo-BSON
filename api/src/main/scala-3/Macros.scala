@@ -2,7 +2,85 @@ package reactivemongo.api.bson
 
 import scala.util.Success
 
-object Macros extends MacroAnnotations {
+/**
+ * Macros for generating `BSONReader` and `BSONWriter` at compile time.
+ *
+ * {{{
+ * import reactivemongo.api.bson.Macros
+ *
+ * case class Person(name: String, surname: String)
+ *
+ * implicit val personHandler = Macros.handler[Person]
+ * }}}
+ *
+ * @see [[MacroOptions]] for specific options
+ * @see [[MacroConfiguration]] for extended configuration
+ *
+ * @define readerMacro Creates a [[BSONDocumentReader]] for type `A`
+ * @define writerMacro Creates a [[BSONDocumentWriter]] for type `A`
+ * @define handlerMacro Creates a [[BSONDocumentHandler]] for type `A`
+ * @define defaultCfg The default [[MacroConfiguration]] is used (see [[Macros.configured]])
+ * @define tparam @tparam A the type of the value represented as BSON
+ * @define tparamOpts @tparam Opts the compile-time options
+ */
+object Macros extends MacroAnnotations:
+
+  /**
+   * $writerMacro.
+   * $defaultCfg.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentWriter, Macros }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val writer: BSONDocumentWriter[Foo] = Macros.writer
+   * }}}
+   *
+   * $tparam
+   */
+  inline def writer[A]: BSONDocumentWriter[A] =
+    ${ MacroImpl.writer[A, MacroOptions.Default] }
+
+  /**
+   * Creates a [[BSONWriter]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
+   *
+   * The inner value will be directly writen from BSON value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONWriter, Macros }
+   *
+   * final class FooVal(val v: Int) extends AnyVal // Value Class
+   *
+   * val vwriter: BSONWriter[FooVal] = Macros.valueWriter[FooVal]
+   *
+   * vwriter.writeTry(new FooVal(1)) // Success(BSONInteger(1))
+   * }}}
+   */
+  inline def valueWriter[A <: AnyVal]: BSONWriter[A] =
+    ${ MacroImpl.valueWriter[A, MacroOptions.Default] }
+
+  /**
+   * $writerMacro.
+   * $defaultCfg, with given additional options.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ Macros, MacroOptions }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val writer = Macros.writerOpts[Foo, MacroOptions.DisableWarnings]
+   * }}}
+   *
+   * $tparam
+   * $tparamOpts
+   */
+  inline def writerOpts[
+      A,
+      Opts <: MacroOptions.Default
+    ]: BSONDocumentWriter[A] =
+    ${ MacroImpl.writer[A, Opts] }
+
   // --- Internals TODO: Common
 
   /** Only for internal purposes */
@@ -20,7 +98,7 @@ object Macros extends MacroAnnotations {
     }
   }
 
-  /* TODO
+/* TODO
   /** Only for internal purposes */
   final class LocalVar[@specialized T] {
     private var underlying: T = _
@@ -32,5 +110,5 @@ object Macros extends MacroAnnotations {
 
     def value(): T = underlying
   }
-   */
-}
+ */
+end Macros

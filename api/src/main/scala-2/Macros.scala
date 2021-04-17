@@ -41,7 +41,8 @@ object Macros extends MacroAnnotations {
    * $tparam
    */
   @SuppressWarnings(Array("NullParameter"))
-  def reader[A]: BSONDocumentReader[A] = macro MacroImpl.reader[A, MacroOptions.Default]
+  def reader[A]: BSONDocumentReader[A] =
+    macro MacroImpl.reader[A, MacroOptions.Default]
 
   /**
    * $readerMacro.
@@ -59,7 +60,8 @@ object Macros extends MacroAnnotations {
    * $tparamOpts
    */
   @SuppressWarnings(Array("NullParameter"))
-  def readerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentReader[A] = macro MacroImpl.reader[A, Opts]
+  def readerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentReader[A] =
+    macro MacroImpl.reader[A, Opts]
 
   /**
    * Creates a [[BSONReader]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
@@ -77,7 +79,8 @@ object Macros extends MacroAnnotations {
    * }}}
    */
   @SuppressWarnings(Array("PointlessTypeBounds", "NullParameter"))
-  def valueReader[A <: AnyVal]: BSONReader[A] = macro MacroImpl.valueReader[A, MacroOptions.Default]
+  def valueReader[A <: AnyVal]: BSONReader[A] =
+    macro MacroImpl.valueReader[A, MacroOptions.Default]
 
   /**
    * $writerMacro.
@@ -94,7 +97,8 @@ object Macros extends MacroAnnotations {
    * $tparam
    */
   @SuppressWarnings(Array("NullParameter"))
-  def writer[A]: BSONDocumentWriter[A] = macro MacroImpl.writer[A, MacroOptions.Default]
+  def writer[A]: BSONDocumentWriter[A] =
+    macro MacroImpl.writer[A, MacroOptions.Default]
 
   /**
    * Creates a [[BSONWriter]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
@@ -112,7 +116,8 @@ object Macros extends MacroAnnotations {
    * }}}
    */
   @SuppressWarnings(Array("PointlessTypeBounds", "NullParameter"))
-  def valueWriter[A <: AnyVal]: BSONWriter[A] = macro MacroImpl.valueWriter[A, MacroOptions.Default]
+  def valueWriter[A <: AnyVal]: BSONWriter[A] =
+    macro MacroImpl.valueWriter[A, MacroOptions.Default]
 
   /**
    * $writerMacro.
@@ -130,7 +135,8 @@ object Macros extends MacroAnnotations {
    * $tparamOpts
    */
   @SuppressWarnings(Array("NullParameter"))
-  def writerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentWriter[A] = macro MacroImpl.writer[A, Opts]
+  def writerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentWriter[A] =
+    macro MacroImpl.writer[A, Opts]
 
   /**
    * $handlerMacro.
@@ -147,7 +153,8 @@ object Macros extends MacroAnnotations {
    * $tparam
    */
   @SuppressWarnings(Array("NullParameter"))
-  def handler[A]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, MacroOptions.Default]
+  def handler[A]: BSONDocumentHandler[A] =
+    macro MacroImpl.handler[A, MacroOptions.Default]
 
   /**
    * $handlerMacro.
@@ -165,7 +172,8 @@ object Macros extends MacroAnnotations {
    * $tparamOpts
    */
   @SuppressWarnings(Array("NullParameter"))
-  def handlerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentHandler[A] = macro MacroImpl.handler[A, Opts]
+  def handlerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentHandler[A] =
+    macro MacroImpl.handler[A, Opts]
 
   /**
    * Creates a [[BSONHandler]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
@@ -188,7 +196,8 @@ object Macros extends MacroAnnotations {
    * }}}
    */
   @SuppressWarnings(Array("PointlessTypeBounds", "NullParameter"))
-  def valueHandler[A <: AnyVal]: BSONHandler[A] = macro MacroImpl.valueHandler[A, MacroOptions.Default]
+  def valueHandler[A <: AnyVal]: BSONHandler[A] =
+    macro MacroImpl.valueHandler[A, MacroOptions.Default]
 
   // ---
 
@@ -213,7 +222,10 @@ object Macros extends MacroAnnotations {
    *
    * }}}
    */
-  def configured[Opts <: MacroOptions](implicit config: MacroConfiguration.Aux[Opts]) = new WithOptions[Opts](config)
+  def configured[Opts <: MacroOptions](
+      implicit
+      config: MacroConfiguration.Aux[Opts]
+    ) = new WithOptions[Opts](config)
 
   /**
    * Returns an inference context to call the BSON macros,
@@ -247,7 +259,7 @@ object Macros extends MacroAnnotations {
    * @tparam Opts the compile-time options
    */
   final class WithOptions[Opts <: MacroOptions](
-    val config: MacroConfiguration.Aux[Opts]) {
+      val config: MacroConfiguration.Aux[Opts]) {
 
     def this() = this(MacroConfiguration.default)
 
@@ -259,7 +271,8 @@ object Macros extends MacroAnnotations {
      * $tparam
      */
     @SuppressWarnings(Array("NullParameter"))
-    def reader[A]: BSONDocumentReader[A] = macro MacroImpl.configuredReader[A, Opts]
+    def reader[A]: BSONDocumentReader[A] =
+      macro MacroImpl.configuredReader[A, Opts]
 
     /**
      * $writerMacro.
@@ -267,7 +280,8 @@ object Macros extends MacroAnnotations {
      * $tparam
      */
     @SuppressWarnings(Array("NullParameter"))
-    def writer[A]: BSONDocumentWriter[A] = macro MacroImpl.configuredWriter[A, Opts]
+    def writer[A]: BSONDocumentWriter[A] =
+      macro MacroImpl.configuredWriter[A, Opts]
 
     /**
      * $handlerMacro.
@@ -275,7 +289,8 @@ object Macros extends MacroAnnotations {
      * $tparam
      */
     @SuppressWarnings(Array("NullParameter"))
-    def handler[A]: BSONDocumentHandler[A] = macro MacroImpl.configuredHandler[A, Opts]
+    def handler[A]: BSONDocumentHandler[A] =
+      macro MacroImpl.configuredHandler[A, Opts]
   }
 
   // --- Internals

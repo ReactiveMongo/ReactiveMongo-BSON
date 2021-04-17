@@ -38,6 +38,20 @@ sealed trait MacroConfiguration {
    * (for sealed family; see [[MacroConfiguration$.defaultDiscriminator]])
    */
   def discriminator: String
+
+  override def equals(that: Any): Boolean = that match {
+    case other: MacroConfiguration =>
+      other.fieldNaming == this.fieldNaming &&
+        other.typeNaming == this.typeNaming &&
+        other.discriminator == this.discriminator
+
+    case _ =>
+      false
+  }
+
+  override def hashCode: Int =
+    Tuple3(fieldNaming, typeNaming, discriminator).hashCode
+
 }
 
 /** [[MacroConfiguration]] factories and utilities */

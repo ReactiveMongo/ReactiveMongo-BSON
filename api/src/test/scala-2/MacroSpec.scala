@@ -1,6 +1,25 @@
 import scala.util.{ Failure, Success, Try }
 
-import reactivemongo.api.bson.{ BSON, BSONDecimal, BSONDocument, BSONDocumentHandler, BSONDocumentReader, BSONDocumentWriter, BSONHandler, BSONInteger, BSONNull, BSONReader, BSONString, BSONValue, BSONWriter, FieldNaming, MacroConfiguration, MacroOptions, Macros, TypeNaming }
+import reactivemongo.api.bson.{
+  BSON,
+  BSONDecimal,
+  BSONDocument,
+  BSONDocumentHandler,
+  BSONDocumentReader,
+  BSONDocumentWriter,
+  BSONHandler,
+  BSONInteger,
+  BSONNull,
+  BSONReader,
+  BSONString,
+  BSONValue,
+  BSONWriter,
+  FieldNaming,
+  MacroConfiguration,
+  MacroOptions,
+  Macros,
+  TypeNaming
+}
 import reactivemongo.api.bson.exceptions.{
   HandlerException,
   TypeDoesNotMatchException
@@ -19,11 +38,48 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
   import MacroTest._
 
+  "Utility macros" should {
+    "provide 'migrationRequired' compilation error" in {
+      import reactivemongo.api.bson.migrationRequired
+
+      typecheck("""migrationRequired[String]("Foo"): String""") must failWith(
+        "Migration\\ required:\\ Foo"
+      )
+    }
+  }
+
+  "Configuration" should {
+    import reactivemongo.api.bson.MacroCompilation.WithConfig
+
+    "be resolved from the call site" in {
+      val resolved = WithConfig.resolve
+
+      resolved must_=== MacroConfiguration(
+        fieldNaming = FieldNaming.SnakeCase
+      ) and {
+        resolved must not(beEqualTo(MacroConfiguration()))
+      }
+    }
+
+    "be resolved from implicit scope" in {
+      implicit def conf: MacroConfiguration = WithConfig.config
+
+      val resolved = WithConfig.implicitConf
+
+      resolved must_=== MacroConfiguration(fieldNaming =
+        FieldNaming.SnakeCase
+      ) and {
+        resolved must not(beEqualTo(MacroConfiguration()))
+      }
+    }
+  }
+
   "Formatter" should {
     "handle primitives" in {
       roundtrip(
         Primitives(1.2, "hai", true, 42, Long.MaxValue),
-        Macros.handler[Primitives])
+        Macros.handler[Primitives]
+      )
     }
 
     "support nesting" in {
@@ -42,37 +98,37 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
 
     "not support type mismatch for optional value" in {
-      Macros.reader[Optional].readTry(
-        BSONDocument(
-          "name" -> "invalidValueType",
-          "value" -> 4)) must beFailedTry[Optional] //("BSONInteger")
+      Macros
+        .reader[Optional]
+        .readTry(
+          BSONDocument("name" -> "invalidValueType", "value" -> 4)
+        ) must beFailedTry[Optional] //("BSONInteger")
     }
 
     "support null for optional value" in {
-      Macros.reader[Optional].readTry(
-        BSONDocument(
-          "name" -> "name",
-          "value" -> BSONNull)).
-        map(_.value) must beSuccessfulTry(Option.empty[String])
+      Macros
+        .reader[Optional]
+        .readTry(BSONDocument("name" -> "name", "value" -> BSONNull))
+        .map(_.value) must beSuccessfulTry(Option.empty[String])
     }
 
     "write empty option as null" in {
-      Macros.writer[OptionalAsNull].writeTry(
-        OptionalAsNull("asNull", None)) must beSuccessfulTry(BSONDocument(
-          "name" -> "asNull",
-          "value" -> BSONNull))
+      Macros
+        .writer[OptionalAsNull]
+        .writeTry(OptionalAsNull("asNull", None)) must beSuccessfulTry(
+        BSONDocument("name" -> "asNull", "value" -> BSONNull)
+      )
     }
 
     "support seq" in {
       roundtrip(
         WordLover("john", Seq("hello", "world")),
-        Macros.handler[WordLover])
+        Macros.handler[WordLover]
+      )
     }
 
     "support single member case classes" in {
-      roundtrip(
-        Single(BigDecimal("12.345")),
-        Macros.handler[Single])
+      roundtrip(Single(BigDecimal("12.345")), Macros.handler[Single])
     }
 
     "support single member options" in {
@@ -94,11 +150,11 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         val reader = Macros.reader[OptionalGeneric[String]]
 
         reader.readTry(doc1) must beSuccessfulTry(none) and {
-          reader.readTry(doc2).
-            aka("some valid") must beSuccessfulTry(some)
+          reader.readTry(doc2).aka("some valid") must beSuccessfulTry(some)
         } and {
-          reader.readTry(BSONDocument("v" -> 3, "opt" -> 4.5D)).
-            aka("some invalid") must beFailedTry[OptionalGeneric[String]]
+          reader
+            .readTry(BSONDocument("v" -> 3, "opt" -> 4.5D))
+            .aka("some invalid") must beFailedTry[OptionalGeneric[String]]
         }
       }
 
@@ -123,18 +179,25 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       "directly" in {
         roundtrip(
           Foo(Single(BigDecimal(123L)), "ipsum"),
-          Macros.handler[Foo[Single]])
+          Macros.handler[Foo[Single]]
+        )
       }
 
       "from generic function" in {
-        def handler[T](implicit w: BSONDocumentWriter[T], r: BSONDocumentReader[T]) = Macros.handler[Foo[T]]
+        def handler[T](
+            implicit
+            w: BSONDocumentWriter[T],
+            r: BSONDocumentReader[T]
+          ) = Macros.handler[Foo[T]]
 
         roundtrip(Foo(Single(BigDecimal(1.23D)), "ipsum"), handler[Single])
       }
     }
 
     "support generic case class GenSeq" in {
-      implicit def singleHandler = new BSONWriter[Single] with BSONReader[Single] with BSONHandler[Single] {
+      implicit def singleHandler = new BSONWriter[Single]
+        with BSONReader[Single]
+        with BSONHandler[Single] {
         def writeTry(single: Single) = BSONDecimal.fromBigDecimal(single.value)
 
         def readTry(bson: BSONValue): Try[Single] = bson match {
@@ -142,49 +205,65 @@ final class MacroSpec extends org.specs2.mutable.Specification {
             BSONDecimal.toBigDecimal(dec).map(Single(_))
 
           case _ =>
-            Failure(TypeDoesNotMatchException(
-              "BSONDecimal", bson.getClass.getSimpleName))
+            Failure(
+              TypeDoesNotMatchException(
+                "BSONDecimal",
+                bson.getClass.getSimpleName
+              )
+            )
         }
       }
 
-      implicit def optionHandler[T](implicit h: BSONHandler[T]): BSONDocumentHandler[Option[T]] = new BSONDocumentHandler[Option[T]] {
+      implicit def optionHandler[T](
+          implicit
+          h: BSONHandler[T]
+        ): BSONDocumentHandler[Option[T]] = new BSONDocumentHandler[Option[T]] {
         def readDocument(doc: BSONDocument): Try[Option[T]] =
           doc.getAsUnflattenedTry[T](f"$$some")
 
         def writeTry(single: Option[T]): Try[BSONDocument] = single match {
-          case Some(v) => h.writeTry(v).map { x =>
-            BSONDocument(f"$$some" -> x)
-          }
+          case Some(v) =>
+            h.writeTry(v).map { x => BSONDocument(f"$$some" -> x) }
 
           case _ => Success(BSONDocument.empty)
         }
       }
 
-      def genSeqHandler[T: BSONDocumentHandler]: BSONDocumentHandler[GenSeq[T]] = Macros.handler[GenSeq[T]]
+      def genSeqHandler[
+          T: BSONDocumentHandler
+        ]: BSONDocumentHandler[GenSeq[T]] = Macros.handler[GenSeq[T]]
 
       val seq = GenSeq(
         items = Seq(Option.empty[Single], Option(Single(BigDecimal(1)))),
-        count = 1)
+        count = 1
+      )
 
       roundtrip(seq, genSeqHandler[Option[Single]])
     }
 
     "support auto-materialization for property types (not recommended)" in {
-      val handler = Macros.handlerOpts[Person2, MacroOptions.AutomaticMaterialization with MacroOptions.DisableWarnings]
+      val handler = Macros.handlerOpts[
+        Person2,
+        MacroOptions.AutomaticMaterialization with MacroOptions.DisableWarnings
+      ]
 
       typecheck("Macros.handler[Person2]") must failWith(
-        "Implicit\\ not\\ found\\ for\\ .*itemList") and {
-          roundtrip(
-            Person2(
-              name = "Name",
-              age = 20,
-              phoneNum = 33000000000L,
-              itemList = Seq(
-                Item(name = "#1", number = new FooVal(10)),
-                Item(name = "#2", number = new FooVal(20))),
-              list = Seq(1, 2, 3)),
-            handler)
-        }
+        "Implicit\\ not\\ found\\ for\\ .*itemList"
+      ) and {
+        roundtrip(
+          Person2(
+            name = "Name",
+            age = 20,
+            phoneNum = 33000000000L,
+            itemList = Seq(
+              Item(name = "#1", number = new FooVal(10)),
+              Item(name = "#2", number = new FooVal(20))
+            ),
+            list = Seq(1, 2, 3)
+          ),
+          handler
+        )
+      }
     }
 
     "handle overloaded apply correctly" in {
@@ -239,18 +318,20 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
       val doc = format writeTry person
 
-      doc.flatMap(_.getAsUnflattenedTry[String]("className")).
-        aka("class") must beSuccessfulTry(Option.empty[String]) and {
-          roundtrip(person, format)
-        }
+      doc
+        .flatMap(_.getAsUnflattenedTry[String]("className"))
+        .aka("class") must beSuccessfulTry(Option.empty[String]) and {
+        roundtrip(person, format)
+      }
     }
 
     "respect field naming" >> {
       val person = Person("Jane", "doe")
 
       def spec(
-        handler: BSONDocumentHandler[Person],
-        expectedBson: BSONDocument) = {
+          handler: BSONDocumentHandler[Person],
+          expectedBson: BSONDocument
+        ) = {
         handler.writeTry(person) must beSuccessfulTry(expectedBson) and {
           handler.readTry(expectedBson) must beSuccessfulTry(person)
         }
@@ -259,31 +340,32 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       "with default configuration" in {
         spec(
           handler = Macros.handler[Person],
-          expectedBson = BSONDocument(
-            "firstName" -> "Jane",
-            "lastName" -> "doe"))
+          expectedBson =
+            BSONDocument("firstName" -> "Jane", "lastName" -> "doe")
+        )
 
       }
 
       "with implicit configuration (PascalCase)" in {
-        implicit def cfg: MacroConfiguration = MacroConfiguration(
-          fieldNaming = FieldNaming.PascalCase)
+        implicit def cfg: MacroConfiguration =
+          MacroConfiguration(fieldNaming = FieldNaming.PascalCase)
 
         spec(
           handler = Macros.handler[Person],
-          expectedBson = BSONDocument(
-            "FirstName" -> "Jane",
-            "LastName" -> "doe"))
+          expectedBson =
+            BSONDocument("FirstName" -> "Jane", "LastName" -> "doe")
+        )
 
       }
 
       "with macro-configured handler (SnakeCase)" in {
         spec(
-          handler = Macros.configured(MacroConfiguration(
-            fieldNaming = FieldNaming.SnakeCase)).handler[Person],
-          expectedBson = BSONDocument(
-            "first_name" -> "Jane",
-            "last_name" -> "doe"))
+          handler = Macros
+            .configured(MacroConfiguration(fieldNaming = FieldNaming.SnakeCase))
+            .handler[Person],
+          expectedBson =
+            BSONDocument("first_name" -> "Jane", "last_name" -> "doe")
+        )
       }
     }
 
@@ -297,13 +379,21 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
         implicit val cfg = MacroConfiguration(discriminator = "_type")
 
-        val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD \/ UF.type] with AutomaticMaterialization]
+        val format = Macros.handlerOpts[UT, UnionType[
+          UA \/ UB \/ UC \/ UD \/ UF.type
+        ] with AutomaticMaterialization]
 
-        format.writeTry(a).map(_.getAsOpt[String]("_type")).
-          aka("class #1") must beSuccessfulTry(Some("MacroTest.Union.UA")) and {
-            format.writeTry(b).map(_.getAsOpt[String]("_type")).
-              aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
-          } and roundtrip(a, format) and roundtrip(b, format)
+        format
+          .writeTry(a)
+          .map(_.getAsOpt[String]("_type"))
+          .aka("class #1") must beSuccessfulTry(
+          Some("MacroTest.Union.UA")
+        ) and {
+          format
+            .writeTry(b)
+            .map(_.getAsOpt[String]("_type"))
+            .aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
+        } and roundtrip(a, format) and roundtrip(b, format)
       }
 
       "with simple type names" in {
@@ -314,13 +404,19 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
         implicit def config = MacroConfiguration.simpleTypeName
 
-        val format = Macros.handlerOpts[UT, UnionType[UA \/ UB \/ UC \/ UD] with AutomaticMaterialization]
+        val format = Macros.handlerOpts[UT, UnionType[
+          UA \/ UB \/ UC \/ UD
+        ] with AutomaticMaterialization]
 
-        format.writeTry(a).flatMap(_.getAsTry[String]("className")).
-          aka("discriminator UA") must beSuccessfulTry("UA") and {
-            format.writeTry(b).flatMap(_.getAsTry[String]("className")).
-              aka("discriminator UB") must beSuccessfulTry("UB")
-          } and roundtrip(a, format) and roundtrip(b, format)
+        format
+          .writeTry(a)
+          .flatMap(_.getAsTry[String]("className"))
+          .aka("discriminator UA") must beSuccessfulTry("UA") and {
+          format
+            .writeTry(b)
+            .flatMap(_.getAsTry[String]("className"))
+            .aka("discriminator UB") must beSuccessfulTry("UB")
+        } and roundtrip(a, format) and roundtrip(b, format)
       }
 
       "without sealed trait" in {
@@ -330,14 +426,20 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         val a = UA2(1)
         val b = UB2("hai")
 
-        val format = Macros.handlerOpts[UT2, UnionType[UA2 \/ UB2] with AutomaticMaterialization]
+        val format = Macros
+          .handlerOpts[UT2, UnionType[UA2 \/ UB2] with AutomaticMaterialization]
 
-        format.writeTry(a).map(_.getAsOpt[String]("className")).
-          aka("class #1") must beSuccessfulTry(
-            Some("MacroTest.Union.UA2")) and {
-              format.writeTry(b).map(_.getAsOpt[String]("className")).
-                aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB2"))
-            } and roundtrip(a, format) and roundtrip(b, format)
+        format
+          .writeTry(a)
+          .map(_.getAsOpt[String]("className"))
+          .aka("class #1") must beSuccessfulTry(
+          Some("MacroTest.Union.UA2")
+        ) and {
+          format
+            .writeTry(b)
+            .map(_.getAsOpt[String]("className"))
+            .aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB2"))
+        } and roundtrip(a, format) and roundtrip(b, format)
       }
     }
 
@@ -355,7 +457,8 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       val deserialized = serialized.flatMap(BSON.readDocument[Tree](_))
 
       deserialized must beSuccessfulTry(
-        Node(Leaf("hai"), Node(Leaf("hai"), Leaf("hai"))))
+        Node(Leaf("hai"), Node(Leaf("hai"), Leaf("hai")))
+      )
     }
 
     "handle empty case classes" in {
@@ -384,21 +487,26 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
       "but fail when the subtype is not provided with implicit instance" in {
         typecheck("Macros.handler[UT]") must failWith(
-          "Implicit\\ not\\ found\\ for\\ 'U")
+          "Implicit\\ not\\ found\\ for\\ 'U"
+        )
       }
 
       "with auto-materialization & default configuration" in {
-        implicit val format = Macros.handlerOpts[UT, AutomaticMaterialization with DisableWarnings /* disabled: Cannot handle object MacroTest\\.Union\\.UE */ ]
+        implicit val format =
+          Macros.handlerOpts[UT, AutomaticMaterialization with DisableWarnings /* disabled: Cannot handle object MacroTest\\.Union\\.UE */ ]
 
-        format.writeTry(UA(1)).flatMap(_.getAsTry[String]("className")).
-          aka("class #1") must beSuccessfulTry("MacroTest.Union.UA") and {
-            format.writeTry(UB("buzz")).flatMap(
-              _.getAsUnflattenedTry[String]("className")).
-              aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
+        format
+          .writeTry(UA(1))
+          .flatMap(_.getAsTry[String]("className"))
+          .aka("class #1") must beSuccessfulTry("MacroTest.Union.UA") and {
+          format
+            .writeTry(UB("buzz"))
+            .flatMap(_.getAsUnflattenedTry[String]("className"))
+            .aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB"))
 
-          } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
-            roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
-          } and roundtripImp[UT](UF)
+        } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
+          roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
+        } and roundtripImp[UT](UF)
       }
 
       "with custom configuration" in {
@@ -415,20 +523,24 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         implicit val format: BSONDocumentHandler[UT] = {
           implicit val cfg: MacroConfiguration = MacroConfiguration(
             discriminator = "_type",
-            typeNaming = TypeNaming.SimpleName.andThen(_.toLowerCase))
+            typeNaming = TypeNaming.SimpleName.andThen(_.toLowerCase)
+          )
 
           Macros.handler[UT]
         }
 
-        format.writeTry(UA(1)).flatMap(_.getAsTry[String]("_type")).
-          aka("custom discriminator") must beSuccessfulTry("ua") and {
-            format.writeTry(UB("fuzz")).flatMap(
-              _.getAsUnflattenedTry[String]("_type")).
-              aka("class #2") must beSuccessfulTry(Some("ub"))
+        format
+          .writeTry(UA(1))
+          .flatMap(_.getAsTry[String]("_type"))
+          .aka("custom discriminator") must beSuccessfulTry("ua") and {
+          format
+            .writeTry(UB("fuzz"))
+            .flatMap(_.getAsUnflattenedTry[String]("_type"))
+            .aka("class #2") must beSuccessfulTry(Some("ub"))
 
-          } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
-            roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
-          } and roundtripImp[UT](UF)
+        } and roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
+          roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
+        } and roundtripImp[UT](UF)
 
       }
     }
@@ -438,15 +550,20 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       import InheritanceModule._
       implicit val format = Macros.handlerOpts[T, AutomaticMaterialization]
 
-      format.writeTry(A()).flatMap(_.getAsTry[String]("className")).
-        aka("class #1") must beSuccessfulTry(
-          "MacroTest.InheritanceModule.A") and {
-            format.writeOpt(B).flatMap(_.getAsOpt[String]("className")).
-              aka("class #2") must beSome("MacroTest.InheritanceModule.B")
+      format
+        .writeTry(A())
+        .flatMap(_.getAsTry[String]("className"))
+        .aka("class #1") must beSuccessfulTry(
+        "MacroTest.InheritanceModule.A"
+      ) and {
+        format
+          .writeOpt(B)
+          .flatMap(_.getAsOpt[String]("className"))
+          .aka("class #2") must beSome("MacroTest.InheritanceModule.B")
 
-          } and {
-            roundtripImp[T](A()) and roundtripImp[T](B) and roundtripImp[T](C())
-          }
+      } and {
+        roundtripImp[T](A()) and roundtripImp[T](B) and roundtripImp[T](C())
+      }
     }
 
     "automate Union on sealed traits with simple name" in {
@@ -455,36 +572,46 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
       val configuredMacros = Macros.configured(
         MacroConfiguration[AutomaticMaterialization](
-          typeNaming = TypeNaming.SimpleName))
+          typeNaming = TypeNaming.SimpleName
+        )
+      )
 
       @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
       implicit val format = configuredMacros.handler[UT]
 
-      format.writeTry(UA(1)).flatMap(
-        _.getAsTry[String]("className")) must beSuccessfulTry("UA") and {
-          format.writeOpt(UB("buzz")).flatMap(
-            _.getAsOpt[String]("className")) must beSome("UB")
-        } and {
-          roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
-            roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
-          }
+      format
+        .writeTry(UA(1))
+        .flatMap(_.getAsTry[String]("className")) must beSuccessfulTry(
+        "UA"
+      ) and {
+        format
+          .writeOpt(UB("buzz"))
+          .flatMap(_.getAsOpt[String]("className")) must beSome("UB")
+      } and {
+        roundtripImp[UT](UA(17)) and roundtripImp[UT](UB("foo")) and {
+          roundtripImp[UT](UC("bar")) and roundtripImp[UT](UD("baz"))
         }
+      }
     }
 
     "support automatic implementations search with nested traits with simple name" in {
       import InheritanceModule._
 
-      implicit val format = Macros.configured(
-        MacroConfiguration.simpleTypeName).handler[T]
+      implicit val format =
+        Macros.configured(MacroConfiguration.simpleTypeName).handler[T]
 
-      format.writeTry(A()).flatMap(
-        _.getAsTry[String]("className")) must beSuccessfulTry("A") and {
-          format.writeTry(B).flatMap(
-            _.getAsTry[String]("className")) must beSuccessfulTry("B")
+      format
+        .writeTry(A())
+        .flatMap(_.getAsTry[String]("className")) must beSuccessfulTry(
+        "A"
+      ) and {
+        format
+          .writeTry(B)
+          .flatMap(_.getAsTry[String]("className")) must beSuccessfulTry("B")
 
-        } and {
-          roundtripImp[T](A()) and roundtripImp[T](B) and roundtripImp[T](C())
-        }
+      } and {
+        roundtripImp[T](A()) and roundtripImp[T](B) and roundtripImp[T](C())
+      }
     }
 
     "support overriding keys with annotations" in {
@@ -505,11 +632,16 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           "Cannot\\ ignore\\ 'MacroTest\\.NotIgnorable\\.title'"
 
         writer.writeTry(NotIgnorable("foo", 1)) must beSuccessfulTry(
-          BSONDocument("score" -> 1)) and {
-            typecheck("Macros.reader[NotIgnorable]") must failWith(expectedReadErr)
-          } and {
-            typecheck("Macros.handler[NotIgnorable]") must failWith(expectedReadErr)
-          }
+          BSONDocument("score" -> 1)
+        ) and {
+          typecheck("Macros.reader[NotIgnorable]") must failWith(
+            expectedReadErr
+          )
+        } and {
+          typecheck("Macros.handler[NotIgnorable]") must failWith(
+            expectedReadErr
+          )
+        }
       }
 
       "with Pair type having a default field value" in {
@@ -526,13 +658,19 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         pairHandler.writeTry(pair1) must beSuccessfulTry(doc1) and {
           pairWriter.writeTry(pair2) must beSuccessfulTry(doc2)
         } and {
-          pairHandler.readTry(doc2) must beSuccessfulTry(Pair(
-            left = "_left", // from default field value
-            right = pair2.right))
+          pairHandler.readTry(doc2) must beSuccessfulTry(
+            Pair(
+              left = "_left", // from default field value
+              right = pair2.right
+            )
+          )
         } and {
-          pairReader.readTry(doc1) must beSuccessfulTry(Pair(
-            left = "_left", // from default field value
-            right = pair1.right))
+          pairReader.readTry(doc1) must beSuccessfulTry(
+            Pair(
+              left = "_left", // from default field value
+              right = pair1.right
+            )
+          )
         }
       }
 
@@ -551,7 +689,8 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
         val withDefault = IgnoredAndKey(
           a = Person("first", "last"), // from @DefaultValue
-          b = "foo")
+          b = "foo"
+        )
 
         writer.writeTry(v) must beSuccessfulTry(expected) and {
           handler.writeTry(v) must beSuccessfulTry(expected)
@@ -569,25 +708,29 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       val doc1 = BSONDocument("name" -> "bar1")
 
       h.readTry(doc1) must beSuccessfulTry(bar1) and {
-        h.readTry(BSONDocument("name" -> "bar2", "next" -> doc1)).
-          aka("bar2") must beSuccessfulTry(Bar("bar2", Some(bar1)))
+        h.readTry(BSONDocument("name" -> "bar2", "next" -> doc1))
+          .aka("bar2") must beSuccessfulTry(Bar("bar2", Some(bar1)))
 
       } and (h.writeTry(bar1) must beSuccessfulTry(doc1)) and {
-        h.writeTry(Bar("bar2", Some(bar1))) must beSuccessfulTry(BSONDocument(
-          "name" -> "bar2", "next" -> doc1))
+        h.writeTry(Bar("bar2", Some(bar1))) must beSuccessfulTry(
+          BSONDocument("name" -> "bar2", "next" -> doc1)
+        )
       }
     }
 
     "support @Flatten annotation" in {
       typecheck("Macros.handler[InvalidRecursive]") must failWith(
-        "Cannot\\ flatten\\ reader\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type") and {
-          typecheck("Macros.handler[InvalidNonDoc]") must failWith(
-            "doesn't\\ conform\\ BSONDocumentReader")
-        } and {
-          roundtrip(
-            LabelledRange("range1", Range(start = 2, end = 5)),
-            Macros.handler[LabelledRange])
-        }
+        "Cannot\\ flatten\\ reader\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type"
+      ) and {
+        typecheck("Macros.handler[InvalidNonDoc]") must failWith(
+          "doesn't\\ conform\\ BSONDocumentReader"
+        )
+      } and {
+        roundtrip(
+          LabelledRange("range1", Range(start = 2, end = 5)),
+          Macros.handler[LabelledRange]
+        )
+      }
     }
 
     "handle case class with implicits" >> {
@@ -605,7 +748,8 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       "to generate reader" in readSpec1(Macros.reader[WithImplicit1])
 
       "to generate writer with type parameters" in writeSpec2(
-        Macros.writer[WithImplicit2[Double]])
+        Macros.writer[WithImplicit2[Double]]
+      )
 
       "to generate handler" in {
         val f1 = Macros.handler[WithImplicit1]
@@ -631,7 +775,8 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         score = 2.35F,
         description = Some("foo"),
         range = Range(3, 5),
-        foo = "1")
+        foo = "1"
+      )
 
       val expectedDoc =
         BSONDocument(
@@ -640,18 +785,19 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           "score" -> "2.35",
           "description" -> "foo",
           "range" -> Seq(3, 5),
-          "foo" -> "1")
+          "foo" -> "1"
+        )
 
       writer.writeTry(expectedVal) must beSuccessfulTry(expectedDoc) and {
-        reader1.readTry(expectedDoc) must beFailedTry.
-          withThrowable[HandlerException]( // As status is asymetric ...
+        reader1.readTry(expectedDoc) must beFailedTry
+          .withThrowable[HandlerException]( // As status is asymetric ...
             // ... with just a custom @Writer but no corresponding @Reader
-            "Fails\\ to\\ handle\\ 'score':\\ BSONString\\ !=\\ <float>")
+            "Fails\\ to\\ handle\\ 'score':\\ BSONString\\ !=\\ <float>"
+          )
       } and {
         // Define a BSONReader for 'score: Float' corresponding to @Writer
-        implicit def floatReader = BSONReader.collect[Float] {
-          case BSONString(f) => f.toFloat
-        }
+        implicit def floatReader =
+          BSONReader.collect[Float] { case BSONString(f) => f.toFloat }
         val reader2 = Macros.reader[PerField1[String]]
 
         reader2.readTry(expectedDoc) must beSuccessfulTry(expectedVal)
@@ -662,21 +808,24 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       val handler = Macros.valueHandler[FooVal]
 
       typecheck("Macros.valueHandler[Person]") must failWith(
-        "Person.* do not conform to.* AnyVal") and {
-          typecheck("Macros.valueHandler[BarVal]") must failWith("Implicit not found for 'Exception': .*BSONReader\\[java\\.lang\\.Exception\\]")
-        } and {
-          handler.readTry(BSONInteger(1)) must beSuccessfulTry(new FooVal(1))
-        } and {
-          handler.readOpt(BSONInteger(2)) must beSome(new FooVal(2))
-        } and {
-          handler.readTry(BSONString("oof")) must beFailedTry
-        } and {
-          handler.readOpt(BSONString("bar")) must beNone
-        } and {
-          handler.writeTry(new FooVal(1)) must beSuccessfulTry(BSONInteger(1))
-        } and {
-          handler.writeOpt(new FooVal(2)) must beSome(BSONInteger(2))
-        }
+        "Person.* do not conform to.* AnyVal"
+      ) and {
+        typecheck("Macros.valueHandler[BarVal]") must failWith(
+          "Implicit not found for 'Exception': .*BSONReader\\[java\\.lang\\.Exception\\]"
+        )
+      } and {
+        handler.readTry(BSONInteger(1)) must beSuccessfulTry(new FooVal(1))
+      } and {
+        handler.readOpt(BSONInteger(2)) must beSome(new FooVal(2))
+      } and {
+        handler.readTry(BSONString("oof")) must beFailedTry
+      } and {
+        handler.readOpt(BSONString("bar")) must beNone
+      } and {
+        handler.writeTry(new FooVal(1)) must beSuccessfulTry(BSONInteger(1))
+      } and {
+        handler.writeOpt(new FooVal(2)) must beSome(BSONInteger(2))
+      }
     }
   }
 
@@ -684,17 +833,26 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     "throw meaningful exception if required field is missing" in {
       val personDoc = BSONDocument("firstName" -> "joe")
 
-      Macros.reader[Person].readTry(personDoc) must beFailedTry[Person].
-        like { case e => e.getMessage must contain("lastName") }
+      Macros.reader[Person].readTry(personDoc) must beFailedTry[Person].like {
+        case e => e.getMessage must contain("lastName")
+      }
     }
 
     "be generated to supported similar numeric BSON types" in {
       val primitivesDoc = BSONDocument(
-        "dbl" -> 2D, "str" -> "str", "bl" -> true, "int" -> 2D, "long" -> 2L)
+        "dbl" -> 2D,
+        "str" -> "str",
+        "bl" -> true,
+        "int" -> 2D,
+        "long" -> 2L
+      )
 
-      Macros.reader[Primitives].readTry(primitivesDoc).
-        aka("read") must beSuccessfulTry(Primitives(
-          dbl = 2D, str = "str", bl = true, int = 2, long = 2L))
+      Macros
+        .reader[Primitives]
+        .readTry(primitivesDoc)
+        .aka("read") must beSuccessfulTry(
+        Primitives(dbl = 2D, str = "str", bl = true, int = 2, long = 2L)
+      )
     }
 
     "be generated for a generic case class" in {
@@ -702,9 +860,9 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       val r = Macros.reader[Foo[Single]]
       val big = BigDecimal(1.23D)
 
-      r.readTry(BSONDocument(
-        "bar" -> BSONDocument("value" -> big),
-        "lorem" -> "ipsum")) must beSuccessfulTry(Foo(Single(big), "ipsum"))
+      r.readTry(
+        BSONDocument("bar" -> BSONDocument("value" -> big), "lorem" -> "ipsum")
+      ) must beSuccessfulTry(Foo(Single(big), "ipsum"))
     }
 
     "be generated for case class with self reference" in {
@@ -713,30 +871,33 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       val doc1 = BSONDocument("name" -> "bar1")
 
       r.readTry(doc1) must beSuccessfulTry(bar1) and {
-        r.readTry(BSONDocument("name" -> "bar2", "next" -> doc1)).
-          aka("bar2") must beSuccessfulTry(Bar("bar2", Some(bar1)))
+        r.readTry(BSONDocument("name" -> "bar2", "next" -> doc1))
+          .aka("bar2") must beSuccessfulTry(Bar("bar2", Some(bar1)))
       }
     }
 
     "be generated with @Flatten annotation" in {
       typecheck("Macros.reader[InvalidRecursive]") must failWith(
-        "Cannot\\ flatten\\ reader\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type") and {
-          typecheck("Macros.reader[InvalidNonDoc]") must failWith(
-            "doesn't\\ conform\\ BSONDocumentReader")
-        } and {
-          val r = Macros.reader[LabelledRange]
-          val doc = BSONDocument("name" -> "range1", "start" -> 2, "end" -> 5)
-          val lr = LabelledRange("range1", Range(start = 2, end = 5))
+        "Cannot\\ flatten\\ reader\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type"
+      ) and {
+        typecheck("Macros.reader[InvalidNonDoc]") must failWith(
+          "doesn't\\ conform\\ BSONDocumentReader"
+        )
+      } and {
+        val r = Macros.reader[LabelledRange]
+        val doc = BSONDocument("name" -> "range1", "start" -> 2, "end" -> 5)
+        val lr = LabelledRange("range1", Range(start = 2, end = 5))
 
-          r.readTry(doc) must beSuccessfulTry(lr)
-        }
+        r.readTry(doc) must beSuccessfulTry(lr)
+      }
     }
 
     "be generated for case class with default values" >> {
       "using class defaults" in {
         val r1: BSONDocumentReader[WithDefaultValues1] =
-          Macros.using[MacroOptions.ReadDefaultValues].
-            reader[WithDefaultValues1]
+          Macros
+            .using[MacroOptions.ReadDefaultValues]
+            .reader[WithDefaultValues1]
 
         val r2: BSONDocumentReader[WithDefaultValues1] = {
           implicit val cfg =
@@ -755,8 +916,9 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
       "using annotation @DefaultValue" in {
         val r1: BSONDocumentReader[WithDefaultValues2] =
-          Macros.using[MacroOptions.ReadDefaultValues].
-            reader[WithDefaultValues2]
+          Macros
+            .using[MacroOptions.ReadDefaultValues]
+            .reader[WithDefaultValues2]
 
         val r2: BSONDocumentReader[WithDefaultValues2] = {
           implicit val cfg =
@@ -770,12 +932,15 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           id = 1,
           title = "default2",
           score = Some(45.6F),
-          range = Range(7, 11))
+          range = Range(7, 11)
+        )
 
         r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
           r2.readTry(minimalDoc) must beSuccessfulTry(expected)
         } and {
-          typecheck("Macros.reader[WithDefaultValues3]") must failWith("Invalid\\ annotation\\ @DefaultValue\\(1\\)\\ for\\ 'MacroTest\\.WithDefaultValues3\\.name':\\ String\\ value\\ expected")
+          typecheck("Macros.reader[WithDefaultValues3]") must failWith(
+            "Invalid\\ annotation\\ @DefaultValue\\(1\\)\\ for\\ 'MacroTest\\.WithDefaultValues3\\.name':\\ String\\ value\\ expected"
+          )
         }
       }
     }
@@ -790,49 +955,62 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           "score" -> 2.34F,
           "description" -> "foo",
           "range" -> Seq(3, 5),
-          "foo" -> 1)) must beSuccessfulTry(
+          "foo" -> 1
+        )
+      ) must beSuccessfulTry(
+        PerField1[Int](
+          id = 1L,
+          status = "on",
+          score = 2.34F,
+          description = Some("foo"),
+          range = Range(3, 5),
+          foo = 1
+        )
+      ) and {
+        reader.readTry(
+          BSONDocument(
+            "id" -> 2L,
+            "status" -> 0,
+            "score" -> 45.6F,
+            "description" -> 0,
+            "range" -> Seq(7, 11),
+            "foo" -> 2
+          )
+        ) must beSuccessfulTry(
           PerField1[Int](
-            id = 1L,
-            status = "on",
-            score = 2.34F,
-            description = Some("foo"),
-            range = Range(3, 5),
-            foo = 1)) and {
-            reader.readTry(
-              BSONDocument(
-                "id" -> 2L,
-                "status" -> 0,
-                "score" -> 45.6F,
-                "description" -> 0,
-                "range" -> Seq(7, 11),
-                "foo" -> 2)) must beSuccessfulTry(
-                PerField1[Int](
-                  id = 2L,
-                  status = "off",
-                  score = 45.6F,
-                  description = None,
-                  range = Range(7, 11),
-                  foo = 2))
-          } and {
-            typecheck("Macros.reader[PerField2]") must failWith("Invalid\\ annotation\\ @Reader.*\\ for\\ 'MacroTest\\.PerField2\\.name':\\ Reader\\[String\\]")
-          }
+            id = 2L,
+            status = "off",
+            score = 45.6F,
+            description = None,
+            range = Range(7, 11),
+            foo = 2
+          )
+        )
+      } and {
+        typecheck("Macros.reader[PerField2]") must failWith(
+          "Invalid\\ annotation\\ @Reader.*\\ for\\ 'MacroTest\\.PerField2\\.name':\\ Reader\\[String\\]"
+        )
+      }
     }
 
     "be generated for Value class" in {
       val reader = Macros.valueReader[FooVal]
 
       typecheck("Macros.valueReader[Person]") must failWith(
-        "Person.* do not conform to.* AnyVal") and {
-          typecheck("Macros.valueReader[BarVal]") must failWith("Implicit not found for 'Exception': .*BSONReader\\[java\\.lang\\.Exception\\]")
-        } and {
-          reader.readTry(BSONInteger(1)) must beSuccessfulTry(new FooVal(1))
-        } and {
-          reader.readOpt(BSONInteger(2)) must beSome(new FooVal(2))
-        } and {
-          reader.readTry(BSONString("oof")) must beFailedTry
-        } and {
-          reader.readOpt(BSONString("bar")) must beNone
-        }
+        "Person.* do not conform to.* AnyVal"
+      ) and {
+        typecheck("Macros.valueReader[BarVal]") must failWith(
+          "Implicit not found for 'Exception': .*BSONReader\\[java\\.lang\\.Exception\\]"
+        )
+      } and {
+        reader.readTry(BSONInteger(1)) must beSuccessfulTry(new FooVal(1))
+      } and {
+        reader.readOpt(BSONInteger(2)) must beSome(new FooVal(2))
+      } and {
+        reader.readTry(BSONString("oof")) must beFailedTry
+      } and {
+        reader.readOpt(BSONString("bar")) must beNone
+      }
     }
 
     "be generated for Map property" >> {
@@ -841,12 +1019,17 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
         val reader = Macros.reader[WithMap1]
 
-        reader.readTry(BSONDocument(
-          "name" -> "Foo",
-          "localizedDescription" -> BSONDocument(
-            "fr-FR" -> "French"))) must beSuccessfulTry(WithMap1(
-          name = "Foo",
-          localizedDescription = Map(Locale.FRANCE -> "French")))
+        reader.readTry(
+          BSONDocument(
+            "name" -> "Foo",
+            "localizedDescription" -> BSONDocument("fr-FR" -> "French")
+          )
+        ) must beSuccessfulTry(
+          WithMap1(
+            name = "Foo",
+            localizedDescription = Map(Locale.FRANCE -> "French")
+          )
+        )
 
       }
 
@@ -854,18 +1037,18 @@ final class MacroSpec extends org.specs2.mutable.Specification {
         import reactivemongo.api.bson.KeyReader
 
         implicit def keyReader: KeyReader[FooVal] =
-          KeyReader.from[FooVal] { str =>
-            Try(str.toInt).map(new FooVal(_))
-          }
+          KeyReader.from[FooVal] { str => Try(str.toInt).map(new FooVal(_)) }
 
         val reader = Macros.reader[WithMap2]
 
-        reader.readTry(BSONDocument(
-          "name" -> "Bar",
-          "values" -> BSONDocument(
-            "1" -> "Lorem"))) must beSuccessfulTry(WithMap2(
-          name = "Bar",
-          values = Map((new FooVal(1)) -> "Lorem")))
+        reader.readTry(
+          BSONDocument(
+            "name" -> "Bar",
+            "values" -> BSONDocument("1" -> "Lorem")
+          )
+        ) must beSuccessfulTry(
+          WithMap2(name = "Bar", values = Map((new FooVal(1)) -> "Lorem"))
+        )
 
       }
     }
@@ -879,7 +1062,9 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       w.writeTry(Foo(Single(BigDecimal(1)), "ipsum")) must beSuccessfulTry(
         BSONDocument(
           "bar" -> BSONDocument("value" -> BigDecimal(1)),
-          "lorem" -> "ipsum"))
+          "lorem" -> "ipsum"
+        )
+      )
     }
 
     "be generated for class class with self reference" in {
@@ -888,23 +1073,26 @@ final class MacroSpec extends org.specs2.mutable.Specification {
       val doc1 = BSONDocument("name" -> "bar1")
 
       w.writeTry(bar1) must beSuccessfulTry(doc1) and {
-        w.writeTry(Bar("bar2", Some(bar1))) must beSuccessfulTry(BSONDocument(
-          "name" -> "bar2", "next" -> doc1))
+        w.writeTry(Bar("bar2", Some(bar1))) must beSuccessfulTry(
+          BSONDocument("name" -> "bar2", "next" -> doc1)
+        )
       }
     }
 
     "be generated with @Flatten annotation" in {
       typecheck("Macros.writer[InvalidRecursive]") must failWith(
-        "Cannot\\ flatten\\ writer\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type") and {
-          typecheck("Macros.writer[InvalidNonDoc]") must failWith(
-            "doesn't\\ conform\\ BSONDocumentWriter")
-        } and {
-          val w = Macros.writer[LabelledRange]
-          val lr = LabelledRange("range2", Range(start = 1, end = 3))
-          val doc = BSONDocument("name" -> "range2", "start" -> 1, "end" -> 3)
+        "Cannot\\ flatten\\ writer\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type"
+      ) and {
+        typecheck("Macros.writer[InvalidNonDoc]") must failWith(
+          "doesn't\\ conform\\ BSONDocumentWriter"
+        )
+      } and {
+        val w = Macros.writer[LabelledRange]
+        val lr = LabelledRange("range2", Range(start = 1, end = 3))
+        val doc = BSONDocument("name" -> "range2", "start" -> 1, "end" -> 3)
 
-          w.writeTry(lr) must beSuccessfulTry(doc)
-        }
+        w.writeTry(lr) must beSuccessfulTry(doc)
+      }
     }
 
     "support @Writer annotation" in {
@@ -917,46 +1105,59 @@ final class MacroSpec extends org.specs2.mutable.Specification {
           score = 2.34F,
           description = Some("foo"),
           range = Range(3, 5),
-          foo = "1")) must beSuccessfulTry(
+          foo = "1"
+        )
+      ) must beSuccessfulTry(
+        BSONDocument(
+          "id" -> 1L,
+          "status" -> "on",
+          "score" -> "2.34",
+          "description" -> "foo",
+          "range" -> Seq(3, 5),
+          "foo" -> "1"
+        )
+      ) and {
+        writer.writeTry(
+          PerField1[String](
+            id = 2L,
+            status = "off",
+            score = 45.6F,
+            description = None,
+            range = Range(7, 11),
+            foo = "2"
+          )
+        ) must beSuccessfulTry(
           BSONDocument(
-            "id" -> 1L,
-            "status" -> "on",
-            "score" -> "2.34",
-            "description" -> "foo",
-            "range" -> Seq(3, 5),
-            "foo" -> "1")) and {
-            writer.writeTry(
-              PerField1[String](
-                id = 2L,
-                status = "off",
-                score = 45.6F,
-                description = None,
-                range = Range(7, 11),
-                foo = "2")) must beSuccessfulTry(
-                BSONDocument(
-                  "id" -> 2L,
-                  "status" -> "off",
-                  "score" -> "45.6",
-                  "range" -> Seq(7, 11),
-                  "foo" -> "2",
-                  "description" -> 0))
+            "id" -> 2L,
+            "status" -> "off",
+            "score" -> "45.6",
+            "range" -> Seq(7, 11),
+            "foo" -> "2",
+            "description" -> 0
+          )
+        )
 
-          } and {
-            typecheck("Macros.writer[PerField2]") must failWith("Invalid\\ annotation\\ @Writer.*\\ for\\ 'MacroTest\\.PerField2\\.name':\\ Writer\\[String\\]")
-          }
+      } and {
+        typecheck("Macros.writer[PerField2]") must failWith(
+          "Invalid\\ annotation\\ @Writer.*\\ for\\ 'MacroTest\\.PerField2\\.name':\\ Writer\\[String\\]"
+        )
+      }
     }
 
     "be generated for Value class" in {
       val writer = Macros.valueWriter[FooVal]
 
       typecheck("Macros.valueWriter[Person]") must failWith(
-        "Person.* do not conform to.* AnyVal") and {
-          typecheck("Macros.valueWriter[BarVal]") must failWith("Implicit not found for 'Exception': .*BSONWriter\\[java\\.lang\\.Exception\\]")
-        } and {
-          writer.writeTry(new FooVal(1)) must beSuccessfulTry(BSONInteger(1))
-        } and {
-          writer.writeOpt(new FooVal(2)) must beSome(BSONInteger(2))
-        }
+        "Person.* do not conform to.* AnyVal"
+      ) and {
+        typecheck("Macros.valueWriter[BarVal]") must failWith(
+          "Implicit not found for 'Exception': .*BSONWriter\\[java\\.lang\\.Exception\\]"
+        )
+      } and {
+        writer.writeTry(new FooVal(1)) must beSuccessfulTry(BSONInteger(1))
+      } and {
+        writer.writeOpt(new FooVal(2)) must beSome(BSONInteger(2))
+      }
     }
 
     "be generated for Map property" >> {
@@ -965,13 +1166,17 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
         val writer = Macros.writer[WithMap1]
 
-        writer.writeTry(WithMap1(
-          name = "Foo",
-          localizedDescription = Map(
-            Locale.FRANCE -> "French"))) must beSuccessfulTry(BSONDocument(
-          "name" -> "Foo",
-          "localizedDescription" -> BSONDocument(
-            "fr-FR" -> "French")))
+        writer.writeTry(
+          WithMap1(
+            name = "Foo",
+            localizedDescription = Map(Locale.FRANCE -> "French")
+          )
+        ) must beSuccessfulTry(
+          BSONDocument(
+            "name" -> "Foo",
+            "localizedDescription" -> BSONDocument("fr-FR" -> "French")
+          )
+        )
 
       }
 
@@ -983,13 +1188,14 @@ final class MacroSpec extends org.specs2.mutable.Specification {
 
         val writer = Macros.writer[WithMap2]
 
-        writer.writeTry(WithMap2(
-          name = "Bar",
-          values = Map(
-            (new FooVal(1)) -> "Lorem"))) must beSuccessfulTry(BSONDocument(
-          "name" -> "Bar",
-          "values" -> BSONDocument(
-            "1" -> "Lorem")))
+        writer.writeTry(
+          WithMap2(name = "Bar", values = Map((new FooVal(1)) -> "Lorem"))
+        ) must beSuccessfulTry(
+          BSONDocument(
+            "name" -> "Bar",
+            "values" -> BSONDocument("1" -> "Lorem")
+          )
+        )
 
       }
     }
@@ -1013,19 +1219,30 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     "not be proved for" >> {
       "Int" in {
         typecheck("implicitly[DocumentClass[Int]]") must failWith(
-          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[Int\\]")
-      } tag "wip"
+          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[Int\\]"
+        )
+      }
 
       "BSONValue" in {
-        typecheck("implicitly[DocumentClass[BSONValue]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONValue\\]")
+        typecheck("implicitly[DocumentClass[BSONValue]]") must failWith(
+          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONValue\\]"
+        )
       }
 
       "BSONDateTime" in {
-        typecheck("implicitly[DocumentClass[reactivemongo.api.bson.BSONDateTime]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONDateTime\\]")
+        typecheck(
+          "implicitly[DocumentClass[reactivemongo.api.bson.BSONDateTime]]"
+        ) must failWith(
+          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONDateTime\\]"
+        )
       }
 
       "BSONLong" in {
-        typecheck("implicitly[DocumentClass[reactivemongo.api.bson.BSONLong]]") must failWith("could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONLong\\]")
+        typecheck(
+          "implicitly[DocumentClass[reactivemongo.api.bson.BSONLong]]"
+        ) must failWith(
+          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONLong\\]"
+        )
       }
     }
   }
@@ -1034,24 +1251,37 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     "provide 'migrationRequired' compilation error" in {
       import reactivemongo.api.bson.migrationRequired
 
-      typecheck(
-        """migrationRequired[String]("Foo"): String""") must failWith(
-          "Migration\\ required:\\ Foo")
+      typecheck("""migrationRequired[String]("Foo"): String""") must failWith(
+        "Migration\\ required:\\ Foo"
+      )
 
     }
   }
 
   // ---
 
-  def roundtrip[A](original: A)(implicit reader: BSONReader[A], writer: BSONWriter[A]): MatchResult[Any] = {
+  def roundtrip[A](
+      original: A
+    )(implicit
+      reader: BSONReader[A],
+      writer: BSONWriter[A]
+    ): MatchResult[Any] = {
     def serialized = writer writeTry original
     def deserialized = serialized.flatMap(reader.readTry(_))
 
     deserialized must beSuccessfulTry(original)
   }
 
-  def roundtrip[A](original: A, format: BSONReader[A] with BSONWriter[A]): MatchResult[Any] = roundtrip(original)(format, format)
+  def roundtrip[A](
+      original: A,
+      format: BSONReader[A] with BSONWriter[A]
+    ): MatchResult[Any] = roundtrip(original)(format, format)
 
-  def roundtripImp[A](data: A)(implicit reader: BSONReader[A], writer: BSONWriter[A]) = roundtrip(data)
+  def roundtripImp[A](
+      data: A
+    )(implicit
+      reader: BSONReader[A],
+      writer: BSONWriter[A]
+    ) = roundtrip(data)
 
 }

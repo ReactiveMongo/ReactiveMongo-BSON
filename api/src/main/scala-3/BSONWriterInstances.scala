@@ -6,8 +6,8 @@ import java.net.{ URI, URL }
 
 import java.time.{
   Instant,
-  LocalDateTime,
   LocalDate,
+  LocalDateTime,
   LocalTime,
   OffsetDateTime,
   ZonedDateTime
@@ -107,3 +107,4 @@ private[bson] trait BSONWriterInstances:
     bsonJavaScriptWSWriter,
     collectionWriter
   }
+end BSONWriterInstances

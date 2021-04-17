@@ -117,7 +117,9 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         // Make sure the type BSONDocumentHandler is preserved
         val handler2: BSONDocumentHandler[String] = handler1.beforeRead(before)
         val handler3: BSONDocumentHandler[String] =
-          handler1.beforeReadTry(_ => Success(BSONDocument("name" -> "John")))
+          handler1.beforeReadTry { (_: BSONDocument) =>
+            Success(BSONDocument("name" -> "John"))
+          }
 
         reader2.readTry(doc) must beSuccessfulTry("John") and {
           reader3.readTry(doc) must beSuccessfulTry("John")

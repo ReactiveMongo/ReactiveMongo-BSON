@@ -24,7 +24,30 @@ import reactivemongo.api.bson.{
   BSONValue
 }
 
-import org.bson.{ BsonArray, BsonBinary, BsonBinarySubType, BsonBoolean, BsonDateTime, BsonDecimal128, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonJavaScript, BsonJavaScriptWithScope, BsonMaxKey, BsonMinKey, BsonNull, BsonObjectId, BsonRegularExpression, BsonString, BsonSymbol, BsonTimestamp, BsonUndefined, BsonValue }
+import org.bson.{
+  BsonArray,
+  BsonBinary,
+  BsonBinarySubType,
+  BsonBoolean,
+  BsonDateTime,
+  BsonDecimal128,
+  BsonDocument,
+  BsonDouble,
+  BsonInt32,
+  BsonInt64,
+  BsonJavaScript,
+  BsonJavaScriptWithScope,
+  BsonMaxKey,
+  BsonMinKey,
+  BsonNull,
+  BsonObjectId,
+  BsonRegularExpression,
+  BsonString,
+  BsonSymbol,
+  BsonTimestamp,
+  BsonUndefined,
+  BsonValue
+}
 import org.bson.types.{ Decimal128, ObjectId }
 
 trait ConverterFixtures {
@@ -79,7 +102,17 @@ trait ConverterFixtures {
     arr
   }
 
-  val barr = BSONArray(boid, BSONString("foo"), bdt, BSONSymbol("bar"), bts, BSONJavaScript("lorem()"), bre, BSONArray(BSONInteger(1), BSONLong(2L)), BSONDouble(3.4D))
+  val barr = BSONArray(
+    boid,
+    BSONString("foo"),
+    bdt,
+    BSONSymbol("bar"),
+    bts,
+    BSONJavaScript("lorem()"),
+    bre,
+    BSONArray(BSONInteger(1), BSONLong(2L)),
+    BSONDouble(3.4D)
+  )
 
   val ldoc: BsonDocument = {
     val d = new BsonDocument()
@@ -89,20 +122,35 @@ trait ConverterFixtures {
     d.append("dt", ldt)
     d.append("sym", new BsonSymbol("bar"))
     d.append("ts", lts)
-    d.append("nested", new BsonDocument().
-      append("foo", new BsonString("bar")).
-      append("lorem", new BsonInt64(1L)))
+    d.append(
+      "nested",
+      new BsonDocument()
+        .append("foo", new BsonString("bar"))
+        .append("lorem", new BsonInt64(1L))
+    )
     d.append("js", new BsonJavaScript("lorem()"))
     d.append("re", lre)
     d.append("array", larr)
     d.append("double", new BsonDouble(3.4D))
   }
 
-  val bdoc = BSONDocument("oid" -> boid, "str" -> BSONString("foo"), "dt" -> bdt, "sym" -> BSONSymbol("bar"), "ts" -> bts, "nested" -> BSONDocument("foo" -> "bar", "lorem" -> 1L), "js" -> BSONJavaScript("lorem()"), "re" -> bre, "array" -> barr, "double" -> BSONDouble(3.4D))
+  val bdoc = BSONDocument(
+    "oid" -> boid,
+    "str" -> BSONString("foo"),
+    "dt" -> bdt,
+    "sym" -> BSONSymbol("bar"),
+    "ts" -> bts,
+    "nested" -> BSONDocument("foo" -> "bar", "lorem" -> 1L),
+    "js" -> BSONJavaScript("lorem()"),
+    "re" -> bre,
+    "array" -> barr,
+    "double" -> BSONDouble(3.4D)
+  )
 
   val fixtures = Seq[(BsonValue, BSONValue)](
-    new BsonBinary(
-      BsonBinarySubType.UUID_STANDARD, uuidBytes) -> BSONBinary(uuid),
+    new BsonBinary(BsonBinarySubType.UUID_STANDARD, uuidBytes) -> BSONBinary(
+      uuid
+    ),
     new BsonBoolean(true) -> BSONBoolean(true),
     new BsonDouble(1.23D) -> BSONDouble(1.23D),
     new BsonString("Foo") -> BSONString("Foo"),
@@ -116,14 +164,15 @@ trait ConverterFixtures {
     new BsonJavaScript("foo()") -> BSONJavaScript("foo()"),
     new BsonJavaScriptWithScope(
       "bar",
-      new BsonDocument("bar", new BsonInt32(13))) -> BSONJavaScriptWS(
-      "bar", BSONDocument("bar" -> 13)),
+      new BsonDocument("bar", new BsonInt32(13))
+    ) -> BSONJavaScriptWS("bar", BSONDocument("bar" -> 13)),
     new BsonSymbol("sym") -> BSONSymbol("sym"),
     new BsonUndefined -> BSONUndefined,
     new BsonNull -> BSONNull,
     new BsonMaxKey -> BSONMaxKey,
     new BsonMinKey -> BSONMinKey,
     larr -> barr,
-    ldoc -> bdoc)
+    ldoc -> bdoc
+  )
 
 }

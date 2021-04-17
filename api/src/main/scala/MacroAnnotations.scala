@@ -1,6 +1,6 @@
 package reactivemongo.api.bson
 
-import scala.annotation.{ StaticAnnotation, meta }
+import scala.annotation.{ meta, StaticAnnotation }
 
 private[bson] trait MacroAnnotations { macros: Macros.type =>
 
@@ -23,7 +23,8 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
      *
      * @param key the desired key to use in BSON
      */
-    @meta.param
+    @meta.param // Scala 2
+    @meta.field
     final class Key(val key: String) extends StaticAnnotation {
 
       override def equals(that: Any): Boolean = that match {
@@ -42,7 +43,8 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
      * either from the field default value,
      * or using the annotation [[DefaultValue]] (specific to BSON).
      */
-    @meta.param
+    @meta.param // Scala 2
+    @meta.field
     final class Ignore extends StaticAnnotation {
       override def hashCode: Int = 1278101060
 
@@ -74,7 +76,8 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
      * //   "start" -> 0, "end" -> 1))
      * }}}
      */
-    @meta.param
+    @meta.param // Scala 2
+    @meta.field
     final class Flatten extends StaticAnnotation {
       override def hashCode: Int = 488571557
 
@@ -96,7 +99,8 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
      *   @NoneAsNull description: Option[String])
      * }}}
      */
-    @meta.param
+    @meta.param // Scala 2
+    @meta.field
     final class NoneAsNull extends StaticAnnotation {
       override def hashCode: Int = 1667526726
 
@@ -128,7 +132,8 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
      * // Success: Foo(title = "Bar", score = 1.23D)
      * }}}
      */
-    @meta.param
+    @meta.param // Scala 2
+    @meta.field
     final class DefaultValue[T](val value: T) extends StaticAnnotation {
       @inline override def hashCode: Int = value.hashCode
 
@@ -170,7 +175,8 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
      * // Success: Foo(title = "Bar", score = 1.23D)
      * }}}
      */
-    @meta.param
+    @meta.param // Scala 2
+    @meta.field
     final class Reader[T](val reader: BSONReader[T]) extends StaticAnnotation {
       @inline override def hashCode: Int = reader.hashCode
 
@@ -206,7 +212,8 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
      * // Success: BSONDocument("title" -> "Bar", "score" -> "1.23")
      * }}}
      */
-    @meta.param
+    @meta.param // Scala 2
+    @meta.field // Scala 3
     final class Writer[T](val writer: BSONWriter[T]) extends StaticAnnotation {
       @inline override def hashCode: Int = writer.hashCode
 

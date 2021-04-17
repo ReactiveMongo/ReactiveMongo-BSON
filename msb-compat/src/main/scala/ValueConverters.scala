@@ -5,7 +5,31 @@ import scala.language.implicitConversions
 
 import scala.util.{ Failure, Success }
 
-import org.bson.{ BsonArray, BsonBinary, BsonBinarySubType, BsonBoolean, BsonDateTime, BsonDecimal128, BsonDocument, BsonDouble, BsonElement, BsonInt32, BsonInt64, BsonJavaScript, BsonJavaScriptWithScope, BsonMaxKey, BsonMinKey, BsonNull, BsonObjectId, BsonRegularExpression, BsonString, BsonSymbol, BsonTimestamp, BsonUndefined, BsonValue }
+import org.bson.{
+  BsonArray,
+  BsonBinary,
+  BsonBinarySubType,
+  BsonBoolean,
+  BsonDateTime,
+  BsonDecimal128,
+  BsonDocument,
+  BsonDouble,
+  BsonElement,
+  BsonInt32,
+  BsonInt64,
+  BsonJavaScript,
+  BsonJavaScriptWithScope,
+  BsonMaxKey,
+  BsonMinKey,
+  BsonNull,
+  BsonObjectId,
+  BsonRegularExpression,
+  BsonString,
+  BsonSymbol,
+  BsonTimestamp,
+  BsonUndefined,
+  BsonValue
+}
 import org.bson.types.{ Decimal128, ObjectId }
 
 /**
@@ -182,11 +206,18 @@ trait ValueConverters extends LowPriorityConverters {
   implicit final def toJavaScript(bson: BsonJavaScript): BSONJavaScript =
     BSONJavaScript(bson.getCode)
 
-  implicit final def fromJavaScript(javaScript: BSONJavaScript): BsonJavaScript = new BsonJavaScript(javaScript.value)
+  implicit final def fromJavaScript(
+      javaScript: BSONJavaScript
+    ): BsonJavaScript = new BsonJavaScript(javaScript.value)
 
-  implicit final def toJavaScriptWS(bson: BsonJavaScriptWithScope): BSONJavaScriptWS = BSONJavaScriptWS(bson.getCode, bson.getScope)
+  implicit final def toJavaScriptWS(
+      bson: BsonJavaScriptWithScope
+    ): BSONJavaScriptWS = BSONJavaScriptWS(bson.getCode, bson.getScope)
 
-  implicit final def fromJavaScriptWS(js: BSONJavaScriptWS): BsonJavaScriptWithScope = new BsonJavaScriptWithScope(js.value, fromDocument(js.scope))
+  implicit final def fromJavaScriptWS(
+      js: BSONJavaScriptWS
+    ): BsonJavaScriptWithScope =
+    new BsonJavaScriptWithScope(js.value, fromDocument(js.scope))
 
   implicit final def toRegex(bson: BsonRegularExpression): BSONRegex =
     BSONRegex(bson.getPattern, bson.getOptions)
@@ -231,8 +262,9 @@ trait ValueConverters extends LowPriorityConverters {
     BSONDecimal(dec.getHigh, dec.getLow)
 
   implicit final def fromDecimal(decimal: BSONDecimal): BsonDecimal128 =
-    new BsonDecimal128(Decimal128.
-      fromIEEE754BIDEncoding(decimal.high, decimal.low))
+    new BsonDecimal128(
+      Decimal128.fromIEEE754BIDEncoding(decimal.high, decimal.low)
+    )
 
   implicit val toUndefined: BsonUndefined => BSONUndefined =
     _ => BSONUndefined
@@ -268,25 +300,26 @@ trait ValueConverters extends LowPriorityConverters {
 }
 
 private[bson] sealed trait LowPriorityConverters { _: ValueConverters =>
-  implicit final def toValue(bson: BsonValue): BSONValue = bson match {
-    case arr: BsonArray => toArray(arr)
-    case dtm: BsonDateTime => toDateTime(dtm)
-    case doc: BsonDocument => toDocument(doc)
-    case bin: BsonBinary => toBinary(bin)
-    case dlb: BsonDouble => toDouble(dlb)
-    case str: BsonString => toStr(str)
-    case bol: BsonBoolean => toBoolean(bol)
-    case int: BsonInt32 => toInteger(int)
-    case lng: BsonInt64 => toLong(lng)
-    case js: BsonJavaScript => toJavaScript(js)
-    case jsW: BsonJavaScriptWithScope => toJavaScriptWS(jsW)
-    case reg: BsonRegularExpression => toRegex(reg)
-    case sym: BsonSymbol => toSymbol(sym)
-    case tsp: BsonTimestamp => toTimestamp(tsp)
-    case oid: BsonObjectId => toObjectID(oid)
-    case dec: BsonDecimal128 => toDecimal(dec)
 
-    case _: BsonNull => BSONNull
+  implicit final def toValue(bson: BsonValue): BSONValue = bson match {
+    case arr: BsonArray               => toArray(arr)
+    case dtm: BsonDateTime            => toDateTime(dtm)
+    case doc: BsonDocument            => toDocument(doc)
+    case bin: BsonBinary              => toBinary(bin)
+    case dlb: BsonDouble              => toDouble(dlb)
+    case str: BsonString              => toStr(str)
+    case bol: BsonBoolean             => toBoolean(bol)
+    case int: BsonInt32               => toInteger(int)
+    case lng: BsonInt64               => toLong(lng)
+    case js: BsonJavaScript           => toJavaScript(js)
+    case jsW: BsonJavaScriptWithScope => toJavaScriptWS(jsW)
+    case reg: BsonRegularExpression   => toRegex(reg)
+    case sym: BsonSymbol              => toSymbol(sym)
+    case tsp: BsonTimestamp           => toTimestamp(tsp)
+    case oid: BsonObjectId            => toObjectID(oid)
+    case dec: BsonDecimal128          => toDecimal(dec)
+
+    case _: BsonNull   => BSONNull
     case _: BsonMaxKey => BSONMaxKey
     case _: BsonMinKey => BSONMinKey
 
@@ -294,24 +327,24 @@ private[bson] sealed trait LowPriorityConverters { _: ValueConverters =>
   }
 
   implicit final def fromValue(bson: BSONValue): BsonValue = bson match {
-    case arr: BSONArray => fromArray(arr)
-    case dtm: BSONDateTime => fromDateTime(dtm)
-    case doc: BSONDocument => fromDocument(doc)
-    case bin: BSONBinary => fromBinary(bin)
-    case dlb: BSONDouble => fromDouble(dlb)
-    case str: BSONString => fromStr(str)
-    case bol: BSONBoolean => fromBoolean(bol)
-    case int: BSONInteger => fromInteger(int)
-    case lng: BSONLong => fromLong(lng)
-    case js: BSONJavaScript => fromJavaScript(js)
+    case arr: BSONArray        => fromArray(arr)
+    case dtm: BSONDateTime     => fromDateTime(dtm)
+    case doc: BSONDocument     => fromDocument(doc)
+    case bin: BSONBinary       => fromBinary(bin)
+    case dlb: BSONDouble       => fromDouble(dlb)
+    case str: BSONString       => fromStr(str)
+    case bol: BSONBoolean      => fromBoolean(bol)
+    case int: BSONInteger      => fromInteger(int)
+    case lng: BSONLong         => fromLong(lng)
+    case js: BSONJavaScript    => fromJavaScript(js)
     case jsW: BSONJavaScriptWS => fromJavaScriptWS(jsW)
-    case reg: BSONRegex => fromRegex(reg)
-    case sym: BSONSymbol => fromSymbol(sym)
-    case tsp: BSONTimestamp => fromTimestamp(tsp)
-    case oid: BSONObjectID => fromObjectID(oid)
-    case dec: BSONDecimal => fromDecimal(dec)
+    case reg: BSONRegex        => fromRegex(reg)
+    case sym: BSONSymbol       => fromSymbol(sym)
+    case tsp: BSONTimestamp    => fromTimestamp(tsp)
+    case oid: BSONObjectID     => fromObjectID(oid)
+    case dec: BSONDecimal      => fromDecimal(dec)
 
-    case BSONNull => new BsonNull
+    case BSONNull   => new BsonNull
     case BSONMaxKey => new BsonMaxKey
     case BSONMinKey => new BsonMinKey
 
