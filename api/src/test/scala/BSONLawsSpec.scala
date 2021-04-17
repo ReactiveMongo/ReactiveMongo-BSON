@@ -2,11 +2,19 @@ package reactivemongo.api.bson
 
 import org.typelevel.discipline.specs2.mutable.Discipline
 import reactivemongo.BSONValueFixtures
-import spire.algebra.{ Additive, AdditiveMonoid, AdditiveSemigroup, Eq, Monoid, Semigroup }
+import spire.algebra.{
+  Additive,
+  AdditiveMonoid,
+  AdditiveSemigroup,
+  Eq,
+  Monoid,
+  Semigroup
+}
 import spire.laws.GroupLaws
 
 final class BSONLawsSpecs
-  extends org.specs2.mutable.Specification with Discipline {
+    extends org.specs2.mutable.Specification
+    with Discipline {
 
   "BSON laws".title
 
@@ -15,7 +23,8 @@ final class BSONLawsSpecs
 
   { // Addition semigroup
     val semigroup = new Semigroup[BSONValue] {
-      def combine(x: BSONValue, y: BSONValue): BSONValue = BSONValue.Addition(x, y)
+      def combine(x: BSONValue, y: BSONValue): BSONValue =
+        BSONValue.Addition(x, y)
     }
     implicit val additive: AdditiveSemigroup[BSONValue] = Additive(semigroup)
 
@@ -37,6 +46,7 @@ final class BSONLawsSpecs
 }
 
 object LawEvidences {
+
   implicit def defaultEq[T]: Eq[T] = new Eq[T] {
     def eqv(x: T, y: T): Boolean = x == y
   }

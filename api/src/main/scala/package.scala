@@ -30,8 +30,11 @@ import scala.math.Ordering
  *   - `reactivemongo.api.bson.bufferSizeBytes` (integer; default: `96`): Number of bytes used as initial size when allocating a new buffer.
  *   - `reactivemongo.api.bson.document.strict` (boolean; default: `false`): Flag to enable strict reading of document (filter duplicate fields, see [[BSONDocument.asStrict]]).
  */
-package object bson extends DefaultBSONHandlers
-  with Aliases with Utils with PackageCompat {
+package object bson
+    extends DefaultBSONHandlers
+    with Aliases
+    with Utils
+    with PackageCompat {
   // DSL helpers:
 
   /**
@@ -108,6 +111,7 @@ package object bson extends DefaultBSONHandlers
    */
   implicit def nameValueOrdering[T <: BSONValue]: Ordering[(String, T)] =
     new Ordering[(String, T)] {
+
       def compare(x: (String, T), y: (String, T)): Int =
         x._1 compare y._1
     }

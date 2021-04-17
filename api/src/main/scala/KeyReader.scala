@@ -32,6 +32,7 @@ trait KeyReader[T] {
 }
 
 object KeyReader {
+
   /**
    * Creates a [[KeyReader]] based on the given `read` function.
    */
@@ -85,8 +86,7 @@ object KeyReader {
     if (key.size == 1) {
       Success(key.head)
     } else {
-      Failure(exceptions.ValueDoesNotMatchException(
-        s"Invalid character: $key"))
+      Failure(exceptions.ValueDoesNotMatchException(s"Invalid character: $key"))
     }
   }
 
@@ -135,18 +135,21 @@ object KeyReader {
   // ---
 
   private class Default[T](
-    read: String => Try[T]) extends KeyReader[T] {
+      read: String => Try[T])
+      extends KeyReader[T] {
     def readTry(key: String): Try[T] = read(key)
   }
 
   private class FunctionalReader[T](
-    read: String => T) extends KeyReader[T] {
+      read: String => T)
+      extends KeyReader[T] {
     def readTry(key: String): Try[T] = Try(read(key))
   }
 }
 
 private[bson] final class SafeKeyReader[T](
-  read: String => T) extends KeyReader[T] {
+    read: String => T)
+    extends KeyReader[T] {
 
   def readTry(key: String): Try[T] = Success(read(key))
 }

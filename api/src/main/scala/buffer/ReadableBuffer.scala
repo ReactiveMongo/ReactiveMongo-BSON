@@ -12,7 +12,8 @@ import reactivemongo.io.netty.buffer.{ ByteBuf, Unpooled }
  * @param buffer the underlying NIO buffer (must be little endian)
  */
 private[reactivemongo] final class ReadableBuffer private[bson] (
-  val buffer: ByteBuffer) extends AnyVal {
+    val buffer: ByteBuffer)
+    extends AnyVal {
 
   /** Returns the buffer size. */
   @inline def size = buffer.capacity
@@ -110,6 +111,7 @@ private[reactivemongo] final class ReadableBuffer private[bson] (
 }
 
 private[reactivemongo] object ReadableBuffer {
+
   /** Returns a [[ReadableBuffer]] which source is the given `array`. */
   def apply(bytes: Array[Byte]): ReadableBuffer = {
     val buf = ByteBuffer.wrap(bytes)

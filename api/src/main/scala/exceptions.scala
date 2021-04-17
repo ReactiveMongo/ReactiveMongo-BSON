@@ -4,8 +4,10 @@ import scala.util.control.NoStackTrace
 
 /** Formerly `DocumentKeyNotFoundException` */
 final class BSONValueNotFoundException private[exceptions] (
-  k: => String,
-  private val message: String) extends Exception with NoStackTrace {
+    k: => String,
+    private val message: String)
+    extends Exception
+    with NoStackTrace {
 
   /** The key which is not found, either a field name or index. */
   @inline def key: String = k
@@ -26,14 +28,26 @@ final class BSONValueNotFoundException private[exceptions] (
 object BSONValueNotFoundException {
   import reactivemongo.api.bson.{ BSONArray, BSONDocument }
 
-  private[api] def apply(name: String, parent: BSONDocument): BSONValueNotFoundException = new BSONValueNotFoundException(name, s"The key '$name' could not be found in document ${BSONDocument pretty parent}")
+  private[api] def apply(
+      name: String,
+      parent: BSONDocument
+    ): BSONValueNotFoundException = new BSONValueNotFoundException(
+    name,
+    s"The key '$name' could not be found in document ${BSONDocument pretty parent}"
+  )
 
-  private[api] def apply(index: Int, parent: BSONArray): BSONValueNotFoundException = new BSONValueNotFoundException(index.toString, s"The key '#$index' could not be found in array ${BSONArray pretty parent}")
+  private[api] def apply(
+      index: Int,
+      parent: BSONArray
+    ): BSONValueNotFoundException = new BSONValueNotFoundException(
+    index.toString,
+    s"The key '#$index' could not be found in array ${BSONArray pretty parent}"
+  )
 
   /** Extract the not found key (either a field name or an index). */
   private[api] def unapply(cause: Throwable): Option[String] = cause match {
     case notFound: BSONValueNotFoundException => Option(notFound.key)
-    case _ => Option.empty[String]
+    case _                                    => Option.empty[String]
   }
 }
 
@@ -41,8 +55,10 @@ object BSONValueNotFoundException {
  * Indicates that the type of a read value doesn't match the expected one.
  */
 final class TypeDoesNotMatchException private[api] (
-  val expected: String,
-  val actual: String) extends Exception with NoStackTrace {
+    val expected: String,
+    val actual: String)
+    extends Exception
+    with NoStackTrace {
   override val getMessage = s"$actual != $expected"
 
   private[api] lazy val tupled = expected -> actual
@@ -62,6 +78,7 @@ final class TypeDoesNotMatchException private[api] (
 
 /** [[TypeDoesNotMatchException]] factories */
 object TypeDoesNotMatchException {
+
   /**
    * Defines a type exception.
    *
@@ -93,13 +110,15 @@ object TypeDoesNotMatchException {
   def unapply(exception: Exception): Option[(String, String)] =
     exception match {
       case x: TypeDoesNotMatchException => Some(x.expected -> x.actual)
-      case _ => None
+      case _                            => None
     }
 }
 
 /** Indicates that a read value doesn't match an expected one */
 final class ValueDoesNotMatchException private[api] (
-  val actual: String) extends Exception with NoStackTrace {
+    val actual: String)
+    extends Exception
+    with NoStackTrace {
   override val getMessage = s"Value doesn't match: $actual"
 
   override def equals(that: Any): Boolean = that match {
@@ -117,6 +136,7 @@ final class ValueDoesNotMatchException private[api] (
 
 /** [[ValueDoesNotMatchException]] factories */
 object ValueDoesNotMatchException {
+
   /**
    * {{{
    * reactivemongo.api.bson.exceptions.
@@ -142,13 +162,15 @@ object ValueDoesNotMatchException {
    */
   def unapply(exception: Exception): Option[String] = exception match {
     case x: ValueDoesNotMatchException => Some(x.actual)
-    case _ => None
+    case _                             => None
   }
 }
 
 /** Exception from a BSON reader/writer. */
 final class HandlerException private[bson] (
-  val expression: String) extends Exception with NoStackTrace {
+    val expression: String)
+    extends Exception
+    with NoStackTrace {
 
   override lazy val getMessage: String = getCause match {
     case null =>
@@ -159,10 +181,13 @@ final class HandlerException private[bson] (
   }
 
   def suppress(other: Iterable[HandlerException]): HandlerException =
-    other.foldLeft(this) { (m, o) => m.addSuppressed(o); m }
+    other.foldLeft(this) { (m, o) =>
+      m.addSuppressed(o); m
+    }
 }
 
 object HandlerException {
+
   @inline def apply(expression: String): HandlerException =
     new HandlerException(expression)
 

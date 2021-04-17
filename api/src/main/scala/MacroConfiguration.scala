@@ -23,6 +23,7 @@ package reactivemongo.api.bson
  * @see [[http://reactivemongo.org/releases/1.0/documentation/bson/typeclasses.html#configuration documentation]]
  */
 sealed trait MacroConfiguration {
+
   /** Compile-time options for the JSON macros */
   type Opts <: MacroOptions
 
@@ -59,21 +60,30 @@ object MacroConfiguration {
    * @tparam Opts the compile time options (see [[MacroOptions]])
    */
   def apply[Opts <: MacroOptions](
-    fieldNaming: FieldNaming = FieldNaming.Identity,
-    discriminator: String = defaultDiscriminator,
-    typeNaming: TypeNaming = TypeNaming.FullName)(implicit opts: MacroOptions.ValueOf[Opts]): MacroConfiguration.Aux[Opts] = new Impl(opts, fieldNaming, discriminator, typeNaming)
+      fieldNaming: FieldNaming = FieldNaming.Identity,
+      discriminator: String = defaultDiscriminator,
+      typeNaming: TypeNaming = TypeNaming.FullName
+    )(implicit
+      opts: MacroOptions.ValueOf[Opts]
+    ): MacroConfiguration.Aux[Opts] =
+    new Impl(opts, fieldNaming, discriminator, typeNaming)
 
   /** The default configuration instance */
-  implicit def default[Opts <: MacroOptions: MacroOptions.ValueOf]: MacroConfiguration.Aux[Opts] = apply()
+  implicit def default[
+      Opts <: MacroOptions: MacroOptions.ValueOf
+    ]: MacroConfiguration.Aux[Opts] = apply()
 
   /** A configuration using [[TypeNaming$.SimpleName]] */
-  @inline def simpleTypeName[Opts <: MacroOptions: MacroOptions.ValueOf]: MacroConfiguration.Aux[Opts] = apply(typeNaming = TypeNaming.SimpleName)
+  @inline def simpleTypeName[
+      Opts <: MacroOptions: MacroOptions.ValueOf
+    ]: MacroConfiguration.Aux[Opts] = apply(typeNaming = TypeNaming.SimpleName)
 
   private final class Impl[O <: MacroOptions](
-    val options: MacroOptions.ValueOf[O],
-    val fieldNaming: FieldNaming,
-    val discriminator: String,
-    val typeNaming: TypeNaming) extends MacroConfiguration {
+      val options: MacroOptions.ValueOf[O],
+      val fieldNaming: FieldNaming,
+      val discriminator: String,
+      val typeNaming: TypeNaming)
+      extends MacroConfiguration {
     type Opts = O
   }
 }

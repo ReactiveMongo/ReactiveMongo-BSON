@@ -6,6 +6,7 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
 
   /** Annotations to use on case classes that are being processed by macros. */
   object Annotations {
+
     /**
      * Specify a key different from field name in your case class.
      * Convenient to use when you'd like to leverage mongo's `_id` index
@@ -24,9 +25,10 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
      */
     @meta.param
     final class Key(val key: String) extends StaticAnnotation {
+
       override def equals(that: Any): Boolean = that match {
         case other: this.type => this.key == other.key
-        case _ => false
+        case _                => false
       }
 
       override def hashCode: Int = key.hashCode
@@ -46,7 +48,7 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
 
       override def equals(that: Any): Boolean = that match {
         case _: this.type => true
-        case _ => false
+        case _            => false
       }
     }
 
@@ -78,7 +80,7 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
 
       override def equals(that: Any): Boolean = that match {
         case _: this.type => true
-        case _ => false
+        case _            => false
       }
     }
 
@@ -100,7 +102,7 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
 
       override def equals(that: Any): Boolean = that match {
         case _: this.type => true
-        case _ => false
+        case _            => false
       }
     }
 

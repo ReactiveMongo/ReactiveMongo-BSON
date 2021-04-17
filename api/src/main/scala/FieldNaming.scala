@@ -13,6 +13,7 @@ package reactivemongo.api.bson
  * @see [[MacroConfiguration]]
  */
 trait FieldNaming extends (String => String) {
+
   /**
    * Returns the field name for the class property.
    *
@@ -52,6 +53,7 @@ object FieldNaming {
    * }}}
    */
   object SnakeCase extends FieldNaming {
+
     def apply(property: String): String = {
       val length = property.length
       val result = new StringBuilder(length * 2)
@@ -63,7 +65,11 @@ object FieldNaming {
         if (i > 0 || i != '_') {
           if (Character.isUpperCase(c)) {
             // append a underscore if the previous result wasn't translated
-            if (!wasPrevTranslated && resultLength > 0 && result.charAt(resultLength - 1) != '_') {
+            if (
+              !wasPrevTranslated && resultLength > 0 && result.charAt(
+                resultLength - 1
+              ) != '_'
+            ) {
               result.append('_')
               resultLength += 1
             }

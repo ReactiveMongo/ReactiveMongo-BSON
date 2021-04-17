@@ -38,7 +38,7 @@ private[bson] trait BSONHandlerInstances:
 
   given localTimeHandler: BSONHandler[LocalTime] = BSONLocalTimeHandler
 
-  given localDateTimeHandler: BSONHandler[LocalDateTime] = 
+  given localDateTimeHandler: BSONHandler[LocalDateTime] =
     bsonLocalDateTimeHandler
 
   given offsetDateTimeHandler: BSONHandler[OffsetDateTime] =

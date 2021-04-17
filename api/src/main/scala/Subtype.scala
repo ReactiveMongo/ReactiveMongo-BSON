@@ -2,6 +2,7 @@ package reactivemongo.api.bson
 
 /** Binary Subtype */
 sealed trait Subtype {
+
   /** Subtype code */
   private[reactivemongo] val value: Int
 
@@ -34,13 +35,13 @@ object Subtype {
   case object UserDefinedSubtype extends UserDefinedSubtype
 
   def apply(code: Byte) = code match {
-    case 0 => GenericBinarySubtype
-    case 1 => FunctionSubtype
-    case 2 => OldBinarySubtype
-    case 3 => OldUuidSubtype
-    case 4 => UuidSubtype
-    case 5 => Md5Subtype
+    case 0    => GenericBinarySubtype
+    case 1    => FunctionSubtype
+    case 2    => OldBinarySubtype
+    case 3    => OldUuidSubtype
+    case 4    => UuidSubtype
+    case 5    => Md5Subtype
     case -128 => UserDefinedSubtype
-    case _ => throw new NoSuchElementException(s"binary type = $code")
+    case _    => throw new NoSuchElementException(s"binary type = $code")
   }
 }

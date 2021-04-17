@@ -3,6 +3,7 @@ package reactivemongo.api.bson
 import scala.quoted.{ Expr, Quotes, Type, quotes }
 
 private[api] object MacroImpl {
+
   def documentClass[A: Type](using q: Quotes): Expr[DocumentClass[A]] = {
     import q.reflect.*
 
@@ -15,32 +16,40 @@ private[api] object MacroImpl {
       report.throwError(s"Type ${aTpe.show} is not a document one")
 
     if (aTpe <:< bsonValueTpe) {
-      if (aTpe <:< bsonDocTpe) '{
-        DocumentClass.unchecked[A]
+      if (aTpe <:< bsonDocTpe) {
+        '{ DocumentClass.unchecked[A] }
       } else {
         throwNotDoc
       }
-    } else aTpe.classSymbol match {
-      case Some(tpeSym) => {
-        if (
-          (tpeSym.flags.is(Flags.Abstract) && !(aTpe <:< anyValTpe)) ||
+    } else
+      aTpe.classSymbol match {
+        case Some(tpeSym) => {
+          if (
+            (tpeSym.flags.is(Flags.Abstract) && !(aTpe <:< anyValTpe)) ||
             tpeSym.flags.is(Flags.Trait) ||
-            tpeSym.companionClass.declaredMethod("unapply").nonEmpty) '{
-          DocumentClass.unchecked[A]
-        } else {
-          throwNotDoc
+            tpeSym.companionClass.declaredMethod("unapply").nonEmpty
+          ) {
+            '{ DocumentClass.unchecked[A] }
+          } else {
+            throwNotDoc
+          }
         }
-      }
 
-      case _ =>
-        throwNotDoc
-    }
+        case _ =>
+          throwNotDoc
+      }
   }
 
-  def migrationRequired[A: Type](details: Expr[String])(using Quotes): Expr[A] = {
-    if (!sys.props.get("reactivemongo.api.migrationRequired.nonFatal").exists {
-      v => v.toLowerCase == "true" || v.toLowerCase == "yes"
-    }) {
+  def migrationRequired[A: Type](
+      details: Expr[String]
+    )(using
+      Quotes
+    ): Expr[A] = {
+    if (
+      !sys.props.get("reactivemongo.api.migrationRequired.nonFatal").exists {
+        v => v.toLowerCase == "true" || v.toLowerCase == "yes"
+      }
+    ) {
       val q = quotes
       val msg: String = q.value(details) match {
         case Some(str) =>
@@ -48,7 +57,8 @@ private[api] object MacroImpl {
 
         case _ => {
           q.reflect.report.warning(
-            s"Invalid 'details' parameter for 'migrationRequired': ${q show details}")
+            s"Invalid 'details' parameter for 'migrationRequired': ${q show details}"
+          )
 
           "Migration required"
         }
@@ -62,21 +72,19 @@ private[api] object MacroImpl {
 
   // ---
 
-  import Macros.Annotations, Annotations.{
-    DefaultValue/*,
+  import Macros.Annotations, Annotations.{ DefaultValue, Key /*,
     Flatten,
     Ignore,
-    Key,
     NoneAsNull,
     Reader,
-    Writer*/
-  }
+    Writer*/ }
 
   sealed trait MacroHelpers[A] { _i: ImplicitResolver[A] =>
     protected val quotes: Quotes
 
     import quotes.reflect.*
-    private given q: Quotes = quotes
+    private
+    given q: Quotes = quotes
 
     /* Type of compile-time options; See [[MacroOptions]] */
     protected def optsTpe: TypeRepr
@@ -98,41 +106,41 @@ private[api] object MacroImpl {
 
     protected final val anyValTpe: TypeRepr = TypeRepr.of[AnyVal]
 
-    private given defaultValueAnnotationTpe: Type[DefaultValue] =
+    private
+
+    given defaultValueAnnotationTpe: Type[DefaultValue] =
       Type.of[DefaultValue]
 
     protected final val defaultValueAnnotationRepr: TypeRepr =
       TypeRepr.of[DefaultValue]
 
-    /*
     // --- Macro configuration helpers ---
 
     // Init MacroConfiguration (possibility lazy) in a local val,
     // to avoid evaluating the configuration each time required
     // in the generated handler.
-    protected def macroCfg: TermName
+    protected def macroCfg: String //TODO: TermName
 
-    @inline protected def macroCfgInit: Tree = EmptyTree
+    // TODO: @inline protected def macroCfgInit: Tree = EmptyTree
 
     // --- Case classes helpers ---
 
-    protected final def paramName(param: c.Symbol): String = {
+    protected final def paramName(param: Symbol): String =
       param.annotations.collect {
-        case ann if ann.tree.tpe =:= typeOf[Key] =>
+        case ann if ann.tpe =:= typeOf[Key] =>
           ann.tree.children.tail.collect {
             case l: Literal =>
               l.value.value
 
             case _ =>
               abort(
-                "Annotation @Key must be provided with a pure/literal value")
+                "Annotation @Key must be provided with a pure/literal value"
+              )
 
-          }.collect {
-            case value: String => value
-          }
+          }.collect { case value: String => value }
       }.flatten.headOption getOrElse param.name.toString
-    }
 
+    /*
     protected final def ignoreField(param: Symbol): Boolean =
       param.annotations.exists(ann =>
         ann.tree.tpe =:= typeOf[Ignore] || ann.tree.tpe =:= typeOf[transient])
@@ -366,9 +374,11 @@ private[api] object MacroImpl {
     protected val quotes: Quotes
 
     import quotes.reflect.*
-    private given q: Quotes = quotes
+    private
+    given q: Quotes = quotes
 
-    protected given aTpe: Type[A]
+    protected
+    given aTpe: Type[A]
     protected val aTpeRepr: TypeRepr
 
     import Macros.Placeholder
@@ -382,21 +392,52 @@ private[api] object MacroImpl {
      * by the given `replacement`.
      */
     @annotation.tailrec
-    private def refactor(boundTypes: Map[String, TypeRepr])(in: List[TypeRepr], base: (TypeRepr, /*Type*/Symbol), out: List[TypeRepr], tail: List[(List[TypeRepr], (TypeRepr, /*Type*/Symbol), List[TypeRepr])], filter: TypeRepr => Boolean, replacement: TypeRepr, altered: Boolean): (TypeRepr, Boolean) = in match {
+    private def refactor(
+        boundTypes: Map[String, TypeRepr]
+      )(in: List[TypeRepr],
+        base: (TypeRepr, /*Type*/ Symbol),
+        out: List[TypeRepr],
+        tail: List[
+          (List[TypeRepr], (TypeRepr, /*Type*/ Symbol), List[TypeRepr])
+        ],
+        filter: TypeRepr => Boolean,
+        replacement: TypeRepr,
+        altered: Boolean
+      ): (TypeRepr, Boolean) = in match {
       case tpe :: ts => {
         boundTypes.getOrElse(tpe.typeSymbol.fullName, tpe) match {
           case t if filter(t) =>
-            refactor(boundTypes)(ts, base, (replacement :: out), tail,
-              filter, replacement, true)
+            refactor(boundTypes)(
+              ts,
+              base,
+              (replacement :: out),
+              tail,
+              filter,
+              replacement,
+              true
+            )
 
           case AppliedType(t, as) if as.nonEmpty =>
-              refactor(boundTypes)(
-                as, t -> t.typeSymbol, List.empty, (ts, base, out) :: tail,
-                filter, replacement, altered)
+            refactor(boundTypes)(
+              as,
+              t -> t.typeSymbol,
+              List.empty,
+              (ts, base, out) :: tail,
+              filter,
+              replacement,
+              altered
+            )
 
           case t =>
             refactor(boundTypes)(
-              ts, base, (t :: out), tail, filter, replacement, altered)
+              ts,
+              base,
+              (t :: out),
+              tail,
+              filter,
+              replacement,
+              altered
+            )
         }
       }
 
@@ -404,8 +445,16 @@ private[api] object MacroImpl {
         val tpe = base._1.appliedTo(out.reverse)
 
         tail match {
-          case (x, y, more) :: ts => refactor(boundTypes)(
-            x, y, (tpe :: more), ts, filter, replacement, altered)
+          case (x, y, more) :: ts =>
+            refactor(boundTypes)(
+              x,
+              y,
+              (tpe :: more),
+              ts,
+              filter,
+              replacement,
+              altered
+            )
 
           case _ => tpe -> altered
         }
@@ -416,33 +465,53 @@ private[api] object MacroImpl {
      * Replaces any reference to the type itself by the Placeholder type.
      * @return the normalized type + whether any self reference has been found
      */
-    private def normalized(boundTypes: Map[String, TypeRepr])(tpe: TypeRepr): (TypeRepr, Boolean) = boundTypes.getOrElse(tpe.typeSymbol.fullName, tpe) match {
-      case t if (t =:= aTpeRepr) => PlaceholderType -> true
+    private def normalized(
+        boundTypes: Map[String, TypeRepr]
+      )(tpe: TypeRepr
+      ): (TypeRepr, Boolean) =
+      boundTypes.getOrElse(tpe.typeSymbol.fullName, tpe) match {
+        case t if (t =:= aTpeRepr) => PlaceholderType -> true
 
-      case AppliedType(t, args) if args.nonEmpty =>
-        refactor(boundTypes)(args, t -> t.typeSymbol, List.empty, List.empty,
-          _ =:= aTpeRepr, PlaceholderType, false)
+        case AppliedType(t, args) if args.nonEmpty =>
+          refactor(boundTypes)(
+            args,
+            t -> t.typeSymbol,
+            List.empty,
+            List.empty,
+            _ =:= aTpeRepr,
+            PlaceholderType,
+            false
+          )
 
-      case t => t -> false
-    }
+        case t => t -> false
+      }
 
     /* Restores reference to the type itself when Placeholder is found. */
-    private def denormalized(boundTypes: Map[String, TypeRepr])(
-      ptype: TypeRepr): TypeRepr = ptype match {
+    private def denormalized(
+        boundTypes: Map[String, TypeRepr]
+      )(ptype: TypeRepr
+      ): TypeRepr = ptype match {
       case t if (t =:= PlaceholderType) =>
         aTpeRepr
 
       case AppliedType(_, args) if args.nonEmpty =>
         refactor(boundTypes)(
-          args, ptype -> ptype.typeSymbol, List.empty, List.empty,
-          _ == PlaceholderType, aTpeRepr, false)._1
+          args,
+          ptype -> ptype.typeSymbol,
+          List.empty,
+          List.empty,
+          _ == PlaceholderType,
+          aTpeRepr,
+          false
+        )._1
 
       case _ => ptype
     }
 
     private class ImplicitTransformer(
-      boundTypes: Map[String, TypeRepr],
-      forwardSuffix: String) extends TreeMap {
+        boundTypes: Map[String, TypeRepr],
+        forwardSuffix: String)
+        extends TreeMap {
       private val denorm = denormalized(boundTypes) _
 
       private def forwardName = {
@@ -454,8 +523,8 @@ private[api] object MacroImpl {
         case tt: TypeTree =>
           super.transformTree(TypeTree.of(using denorm(tt.tpe).asType))(owner)
 
-        case Select(Select(This(Some("Macros")), t), sym) if (
-          t.toString == "Placeholder" && sym.toString == "Handler") =>
+        case Select(Select(This(Some("Macros")), t), sym)
+            if (t.toString == "Placeholder" && sym.toString == "Handler") =>
           super.transformTree(Ident(forwardName))(owner)
 
         case _ => super.transformTree(tree)(owner)
@@ -463,9 +532,12 @@ private[api] object MacroImpl {
     }
 
     private def createImplicit(
-      debug: String => Unit,
-      boundTypes: Map[String, TypeRepr])(
-      tc: TypeRepr, ptype: TypeRepr, tx: TreeMap): Implicit = {
+        debug: String => Unit,
+        boundTypes: Map[String, TypeRepr]
+      )(tc: TypeRepr,
+        ptype: TypeRepr,
+        tx: TreeMap
+      ): Implicit = {
       val tpe = ptype
       val (ntpe, selfRef) = normalized(boundTypes)(tpe)
       val ptpe = boundTypes.getOrElse(ntpe.typeSymbol.fullName, ntpe)
@@ -477,7 +549,7 @@ private[api] object MacroImpl {
       val neededGiven: Tree = if (!selfRef) {
         TypeTree.of(using summoned)
       } else { //c.untypecheck(
-               // Reset the type attributes on the refactored tree for the given
+        // Reset the type attributes on the refactored tree for the given
         val g = TypeTree.of(using summoned)
         tx.transformTree(g)(g.symbol)
       }
@@ -488,19 +560,25 @@ private[api] object MacroImpl {
     }
 
     protected def resolver(
-      boundTypes: Map[String, TypeRepr],
-      forwardSuffix: String,
-      debug: String => Unit)(tc: TypeRepr): TypeRepr => Implicit = {
+        boundTypes: Map[String, TypeRepr],
+        forwardSuffix: String,
+        debug: String => Unit
+      )(tc: TypeRepr
+      ): TypeRepr => Implicit = {
       val tx = new ImplicitTransformer(boundTypes, forwardSuffix)
       createImplicit(debug, boundTypes)(tc, _: TypeRepr, tx)
     }
 
     // To print the implicit types in the compiler messages
-    private def prettyType(boundTypes: Map[String, TypeRepr])(
-      t: TypeRepr): String =
+    private def prettyType(
+        boundTypes: Map[String, TypeRepr]
+      )(t: TypeRepr
+      ): String =
       boundTypes.getOrElse(t.typeSymbol.fullName, t) match {
         case AppliedType(base, args) if args.nonEmpty =>
-          s"""${base.typeSymbol.fullName}[${args.map(prettyType(boundTypes)(_)).mkString(", ")}]"""
+          s"""${base.typeSymbol.fullName}[${args
+            .map(prettyType(boundTypes)(_))
+            .mkString(", ")}]"""
 
         case t => t.typeSymbol.fullName
       }

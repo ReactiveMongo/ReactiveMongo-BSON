@@ -3,7 +3,7 @@ package reactivemongo.api.bson
 import scala.util.{ Failure, Success, Try }
 
 private[bson] trait BSONIdentityHandlers
-  extends BSONIdentityLowPriorityHandlers { self: DefaultBSONHandlers =>
+    extends BSONIdentityLowPriorityHandlers { self: DefaultBSONHandlers =>
 
   import exceptions.TypeDoesNotMatchException
 
@@ -12,7 +12,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONString] = bson match {
       case s: BSONString => Some(s)
-      case _ => None
+      case _             => None
     }
   }
 
@@ -30,7 +30,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONSymbol] = bson match {
       case s: BSONSymbol => Some(s)
-      case _ => None
+      case _             => None
     }
   }
 
@@ -45,7 +45,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONInteger] = bson match {
       case i: BSONInteger => Some(i)
-      case _ => None
+      case _              => None
     }
   }
 
@@ -60,7 +60,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONDecimal] = bson match {
       case d: BSONDecimal => Some(d)
-      case _ => None
+      case _              => None
     }
   }
 
@@ -75,7 +75,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONArray] = bson match {
       case a: BSONArray => Some(a)
-      case _ => None
+      case _            => None
     }
   }
 
@@ -85,8 +85,9 @@ private[bson] trait BSONIdentityHandlers
   @inline implicit def bsonArrayWriter: BSONWriter[BSONArray] =
     BSONArrayIdentity
 
-  private object BSONDocumentIdentity extends BSONDocumentReader[BSONDocument]
-    with BSONDocumentWriter[BSONDocument] {
+  private object BSONDocumentIdentity
+      extends BSONDocumentReader[BSONDocument]
+      with BSONDocumentWriter[BSONDocument] {
 
     @inline def writeTry(doc: BSONDocument): Try[BSONDocument] =
       Success(doc)
@@ -106,7 +107,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONBoolean] = bson match {
       case b: BSONBoolean => Some(b)
-      case _ => None
+      case _              => None
     }
   }
 
@@ -121,7 +122,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONLong] = bson match {
       case l: BSONLong => Some(l)
-      case _ => None
+      case _           => None
     }
   }
 
@@ -136,7 +137,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONDouble] = bson match {
       case d: BSONDouble => Some(d)
-      case _ => None
+      case _             => None
     }
   }
 
@@ -147,13 +148,13 @@ private[bson] trait BSONIdentityHandlers
     BSONDoubleIdentity
 
   private object BSONObjectIDIdentity
-    extends IdentityBSONHandler[BSONObjectID] {
+      extends IdentityBSONHandler[BSONObjectID] {
 
     protected val valueType = "BSONObjectID"
 
     protected def unapply(bson: BSONValue): Option[BSONObjectID] = bson match {
       case i: BSONObjectID => Some(i)
-      case _ => None
+      case _               => None
     }
   }
 
@@ -168,7 +169,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONBinary] = bson match {
       case b: BSONBinary => Some(b)
-      case _ => None
+      case _             => None
     }
   }
 
@@ -179,13 +180,13 @@ private[bson] trait BSONIdentityHandlers
     BSONBinaryIdentity
 
   private object BSONDateTimeIdentity
-    extends IdentityBSONHandler[BSONDateTime] {
+      extends IdentityBSONHandler[BSONDateTime] {
 
     protected val valueType = "BSONDateTime"
 
     protected def unapply(bson: BSONValue): Option[BSONDateTime] = bson match {
       case d: BSONDateTime => Some(d)
-      case _ => None
+      case _               => None
     }
   }
 
@@ -196,13 +197,13 @@ private[bson] trait BSONIdentityHandlers
     BSONDateTimeIdentity
 
   private object BSONTimestampIdentity
-    extends IdentityBSONHandler[BSONTimestamp] {
+      extends IdentityBSONHandler[BSONTimestamp] {
 
     protected val valueType = "BSONTimestamp"
 
     protected def unapply(bson: BSONValue): Option[BSONTimestamp] = bson match {
       case d: BSONTimestamp => Some(d)
-      case _ => None
+      case _                => None
     }
   }
 
@@ -218,7 +219,7 @@ private[bson] trait BSONIdentityHandlers
     protected def unapply(bson: BSONValue): Option[BSONMaxKey] =
       bson match {
         case _: BSONMaxKey => Some(BSONMaxKey)
-        case _ => None
+        case _             => None
       }
   }
 
@@ -234,7 +235,7 @@ private[bson] trait BSONIdentityHandlers
     protected def unapply(bson: BSONValue): Option[BSONMinKey] =
       bson match {
         case _: BSONMinKey => Some(BSONMinKey)
-        case _ => None
+        case _             => None
       }
   }
 
@@ -249,7 +250,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONNull] = bson match {
       case _: BSONNull => Some(BSONNull)
-      case _ => None
+      case _           => None
     }
   }
 
@@ -260,14 +261,14 @@ private[bson] trait BSONIdentityHandlers
     BSONNullIdentity
 
   private object BSONUndefinedIdentity
-    extends IdentityBSONHandler[BSONUndefined] {
+      extends IdentityBSONHandler[BSONUndefined] {
 
     protected val valueType = "BSONUndefined"
 
     protected def unapply(bson: BSONValue): Option[BSONUndefined] =
       bson match {
         case _: BSONUndefined => Some(BSONUndefined)
-        case _ => None
+        case _                => None
       }
   }
 
@@ -282,7 +283,7 @@ private[bson] trait BSONIdentityHandlers
 
     protected def unapply(bson: BSONValue): Option[BSONRegex] = bson match {
       case r: BSONRegex => Some(r)
-      case _ => None
+      case _            => None
     }
   }
 
@@ -293,14 +294,14 @@ private[bson] trait BSONIdentityHandlers
     BSONRegexIdentity
 
   private object BSONJavaScriptIdentity
-    extends IdentityBSONHandler[BSONJavaScript] {
+      extends IdentityBSONHandler[BSONJavaScript] {
 
     protected val valueType = "BSONJavaScript"
 
     protected def unapply(bson: BSONValue): Option[BSONJavaScript] =
       bson match {
         case js: BSONJavaScript => Some(js)
-        case _ => None
+        case _                  => None
       }
   }
 
@@ -311,14 +312,14 @@ private[bson] trait BSONIdentityHandlers
     BSONJavaScriptIdentity
 
   private object BSONJavaScriptWSIdentity
-    extends IdentityBSONHandler[BSONJavaScriptWS] {
+      extends IdentityBSONHandler[BSONJavaScriptWS] {
 
     protected val valueType = "BSONJavaScriptWS"
 
     protected def unapply(bson: BSONValue): Option[BSONJavaScriptWS] =
       bson match {
         case js: BSONJavaScriptWS => Some(js)
-        case _ => None
+        case _                    => None
       }
   }
 
@@ -331,7 +332,9 @@ private[bson] trait BSONIdentityHandlers
   // ---
 
   private[bson] sealed trait IdentityBSONHandler[B <: BSONValue]
-    extends BSONReader[B] with BSONWriter[B] with SafeBSONWriter[B] {
+      extends BSONReader[B]
+      with BSONWriter[B]
+      with SafeBSONWriter[B] {
 
     protected def valueType: String
 
@@ -343,8 +346,9 @@ private[bson] trait BSONIdentityHandlers
       case Some(v) => Success(v)
 
       case _ =>
-        Failure(TypeDoesNotMatchException(
-          valueType, bson.getClass.getSimpleName))
+        Failure(
+          TypeDoesNotMatchException(valueType, bson.getClass.getSimpleName)
+        )
     }
 
     final override def readOpt(bson: BSONValue): Option[B] = unapply(bson)
@@ -355,7 +359,8 @@ private[bson] trait BSONIdentityLowPriorityHandlers {
   self: DefaultBSONHandlers =>
 
   implicit object BSONValueIdentity
-    extends BSONReader[BSONValue] with BSONWriter[BSONValue] {
+      extends BSONReader[BSONValue]
+      with BSONWriter[BSONValue] {
 
     @inline def writeTry(bson: BSONValue): Try[BSONValue] = Success(bson)
     @inline def readTry(bson: BSONValue): Try[BSONValue] = Success(bson)

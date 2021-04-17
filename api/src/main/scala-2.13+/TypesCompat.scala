@@ -21,7 +21,9 @@ private[bson] trait Aliases {
 }
 
 private[bson] trait Utils {
-  @inline private[bson] def lazyZip[A, B](a: Iterable[A], b: Iterable[B]) = a.lazyZip(b)
+
+  @inline private[bson] def lazyZip[A, B](a: Iterable[A], b: Iterable[B]) =
+    a.lazyZip(b)
 
   @inline private[bson] def toLazy[T](it: Iterable[T]) = it.to(LazyList)
 
@@ -31,11 +33,18 @@ private[bson] trait Utils {
   import scala.collection.Factory
   import scala.util.{ Failure, Try, Success }
 
-  private[bson] def trySeq[A, B, M[_]](in: Iterable[A])(f: A => Try[B])(implicit cbf: Factory[B, M[B]]): Try[M[B]] = {
+  private[bson] def trySeq[A, B, M[_]](
+      in: Iterable[A]
+    )(f: A => Try[B]
+    )(implicit
+      cbf: Factory[B, M[B]]
+    ): Try[M[B]] = {
     val builder = cbf.newBuilder
 
-    @annotation.tailrec def go(in: Iterator[A]): Try[Unit] =
-      if (!in.hasNext) Success({}) else {
+    @annotation.tailrec
+    def go(in: Iterator[A]): Try[Unit] =
+      if (!in.hasNext) Success({})
+      else {
         f(in.next()) match {
           case Success(b) => {
             builder += b

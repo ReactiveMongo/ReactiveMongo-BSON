@@ -7,17 +7,18 @@ import reactivemongo.BSONValueFixtures
 final class TypeSpec extends org.specs2.mutable.Specification {
   "BSON types".title
 
-  implicit def bsonValue[T](value: T)(implicit writer: BSONWriter[T]): BSONValue = writer.writeTry(value) match {
-    case Success(bson) => bson
+  implicit def bsonValue[T](
+      value: T
+    )(implicit
+      writer: BSONWriter[T]
+    ): BSONValue = writer.writeTry(value) match {
+    case Success(bson)  => bson
     case Failure(cause) => throw cause
   }
 
   "BSON array" should {
     "be empty" in {
-      BSONArray().values must beEmpty and (
-        BSONArray.empty.values must beEmpty) and (
-          array.values must beEmpty) and (
-            array().values must beEmpty)
+      BSONArray().values must beEmpty and (BSONArray.empty.values must beEmpty) and (array.values must beEmpty) and (array().values must beEmpty)
 
     }
 
@@ -39,8 +40,8 @@ final class TypeSpec extends org.specs2.mutable.Specification {
       }
 
       "fail on writer error" in {
-        BSONArray.safe((1 -> "value"), "bar") must beFailedTry[BSONArray].
-          withThrowable[Exception]("failing writer")
+        BSONArray.safe((1 -> "value"), "bar") must beFailedTry[BSONArray]
+          .withThrowable[Exception]("failing writer")
       }
     }
 
@@ -55,12 +56,14 @@ final class TypeSpec extends org.specs2.mutable.Specification {
         BSONString("foo"),
         None // should be skipped
       ).values must contain(
-          exactly(BSONBoolean(true), BSONString("foo")).inOrder)
+        exactly(BSONBoolean(true), BSONString("foo")).inOrder
+      )
     }
 
     "be pretty-printed" in {
-      BSONValueFixtures.bsonArrayFixtures.headOption.
-        map(BSONArray.pretty(_)).mkString must_=== """[
+      BSONValueFixtures.bsonArrayFixtures.headOption
+        .map(BSONArray.pretty(_))
+        .mkString must_=== """[
   0.0,
   -2.0,
   12.34
@@ -73,24 +76,23 @@ final class TypeSpec extends org.specs2.mutable.Specification {
       val bytes = Array[Byte](1, 2, 3)
       val bson = BSONBinary(bytes, Subtype.GenericBinarySubtype)
 
-      bson.byteArray aka "read #1" must_=== bytes and (
-        bson.byteArray aka "read #2" must_=== bytes)
+      bson.byteArray aka "read #1" must_=== bytes and (bson.byteArray aka "read #2" must_=== bytes)
     }
 
     "be created from UUID" in {
-      val uuid = java.util.UUID.fromString(
-        "b32e4733-0679-4dd3-9978-230e70b55dce")
+      val uuid =
+        java.util.UUID.fromString("b32e4733-0679-4dd3-9978-230e70b55dce")
 
-      val expectedBytes = Array[Byte](
-        -77, 46, 71, 51, 6, 121, 77, -45, -103, 120, 35, 14, 112, -75, 93, -50)
+      val expectedBytes = Array[Byte](-77, 46, 71, 51, 6, 121, 77, -45, -103,
+        120, 35, 14, 112, -75, 93, -50)
 
       BSONBinary(uuid) must_=== BSONBinary(expectedBytes, Subtype.UuidSubtype)
     }
 
     "be pretty-printed" in {
-      BSONBinary.pretty(BSONBinary(
-        Array(4, 5, 6), Subtype.GenericBinarySubtype)).
-        aka("pretty") must_=== "BinData(0, 'BAUG')"
+      BSONBinary
+        .pretty(BSONBinary(Array(4, 5, 6), Subtype.GenericBinarySubtype))
+        .aka("pretty") must_=== "BinData(0, 'BAUG')"
     }
   }
 

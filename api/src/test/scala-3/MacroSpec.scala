@@ -1,6 +1,22 @@
 import scala.util.{ Failure, Success, Try }
 
-import reactivemongo.api.bson.{ BSON, BSONDateTime, BSONDecimal, BSONDocument, BSONDocumentHandler, BSONDocumentReader, BSONDocumentWriter, BSONHandler, BSONInteger, BSONLong, BSONNull, BSONReader, BSONString, BSONValue, BSONWriter }
+import reactivemongo.api.bson.{
+  BSON,
+  BSONDateTime,
+  BSONDecimal,
+  BSONDocument,
+  BSONDocumentHandler,
+  BSONDocumentReader,
+  BSONDocumentWriter,
+  BSONHandler,
+  BSONInteger,
+  BSONLong,
+  BSONNull,
+  BSONReader,
+  BSONString,
+  BSONValue,
+  BSONWriter
+}
 import reactivemongo.api.bson.exceptions.{
   HandlerException,
   TypeDoesNotMatchException
@@ -46,22 +62,26 @@ class MacroSpec extends org.specs2.mutable.Specification:
 
       "Int" in {
         typecheck("implicitly[DocumentClass[Int]]") must failWith(
-          "no\\ implicit\\ .*DocumentClass\\[Int\\].*")
+          "no\\ implicit\\ .*DocumentClass\\[Int\\].*"
+        )
       }
 
       "BSONValue" in {
         typecheck("implicitly[DocumentClass[BSONValue]]") must failWith(
-          "no\\ implicit\\ .*DocumentClass\\[.*BSONValue\\].*")
+          "no\\ implicit\\ .*DocumentClass\\[.*BSONValue\\].*"
+        )
       }
 
       "BSONDateTime" in {
         typecheck("implicitly[DocumentClass[BSONDateTime]]") must failWith(
-          "no\\ implicit\\ .*DocumentClass\\[.*BSONDateTime\\].*")
+          "no\\ implicit\\ .*DocumentClass\\[.*BSONDateTime\\].*"
+        )
       }
 
       "BSONLong" in {
         typecheck("implicitly[DocumentClass[BSONLong]]") must failWith(
-          "no\\ implicit\\ .*DocumentClass\\[.*BSONLong\\].*")
+          "no\\ implicit\\ .*DocumentClass\\[.*BSONLong\\].*"
+        )
       }
     }
   }
@@ -70,8 +90,8 @@ class MacroSpec extends org.specs2.mutable.Specification:
     "provide 'migrationRequired' compilation error" in {
       import reactivemongo.api.bson.migrationRequired
 
-      typecheck(
-        """migrationRequired[String]("Foo"): String""") must failWith(
-          "Migration\\ required:\\ Foo")
+      typecheck("""migrationRequired[String]("Foo"): String""") must failWith(
+        "Migration\\ required:\\ Foo"
+      )
     }
   }

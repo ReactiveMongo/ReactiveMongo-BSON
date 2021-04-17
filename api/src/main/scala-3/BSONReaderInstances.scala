@@ -38,7 +38,7 @@ private[bson] trait BSONReaderInstances:
 
   given localTimeReader: BSONReader[LocalTime] = BSONLocalTimeHandler
 
-  given localDateTimeReader: BSONReader[LocalDateTime] = 
+  given localDateTimeReader: BSONReader[LocalDateTime] =
     bsonLocalDateTimeHandler
 
   given offsetDateTimeReader: BSONReader[OffsetDateTime] =
@@ -59,7 +59,9 @@ private[bson] trait BSONReaderInstances:
     pkg.mapReader[V]
 
   given mapKeyReader[K, V](
-    using KeyReader[K], BSONReader[V]): BSONDocumentReader[Map[K, V]] =
+      using KeyReader[K],
+      BSONReader[V]
+  ): BSONDocumentReader[Map[K, V]] =
     pkg.mapKeyReader[K, V]
 
   export pkg.{

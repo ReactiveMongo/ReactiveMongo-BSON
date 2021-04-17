@@ -2,7 +2,7 @@ resolvers ++= Seq(
   Resolver.bintrayIvyRepo("typesafe", "sbt-plugins"),
   "Tatami Releases" at "https://raw.github.com/cchantep/tatami/master/releases")
 
-addSbtPlugin("org.scalariform" % "sbt-scalariform" % "1.8.3")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.2")
 
 //addSbtPlugin("cchantep" % "sbt-scaladoc-compiler" % "0.2")
 

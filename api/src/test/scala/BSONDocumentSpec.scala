@@ -33,8 +33,9 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
     "be appended with a new element " in {
       val doc = BSONDocument.empty ++ ("foo" -> 1)
 
-      doc must_=== BSONDocument("foo" -> 1) and (
-        doc.contains("foo") must beTrue)
+      doc must_=== BSONDocument("foo" -> 1) and (doc.contains(
+        "foo"
+      ) must beTrue)
     }
   }
 
@@ -42,11 +43,13 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
     "be successful" in {
       val elements = Seq(
         BSONElement("foo", BSONInteger(1)),
-        BSONElement("bar", BSONDouble(2D)))
+        BSONElement("bar", BSONDouble(2D))
+      )
 
       BSONDocument("foo" -> 1, "bar" -> 2D).elements must_=== elements and {
-        BSONDocument.safe("foo" -> 1, "bar" -> 2D).
-          map(_.elements) must_=== Success(elements)
+        BSONDocument
+          .safe("foo" -> 1, "bar" -> 2D)
+          .map(_.elements) must_=== Success(elements)
       }
     }
 
@@ -61,14 +64,16 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
       "ignore element with failing conversion" in {
         BSONDocument(
           "field1" -> (1 -> "value"),
-          "field2" -> "bar").elements must_=== elements
+          "field2" -> "bar"
+        ).elements must_=== elements
       }
 
       "fail on writer error" in {
         BSONDocument.safe(
           "field1" -> (1 -> "value"),
-          "field2" -> "bar") must beFailedTry[BSONDocument].
-          withThrowable[Exception]("failing writer")
+          "field2" -> "bar"
+        ) must beFailedTry[BSONDocument]
+          .withThrowable[Exception]("failing writer")
       }
     }
 
@@ -98,7 +103,8 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
         builder1.result() must_=== BSONDocument(
           "foo" -> 1,
           "ipsum" -> 3.45D,
-          "dolor" -> 6L)
+          "dolor" -> 6L
+        )
       }
     }
   }
@@ -117,8 +123,10 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
         }
       }
 
-      spec(doc1, BSONDocument(
-        "Foo" -> 1, "Bar" -> 2, "Lorem" -> 3, "foo" -> 4)) and {
+      spec(
+        doc1,
+        BSONDocument("Foo" -> 1, "Bar" -> 2, "Lorem" -> 3, "foo" -> 4)
+      ) and {
         spec(strict1, BSONDocument("lorem" -> 2, "foo" -> 4))
       } and {
         spec(strict2, BSONDocument("lorem" -> 2, "foo" -> 4))
@@ -133,8 +141,10 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
       eqSpec(x, "dedup'ed as", s) and {
         eqSpec(
-          doc1.asStrict /* no duplicate there at least*/ ,
-          "with strict type", doc1)
+          doc1.asStrict /* no duplicate there at least*/,
+          "with strict type",
+          doc1
+        )
       }
     }
 
@@ -169,7 +179,8 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
       "i" -> 0,
       "l" -> (Int.MaxValue.toLong + 1L),
       "f" -> 0.1F,
-      "d" -> (Float.MaxValue.toDouble + 1.2D))
+      "d" -> (Float.MaxValue.toDouble + 1.2D)
+    )
 
     "be resolved as double" >> {
       "successfully when compatible" in {
@@ -214,13 +225,16 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
   lazy val doc1 = BSONDocument("Foo" -> 1, "Bar" -> 2, "Lorem" -> 3)
 
-  lazy val strict1 = BSONDocument.strict(
-    "foo" -> 1, "lorem" -> 2, "foo" -> "bar")
+  lazy val strict1 =
+    BSONDocument.strict("foo" -> 1, "lorem" -> 2, "foo" -> "bar")
 
-  lazy val strict2 = BSONDocument.strict(Seq(
-    "foo" -> BSONInteger(1),
-    "lorem" -> BSONInteger(2),
-    "foo" -> BSONString("bar")))
+  lazy val strict2 = BSONDocument.strict(
+    Seq(
+      "foo" -> BSONInteger(1),
+      "lorem" -> BSONInteger(2),
+      "foo" -> BSONString("bar")
+    )
+  )
 
   // ---
 

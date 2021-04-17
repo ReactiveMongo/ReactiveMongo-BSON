@@ -3,20 +3,20 @@ package reactivemongo.api.bson
 import scala.util.Try
 
 /** Reads and writers `T` values to/from [[BSONDocument]]. */
-trait BSONDocumentHandler[T] extends BSONDocumentReader[T]
-  with BSONDocumentWriter[T] with BSONHandler[T] {
+trait BSONDocumentHandler[T]
+    extends BSONDocumentReader[T]
+    with BSONDocumentWriter[T]
+    with BSONHandler[T] {
 
-  final override def beforeRead(f: BSONDocument => BSONDocument): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
-    reader = super.beforeRead(f),
-    writer = this)
+  final override def beforeRead(
+      f: BSONDocument => BSONDocument
+    ): BSONDocumentHandler[T] =
+    BSONDocumentHandler.provided[T](reader = super.beforeRead(f), writer = this)
 
-  final override def beforeReadTry(f: BSONDocument => Try[BSONDocument]): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
-    reader = super.beforeReadTry(f),
-    writer = this)
-
-  final override def afterWrite(f: BSONDocument => BSONDocument): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
-    reader = this,
-    writer = super.afterWrite(f))
+  final override def afterWrite(
+      f: BSONDocument => BSONDocument
+    ): BSONDocumentHandler[T] =
+    BSONDocumentHandler.provided[T](reader = this, writer = super.afterWrite(f))
 
   final override def afterWriteTry(f: BSONDocument => Try[BSONDocument]): BSONDocumentHandler[T] =
     BSONDocumentHandler.provided[T](
@@ -52,8 +52,9 @@ object BSONDocumentHandler {
    * }}}
    */
   def apply[T](
-    read: BSONDocument => T,
-    write: T => BSONDocument): BSONDocumentHandler[T] =
+      read: BSONDocument => T,
+      write: T => BSONDocument
+    ): BSONDocumentHandler[T] =
     new FunctionalDocumentHandler[T](read, write)
 
   /**
@@ -71,7 +72,11 @@ object BSONDocumentHandler {
    *   BSONDocumentHandler.provided[T]
    * }}}
    */
-  def provided[T](implicit reader: BSONDocumentReader[T], writer: BSONDocumentWriter[T]): BSONDocumentHandler[T] = new WrappedDocumentHandler[T](reader, writer)
+  def provided[T](
+      implicit
+      reader: BSONDocumentReader[T],
+      writer: BSONDocumentWriter[T]
+    ): BSONDocumentHandler[T] = new WrappedDocumentHandler[T](reader, writer)
 
   /**
    * Creates a [[BSONDocumentHandler]]
@@ -102,8 +107,9 @@ object BSONDocumentHandler {
    * }}}
    */
   def option[T](
-    read: BSONValue => Option[T],
-    write: T => Option[BSONDocument]): BSONDocumentHandler[T] =
+      read: BSONValue => Option[T],
+      write: T => Option[BSONDocument]
+    ): BSONDocumentHandler[T] =
     new OptionalDocumentHandler(read, write)
 
   /**
@@ -122,8 +128,9 @@ object BSONDocumentHandler {
    * }}}
    */
   def from[T](
-    read: BSONDocument => Try[T],
-    write: T => Try[BSONDocument]): BSONDocumentHandler[T] =
+      read: BSONDocument => Try[T],
+      write: T => Try[BSONDocument]
+    ): BSONDocumentHandler[T] =
     new DefaultDocumentHandler(read, write)
 
   /**
@@ -153,45 +160,51 @@ object BSONDocumentHandler {
    * }}}
    */
   def collect[T](
-    read: PartialFunction[BSONValue, T],
-    write: PartialFunction[T, BSONDocument]): BSONDocumentHandler[T] =
+      read: PartialFunction[BSONValue, T],
+      write: PartialFunction[T, BSONDocument]
+    ): BSONDocumentHandler[T] =
     new FunctionalDocumentHandler(
       { bson =>
         read.lift(bson) getOrElse {
-          throw exceptions.ValueDoesNotMatchException(
-            BSONDocument pretty bson)
+          throw exceptions.ValueDoesNotMatchException(BSONDocument pretty bson)
         }
       },
       { v =>
         write.lift(v) getOrElse {
           throw exceptions.ValueDoesNotMatchException(s"${v}")
         }
-      })
+      }
+    )
 
   // ---
 
   private final class OptionalDocumentHandler[T](
-    read: BSONDocument => Option[T],
-    val write: T => Option[BSONDocument])
-    extends BSONDocumentReader.OptionalReader[T](read)
-    with BSONDocumentWriter.OptionalWriter[T] with BSONDocumentHandler[T]
+      read: BSONDocument => Option[T],
+      val write: T => Option[BSONDocument])
+      extends BSONDocumentReader.OptionalReader[T](read)
+      with BSONDocumentWriter.OptionalWriter[T]
+      with BSONDocumentHandler[T]
 
   private final class DefaultDocumentHandler[T](
-    read: BSONDocument => Try[T],
-    val write: T => Try[BSONDocument])
-    extends BSONDocumentReader.DefaultReader[T](read)
-    with BSONDocumentWriter.DefaultWriter[T] with BSONDocumentHandler[T]
+      read: BSONDocument => Try[T],
+      val write: T => Try[BSONDocument])
+      extends BSONDocumentReader.DefaultReader[T](read)
+      with BSONDocumentWriter.DefaultWriter[T]
+      with BSONDocumentHandler[T]
 
   private final class FunctionalDocumentHandler[T](
-    read: BSONDocument => T,
-    val write: T => BSONDocument)
-    extends BSONDocumentReader.FunctionalReader[T](read)
-    with BSONDocumentWriter.FunctionalWriter[T] with BSONDocumentHandler[T]
+      read: BSONDocument => T,
+      val write: T => BSONDocument)
+      extends BSONDocumentReader.FunctionalReader[T](read)
+      with BSONDocumentWriter.FunctionalWriter[T]
+      with BSONDocumentHandler[T]
 
   private final class WrappedDocumentHandler[T](
-    reader: BSONDocumentReader[T],
-    writer: BSONDocumentWriter[T]) extends BSONDocumentReader[T]
-    with BSONDocumentWriter[T] with BSONDocumentHandler[T] {
+      reader: BSONDocumentReader[T],
+      writer: BSONDocumentWriter[T])
+      extends BSONDocumentReader[T]
+      with BSONDocumentWriter[T]
+      with BSONDocumentHandler[T] {
 
     @inline def readDocument(doc: BSONDocument): Try[T] = reader.readTry(doc)
     @inline def writeTry(value: T): Try[BSONDocument] = writer.writeTry(value)

@@ -40,7 +40,7 @@ private[bson] trait BSONWriterInstances:
 
   given localTimeWriter: SafeWriter[LocalTime] = BSONLocalTimeHandler
 
-  given localDateTimeWriter: BSONWriter[LocalDateTime] = 
+  given localDateTimeWriter: BSONWriter[LocalDateTime] =
     bsonLocalDateTimeHandler
 
   given offsetDateTimeWriter: BSONWriter[OffsetDateTime] =
@@ -57,26 +57,31 @@ private[bson] trait BSONWriterInstances:
 
   given localeWriter: SafeWriter[Locale] = BSONLocaleHandler
 
-  given mapSafeWriter[V](using BSONWriter[V] & SafeBSONWriter[V]): BSONDocumentWriter[Map[String, V]] = pkg.mapSafeWriter[V]
+  given mapSafeWriter[V](
+      using BSONWriter[V] & SafeBSONWriter[V]
+  ): BSONDocumentWriter[Map[String, V]] = pkg.mapSafeWriter[V]
 
   given bsonMapWriter[V <: BSONValue]: BSONDocumentWriter[Map[String, V]] =
     pkg.bsonMapWriter[V]
 
-  given mapWriter[V](
-    using BSONWriter[V]): BSONDocumentWriter[Map[String, V]] =
+  given mapWriter[V](using BSONWriter[V]): BSONDocumentWriter[Map[String, V]] =
     pkg.mapWriter[V]
 
   given mapKeySafeWriter[K, V](
-    using KeyWriter[K] & SafeKeyWriter[K], 
-    BSONWriter[V] & SafeBSONWriter[V]): BSONDocumentWriter[Map[K, V]] =
+      using KeyWriter[K] & SafeKeyWriter[K],
+      BSONWriter[V] & SafeBSONWriter[V]
+  ): BSONDocumentWriter[Map[K, V]] =
     pkg.mapKeySafeWriter[K, V]
 
   given bsonMapKeyWriter[K, V <: BSONValue](
-    using KeyWriter[K]): BSONDocumentWriter[Map[K, V]] =
+      using KeyWriter[K]
+  ): BSONDocumentWriter[Map[K, V]] =
     pkg.bsonMapKeyWriter[K, V]
 
   given mapKeyWriter[K, V](
-    using KeyWriter[K], BSONWriter[V]): BSONDocumentWriter[Map[K, V]] =
+      using KeyWriter[K],
+      BSONWriter[V]
+  ): BSONDocumentWriter[Map[K, V]] =
     pkg.mapKeyWriter[K, V]
 
   export pkg.{

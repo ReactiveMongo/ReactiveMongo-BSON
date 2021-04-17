@@ -5,6 +5,7 @@ import scala.util.{ Failure, Try }
 import scala.collection.Factory
 
 private[bson] trait BSONReaderCompat { self: BSONReader.type =>
+
   /**
    * '''EXPERIMENTAL:''' (API may change without notice)
    *
@@ -22,16 +23,21 @@ private[bson] trait BSONReaderCompat { self: BSONReader.type =>
    *   BSONReader.iterable[Element, Set](elementReader readTry _)
    * }}}
    */
-  def iterable[T, M[_]](read: BSONValue => Try[T])(
-    implicit
-    cbf: Factory[T, M[T]]): BSONReader[M[T]] = {
+  def iterable[T, M[_]](
+      read: BSONValue => Try[T]
+    )(implicit
+      cbf: Factory[T, M[T]]
+    ): BSONReader[M[T]] = {
 
     from[M[T]] {
       case BSONArray(values) =>
         trySeq[BSONValue, T, M](values)(read)
 
-      case bson => Failure(exceptions.TypeDoesNotMatchException(
-        "BSONArray", bson.getClass.getSimpleName))
+      case bson =>
+        Failure(
+          exceptions
+            .TypeDoesNotMatchException("BSONArray", bson.getClass.getSimpleName)
+        )
     }
   }
 }

@@ -32,6 +32,7 @@ trait BSONDocumentWriter[T] extends BSONWriter[T] { self =>
  * @define valueDoesNotMatchException A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
  */
 object BSONDocumentWriter {
+
   /**
    * $createWriterBasedOn the given `write` function.
    * This function is called within a [[scala.util.Try]].
@@ -52,9 +53,12 @@ object BSONDocumentWriter {
     }
   }
 
-  private[bson] def safe[T](write: T => BSONDocument): BSONDocumentWriter[T] with SafeBSONDocumentWriter[T] = new BSONDocumentWriter[T] with SafeBSONDocumentWriter[T] {
-    def safeWrite(value: T) = write(value)
-  }
+  private[bson] def safe[T](
+      write: T => BSONDocument
+    ): BSONDocumentWriter[T] with SafeBSONDocumentWriter[T] =
+    new BSONDocumentWriter[T] with SafeBSONDocumentWriter[T] {
+      def safeWrite(value: T) = write(value)
+    }
 
   /**
    * Creates a [[BSONWriter]] based on the given `write` function.
@@ -116,7 +120,8 @@ object BSONDocumentWriter {
    * }}}
    */
   def collect[T](
-    write: PartialFunction[T, BSONDocument]): BSONDocumentWriter[T] =
+      write: PartialFunction[T, BSONDocument]
+    ): BSONDocumentWriter[T] =
     apply[T] { v =>
       write.lift(v) getOrElse {
         throw exceptions.ValueDoesNotMatchException(s"${v}")
@@ -140,7 +145,9 @@ object BSONDocumentWriter {
    * }
    * }}}
    */
-  def collectFrom[T](write: PartialFunction[T, Try[BSONDocument]]): BSONDocumentWriter[T] = from[T] { (v: T) =>
+  def collectFrom[T](
+      write: PartialFunction[T, Try[BSONDocument]]
+    ): BSONDocumentWriter[T] = from[T] { (v: T) =>
     write.lift(v) getOrElse {
       Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
     }
@@ -162,9 +169,7 @@ object BSONDocumentWriter {
    * }}}
    */
   def field[T](name: String)(implicit w: BSONWriter[T]): BSONDocumentWriter[T] =
-    BSONDocumentWriter[T] { value =>
-      BSONDocument(name -> value)
-    }
+    BSONDocumentWriter[T] { value => BSONDocument(name -> value) }
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONDocumentWriter]] that writes
@@ -180,19 +185,20 @@ object BSONDocumentWriter {
    * }}}
    */
   def tuple2[A: BSONWriter, B: BSONWriter](
-    field1: String,
-    field2: String): BSONDocumentWriter[(A, B)] = apply[(A, B)] {
-    case (a, b) => BSONDocument(field1 -> a, field2 -> b)
-  }
+      field1: String,
+      field2: String
+    ): BSONDocumentWriter[(A, B)] =
+    apply[(A, B)] { case (a, b) => BSONDocument(field1 -> a, field2 -> b) }
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONDocumentWriter]] that writes
    * tuple elements as [[BSONDocument]] fields.
    */
   def tuple3[A: BSONWriter, B: BSONWriter, C: BSONWriter](
-    field1: String,
-    field2: String,
-    field3: String): BSONDocumentWriter[(A, B, C)] = apply[(A, B, C)] {
+      field1: String,
+      field2: String,
+      field3: String
+    ): BSONDocumentWriter[(A, B, C)] = apply[(A, B, C)] {
     case (a, b, c) => BSONDocument(field1 -> a, field2 -> b, field3 -> c)
   }
 
@@ -201,28 +207,41 @@ object BSONDocumentWriter {
    * tuple elements as [[BSONDocument]] fields.
    */
   def tuple4[A: BSONWriter, B: BSONWriter, C: BSONWriter, D: BSONWriter](
-    field1: String,
-    field2: String,
-    field3: String,
-    field4: String): BSONDocumentWriter[(A, B, C, D)] =
+      field1: String,
+      field2: String,
+      field3: String,
+      field4: String
+    ): BSONDocumentWriter[(A, B, C, D)] =
     apply[(A, B, C, D)] {
-      case (a, b, c, d) => BSONDocument(
-        field1 -> a, field2 -> b, field3 -> c, field4 -> d)
+      case (a, b, c, d) =>
+        BSONDocument(field1 -> a, field2 -> b, field3 -> c, field4 -> d)
     }
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONDocumentWriter]] that writes
    * tuple elements as [[BSONDocument]] fields.
    */
-  def tuple5[A: BSONWriter, B: BSONWriter, C: BSONWriter, D: BSONWriter, E: BSONWriter](
-    field1: String,
-    field2: String,
-    field3: String,
-    field4: String,
-    field5: String): BSONDocumentWriter[(A, B, C, D, E)] =
+  def tuple5[
+      A: BSONWriter,
+      B: BSONWriter,
+      C: BSONWriter,
+      D: BSONWriter,
+      E: BSONWriter
+    ](field1: String,
+      field2: String,
+      field3: String,
+      field4: String,
+      field5: String
+    ): BSONDocumentWriter[(A, B, C, D, E)] =
     apply[(A, B, C, D, E)] {
-      case (a, b, c, d, e) => BSONDocument(
-        field1 -> a, field2 -> b, field3 -> c, field4 -> d, field5 -> e)
+      case (a, b, c, d, e) =>
+        BSONDocument(
+          field1 -> a,
+          field2 -> b,
+          field3 -> c,
+          field4 -> d,
+          field5 -> e
+        )
     }
 
   // ---

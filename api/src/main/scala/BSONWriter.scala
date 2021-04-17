@@ -8,6 +8,7 @@ import scala.util.{ Failure, Success, Try }
  * @define afterWriteDescription Prepares a BSON writer that returns the result of applying `f` on the BSON value from this writer.
  */
 trait BSONWriter[T] {
+
   /**
    * Tries to produce a BSON value from an instance of `T`.
    *
@@ -50,8 +51,9 @@ trait BSONWriter[T] {
             Success(after)
 
           case _ =>
-            Failure(exceptions.ValueDoesNotMatchException(
-              BSONValue pretty before))
+            Failure(
+              exceptions.ValueDoesNotMatchException(BSONValue pretty before)
+            )
         }
       }
     }
@@ -111,6 +113,7 @@ trait BSONWriter[T] {
  * @define valueDoesNotMatchException A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
  */
 object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
+
   /**
    * $createWriterBasedOn the given `write` function.
    * This function is called within a [[scala.util.Try]].
@@ -130,9 +133,12 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
     }
   }
 
-  private[bson] def safe[T](write: T => BSONValue): BSONWriter[T] with SafeBSONWriter[T] = new BSONWriter[T] with SafeBSONWriter[T] {
-    def safeWrite(value: T) = write(value)
-  }
+  private[bson] def safe[T](
+      write: T => BSONValue
+    ): BSONWriter[T] with SafeBSONWriter[T] =
+    new BSONWriter[T] with SafeBSONWriter[T] {
+      def safeWrite(value: T) = write(value)
+    }
 
   /**
    * $createWriterBasedOn the given `write` function.
@@ -287,33 +293,43 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
    * }}}
    */
   def tuple2[A: BSONWriter, B: BSONWriter]: BSONWriter[(A, B)] =
-    apply[(A, B)] {
-      case (a, b) => BSONArray(a, b)
-    }
+    apply[(A, B)] { case (a, b) => BSONArray(a, b) }
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
    * as [[BSONArray]] elements.
    */
-  def tuple3[A: BSONWriter, B: BSONWriter, C: BSONWriter]: BSONWriter[(A, B, C)] = apply[(A, B, C)] {
-    case (a, b, c) => BSONArray(a, b, c)
-  }
+  def tuple3[
+      A: BSONWriter,
+      B: BSONWriter,
+      C: BSONWriter
+    ]: BSONWriter[(A, B, C)] =
+    apply[(A, B, C)] { case (a, b, c) => BSONArray(a, b, c) }
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
    * as [[BSONArray]] elements.
    */
-  def tuple4[A: BSONWriter, B: BSONWriter, C: BSONWriter, D: BSONWriter]: BSONWriter[(A, B, C, D)] = apply[(A, B, C, D)] {
-    case (a, b, c, d) => BSONArray(a, b, c, d)
-  }
+  def tuple4[
+      A: BSONWriter,
+      B: BSONWriter,
+      C: BSONWriter,
+      D: BSONWriter
+    ]: BSONWriter[(A, B, C, D)] =
+    apply[(A, B, C, D)] { case (a, b, c, d) => BSONArray(a, b, c, d) }
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
    * as [[BSONArray]] elements.
    */
-  def tuple5[A: BSONWriter, B: BSONWriter, C: BSONWriter, D: BSONWriter, E: BSONWriter]: BSONWriter[(A, B, C, D, E)] = apply[(A, B, C, D, E)] {
-    case (a, b, c, d, e) => BSONArray(a, b, c, d, e)
-  }
+  def tuple5[
+      A: BSONWriter,
+      B: BSONWriter,
+      C: BSONWriter,
+      D: BSONWriter,
+      E: BSONWriter
+    ]: BSONWriter[(A, B, C, D, E)] =
+    apply[(A, B, C, D, E)] { case (a, b, c, d, e) => BSONArray(a, b, c, d, e) }
 
   // ---
 
@@ -352,6 +368,7 @@ private[reactivemongo] trait SafeBSONWriter[T] { writer: BSONWriter[T] =>
 }
 
 private[reactivemongo] object SafeBSONWriter {
+
   @com.github.ghik.silencer.silent
   def unapply[T](w: BSONWriter[T]): Option[SafeBSONWriter[T]] =
     implicitly[scala.reflect.ClassTag[SafeBSONWriter[T]]].unapply(w)

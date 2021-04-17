@@ -5,11 +5,17 @@ import scala.util.control.NonFatal
 
 /** [[BSONReader]] specialized for [[BSONDocument]] */
 trait BSONDocumentReader[T] extends BSONReader[T] { self =>
+
   final def readTry(bson: BSONValue): Try[T] = bson match {
     case doc: BSONDocument => readDocument(doc)
 
-    case _ => Failure(exceptions.TypeDoesNotMatchException(
-      "BSONDocument", bson.getClass.getSimpleName))
+    case _ =>
+      Failure(
+        exceptions.TypeDoesNotMatchException(
+          "BSONDocument",
+          bson.getClass.getSimpleName
+        )
+      )
   }
 
   /**
@@ -44,6 +50,7 @@ trait BSONDocumentReader[T] extends BSONReader[T] { self =>
 
 /** [[BSONDocumentReader]] factories */
 object BSONDocumentReader {
+
   /**
    * Creates a [[BSONDocumentReader]] based on the given `read` function.
    *
@@ -104,7 +111,9 @@ object BSONDocumentReader {
     new DefaultReader[T](read)
 
   /** '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] based on the given partial function. */
-  def collect[T](read: PartialFunction[BSONDocument, T]): BSONDocumentReader[T] = new FunctionalReader[T]({ doc =>
+  def collect[T](
+      read: PartialFunction[BSONDocument, T]
+    ): BSONDocumentReader[T] = new FunctionalReader[T]({ doc =>
     read.lift(doc) getOrElse {
       throw exceptions.ValueDoesNotMatchException(BSONDocument pretty doc)
     }
@@ -144,8 +153,9 @@ object BSONDocumentReader {
    * }}}
    */
   def tuple2[A: BSONReader, B: BSONReader](
-    field1: String,
-    field2: String): BSONDocumentReader[(A, B)] = from[(A, B)] { doc =>
+      field1: String,
+      field2: String
+    ): BSONDocumentReader[(A, B)] = from[(A, B)] { doc =>
     for {
       _1 <- doc.getAsTry[A](field1)
       _2 <- doc.getAsTry[B](field2)
@@ -159,9 +169,10 @@ object BSONDocumentReader {
    * @see [[tuple2]]
    */
   def tuple3[A: BSONReader, B: BSONReader, C: BSONReader](
-    field1: String,
-    field2: String,
-    field3: String): BSONDocumentReader[(A, B, C)] = from[(A, B, C)] { doc =>
+      field1: String,
+      field2: String,
+      field3: String
+    ): BSONDocumentReader[(A, B, C)] = from[(A, B, C)] { doc =>
     for {
       _1 <- doc.getAsTry[A](field1)
       _2 <- doc.getAsTry[B](field2)
@@ -176,10 +187,11 @@ object BSONDocumentReader {
    * @see [[tuple2]]
    */
   def tuple4[A: BSONReader, B: BSONReader, C: BSONReader, D: BSONReader](
-    field1: String,
-    field2: String,
-    field3: String,
-    field4: String): BSONDocumentReader[(A, B, C, D)] =
+      field1: String,
+      field2: String,
+      field3: String,
+      field4: String
+    ): BSONDocumentReader[(A, B, C, D)] =
     from[(A, B, C, D)] { doc =>
       for {
         _1 <- doc.getAsTry[A](field1)
@@ -195,12 +207,18 @@ object BSONDocumentReader {
    *
    * @see [[tuple2]]
    */
-  def tuple5[A: BSONReader, B: BSONReader, C: BSONReader, D: BSONReader, E: BSONReader](
-    field1: String,
-    field2: String,
-    field3: String,
-    field4: String,
-    field5: String): BSONDocumentReader[(A, B, C, D, E)] =
+  def tuple5[
+      A: BSONReader,
+      B: BSONReader,
+      C: BSONReader,
+      D: BSONReader,
+      E: BSONReader
+    ](field1: String,
+      field2: String,
+      field3: String,
+      field4: String,
+      field5: String
+    ): BSONDocumentReader[(A, B, C, D, E)] =
     from[(A, B, C, D, E)] { doc =>
       for {
         _1 <- doc.getAsTry[A](field1)
@@ -214,31 +232,35 @@ object BSONDocumentReader {
   // ---
 
   private[bson] class DefaultReader[T](
-    read: BSONDocument => Try[T]) extends BSONDocumentReader[T] {
+      read: BSONDocument => Try[T])
+      extends BSONDocumentReader[T] {
 
     def readDocument(doc: BSONDocument): Try[T] = read(doc)
   }
 
   private[bson] class OptionalReader[T](
-    read: BSONDocument => Option[T]) extends BSONDocumentReader[T] {
+      read: BSONDocument => Option[T])
+      extends BSONDocumentReader[T] {
 
     override def readOpt(bson: BSONValue): Option[T] = bson match {
-      case doc: BSONDocument => try {
-        read(doc)
-      } catch {
-        case NonFatal(_) => None
-      }
+      case doc: BSONDocument =>
+        try {
+          read(doc)
+        } catch {
+          case NonFatal(_) => None
+        }
 
       case _ => None
     }
 
     override def readOrElse(bson: BSONValue, default: => T): T =
       bson match {
-        case doc: BSONDocument => try {
-          read(doc).getOrElse(default)
-        } catch {
-          case NonFatal(_) => default
-        }
+        case doc: BSONDocument =>
+          try {
+            read(doc).getOrElse(default)
+          } catch {
+            case NonFatal(_) => default
+          }
 
         case _ => default
       }
@@ -252,14 +274,17 @@ object BSONDocumentReader {
   }
 
   private[bson] class FunctionalReader[T](
-    read: BSONDocument => T) extends BSONDocumentReader[T] {
+      read: BSONDocument => T)
+      extends BSONDocumentReader[T] {
 
     def readDocument(doc: BSONDocument): Try[T] = Try(read(doc))
   }
 
   private[bson] class MappedReader[T, U](
-    parent: BSONDocumentReader[T],
-    to: T => U) extends BSONDocumentReader[U] {
+      parent: BSONDocumentReader[T],
+      to: T => U)
+      extends BSONDocumentReader[U] {
+
     def readDocument(doc: BSONDocument): Try[U] =
       parent.readDocument(doc).map(to)
   }
