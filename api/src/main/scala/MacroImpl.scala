@@ -691,7 +691,7 @@ private[bson] class MacroImpl(val c: Context) {
         @inline def doc = q"$writer.writeTry($id)"
 
         Some(classNameTree(tpe).fold(doc) { de =>
-          q"""${doc}.map { _ ++ $de }"""
+          q"${doc}.map { _ ++ $de }"
         })
       } else None
     }
@@ -1348,7 +1348,7 @@ private[bson] class MacroImpl(val c: Context) {
           case _ => found
         }
 
-      val tree = optsTpe match {
+      val tree = optsTpe.dealias match {
         case t @ TypeRef(_, _, lst) if t <:< unionOption =>
           lst.headOption
 
