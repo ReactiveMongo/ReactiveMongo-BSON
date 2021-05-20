@@ -22,7 +22,7 @@ export SBT_OPTS
 
 TEST_ARGS=";error ;test:compile ;mimaReportBinaryIssues"
 
-if [ ! `echo "n$SCALA_VERSION" | sed -e 's/2.13.*/o/'` = "no" ]; then
+if [ `echo "y$SCALA_VERSION" | sed -e 's/2\.11.*/es/'` = "yes" ]; then
   TEST_ARGS=";scapegoat $TEST_ARGS"
 fi
 

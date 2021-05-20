@@ -17,7 +17,7 @@ object Common extends AutoPlugin {
     autoAPIMappings := true,
     useShaded := sys.env.get("REACTIVEMONGO_SHADED").fold(true)(_.toBoolean),
     version := { 
-      val ver = (version in ThisBuild).value
+      val ver = (ThisBuild / version).value
       val suffix = {
         if (useShaded.value) "" // default ~> no suffix
         else "-noshaded"
@@ -53,12 +53,12 @@ object Common extends AutoPlugin {
         Seq.empty
       }
     },
-    scalacOptions in (Compile, doc) := (scalacOptions in Test).value ++ Seq(
+    Compile / doc / scalacOptions := (Test / scalacOptions).value ++ Seq(
       "-unchecked", "-deprecation",
       /*"-diagrams", */"-implicits", "-skip-packages", "highlightextractor") ++
       Opts.doc.title(name.value),
-    unmanagedSourceDirectories in Compile += {
-      val base = (sourceDirectory in Compile).value
+    Compile / unmanagedSourceDirectories += {
+      val base = (Compile / sourceDirectory).value
 
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, n)) if n >= 13 => base / "scala-2.13+"
