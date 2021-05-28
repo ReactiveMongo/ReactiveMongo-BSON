@@ -34,6 +34,7 @@ object MacroTest {
     def test = x
   }
 
+  @com.github.ghik.silencer.silent(".*parameter.*WithImplicit2\\ is\\ never\\ used.*")
   case class WithImplicit2[N: Numeric](ident: String, value: N)
 
   case class RenamedId(
