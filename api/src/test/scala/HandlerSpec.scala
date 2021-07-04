@@ -24,6 +24,12 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
         bin.asTry[Array[Byte]] aka "read #2" must beSuccessfulTry(bytes)
       }
     }
+
+    "be read as UUID" in {
+      val uuid = UUID.randomUUID()
+
+      BSONBinary(uuid).asTry[UUID] must beSuccessfulTry(uuid)
+    }
   }
 
   "Complex Document" should {
