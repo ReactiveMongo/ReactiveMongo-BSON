@@ -243,7 +243,11 @@ private[bson] trait DefaultBSONHandlers
       case BSONString(repr) => Try(UUID fromString repr)
 
       case bin @ BSONBinary(Subtype.UuidSubtype) =>
-        Try(UUID nameUUIDFromBytes bin.byteArray)
+        Try {
+          val bytes = java.nio.ByteBuffer.wrap(bin.byteArray)
+
+          new UUID(bytes.getLong, bytes.getLong)
+        }
 
       case _ => Failure(TypeDoesNotMatchException(
         "BSONString|BSONBinary", bson.getClass.getSimpleName))
