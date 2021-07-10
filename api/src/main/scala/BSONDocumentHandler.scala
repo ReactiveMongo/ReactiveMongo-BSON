@@ -1,5 +1,7 @@
 package reactivemongo.api.bson
 
+import scala.util.Try
+
 /** Reads and writers `T` values to/from [[BSONDocument]]. */
 trait BSONDocumentHandler[T] extends BSONDocumentReader[T]
   with BSONDocumentWriter[T] with BSONHandler[T] {
@@ -8,9 +10,18 @@ trait BSONDocumentHandler[T] extends BSONDocumentReader[T]
     reader = super.beforeRead(f),
     writer = this)
 
+  final override def beforeReadTry(f: BSONDocument => Try[BSONDocument]): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
+    reader = super.beforeReadTry(f),
+    writer = this)
+
   final override def afterWrite(f: BSONDocument => BSONDocument): BSONDocumentHandler[T] = BSONDocumentHandler.provided[T](
     reader = this,
     writer = super.afterWrite(f))
+
+  final override def afterWriteTry(f: BSONDocument => Try[BSONDocument]): BSONDocumentHandler[T] =
+    BSONDocumentHandler.provided[T](
+      reader = this,
+      writer = super.afterWriteTry(f))
 
   @SuppressWarnings(Array("AsInstanceOf"))
   final override def widen[U >: T]: BSONDocumentHandler[U] =
