@@ -4,6 +4,8 @@ import scala.util.{ Failure, Success, Try }
 
 /**
  * A writer that produces a subtype of [[BSONValue]] from an instance of `T`.
+ *
+ * @define afterWriteDescription Prepares a BSON writer that returns the result of applying `f` on the BSON value from this writer.
  */
 trait BSONWriter[T] {
   /**
@@ -33,8 +35,7 @@ trait BSONWriter[T] {
   def writeOpt(t: T): Option[BSONValue] = writeTry(t).toOption
 
   /**
-   * Prepares a BSON writer that returns the result of applying `f`
-   * on the BSON value from this writer.
+   * $afterWriteDescription
    *
    * If the `f` function is not defined for a [[BSONValue]],
    * it will results in a `Failure`.
@@ -53,6 +54,16 @@ trait BSONWriter[T] {
               BSONValue pretty before))
         }
       }
+    }
+
+  /**
+   * $afterWriteDescription
+   *
+   * @param f the safe function to apply
+   */
+  def afterWriteTry(f: BSONValue => Try[BSONValue]): BSONWriter[T] =
+    BSONWriter.from[T] {
+      writeTry(_).flatMap(f)
     }
 
   /**

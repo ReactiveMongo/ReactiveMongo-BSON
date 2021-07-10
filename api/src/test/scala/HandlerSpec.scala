@@ -93,15 +93,23 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           case _: BSONDocument => BSONDocument("name" -> "John")
         }
         val reader2: BSONDocumentReader[String] = reader1.beforeRead(before)
+        val reader3: BSONDocumentReader[String] =
+          reader1.beforeReadTry(_ => Success(BSONDocument("name" -> "John")))
 
         val handler1 = BSONDocumentHandler.provided[String](
           reader2, writer = BSONDocumentWriter[String] { _ => ??? })
 
         // Make sure the type BSONDocumentHandler is preserved
         val handler2: BSONDocumentHandler[String] = handler1.beforeRead(before)
+        val handler3: BSONDocumentHandler[String] =
+          handler1.beforeReadTry(_ => Success(BSONDocument("name" -> "John")))
 
         reader2.readTry(doc) must beSuccessfulTry("John") and {
+          reader3.readTry(doc) must beSuccessfulTry("John")
+        } and {
           handler2.readOpt(doc) must beSome("John")
+        } and {
+          handler3.readOpt(doc) must beSome("John")
         }
       } and {
         val reader3: BSONDocumentReader[Unit] = reader1.afterRead(_ => ())
@@ -147,6 +155,9 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           case _ => expected
         }
 
+        val writer4: BSONDocumentWriter[String] =
+          writer1.afterWriteTry(_ => Success(expected))
+
         val handler1 = BSONDocumentHandler.provided[String](
           reader = BSONDocumentReader[String] { _ => ??? },
           writer = writer3)
@@ -156,10 +167,19 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
           case _ => expected
         }
 
+        val handler3: BSONDocumentHandler[String] =
+          handler1.afterWriteTry(_ => Success(expected))
+
         writer3.writeTry("test") must beSuccessfulTry(expected) and {
           writer3.writeOpt("test") must beSome(expected)
         } and {
+          writer4.writeTry("test") must beSuccessfulTry(expected)
+        } and {
+          writer4.writeOpt("test") must beSome(expected)
+        } and {
           handler2.writeTry("test") must beSuccessfulTry(expected)
+        } and {
+          handler3.writeTry("test") must beSuccessfulTry(expected)
         }
       } and {
         partialSpec(BSONDocumentWriter.option[Int] {

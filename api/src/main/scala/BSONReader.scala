@@ -5,6 +5,8 @@ import scala.util.control.NonFatal
 
 /**
  * A reader that produces an instance of `T` from a subtype of [[BSONValue]].
+ *
+ * @define beforeReadDescription Prepares a [[BSONReader]] that transforms the input BSON value, using the given `f` function, before passing the transformed BSON value to the current reader.
  */
 trait BSONReader[T] { self =>
 
@@ -73,9 +75,7 @@ trait BSONReader[T] { self =>
     new BSONReader.MappedReader[T, U](self, f)
 
   /**
-   * Prepares a [[BSONReader]] that transforms the input BSON value,
-   * using the given `f` function, before passing the transformed BSON value
-   * to the current reader.
+   * $beforeReadDescription
    *
    * {{{
    * import reactivemongo.api.bson.{
@@ -101,6 +101,12 @@ trait BSONReader[T] { self =>
       def readTry(bson: BSONValue): Try[T] =
         underlying.readTry(bson).flatMap(self.readTry)
     }
+
+  /**
+   * $beforeReadDescription
+   */
+  def beforeReadTry(f: BSONValue => Try[BSONValue]): BSONReader[T] =
+    BSONReader.from[T] { f(_).flatMap(self.readTry) }
 
   /**
    * Widens this reader for a compatible type `U`.
