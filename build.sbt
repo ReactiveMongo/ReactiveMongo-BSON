@@ -8,17 +8,17 @@ val baseArtifact = "reactivemongo-bson"
 
 name := "reactivemongo-biːsən"
 
-resolvers in ThisBuild ++= Seq(
+ThisBuild / resolvers ++= Seq(
   Resolver.sonatypeRepo("snapshots"),
   "Typesafe repository releases" at "https://repo.typesafe.com/typesafe/releases/")
 
 val commonSettings = Seq(
-  scalacOptions in (Compile, doc) := (scalacOptions in Test).value ++ Seq(
+  Compile / doc / scalacOptions := (Test / scalacOptions).value ++ Seq(
     "-unchecked", "-deprecation", 
     /*"-diagrams", */"-implicits", "-skip-packages", "highlightextractor") ++
     Opts.doc.title(name.value),
-  unmanagedSourceDirectories in Compile += {
-    val base = (sourceDirectory in Compile).value
+  Compile / unmanagedSourceDirectories += {
+    val base = (Compile / sourceDirectory).value
 
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, n)) if n >= 13 => base / "scala-2.13+"
@@ -28,7 +28,7 @@ val commonSettings = Seq(
 )
 
 val reactivemongoShaded = Def.setting[Seq[ModuleID]] {
-  val v = (version in ThisBuild).value
+  val v = (ThisBuild / version).value
 
   if (Common.useShaded.value) {
     Seq("org.reactivemongo" % "reactivemongo-shaded" % v % Provided)
@@ -53,7 +53,7 @@ val spireLaws = Def.setting[ModuleID] {
     exclude("org.typelevel", s"discipline-scalatest_${sm}"),
 }
 
-libraryDependencies in ThisBuild ++= specsDeps.map(_ % Test)
+ThisBuild / libraryDependencies ++= specsDeps.map(_ % Test)
 
 lazy val api = (project in file("api")).settings(
   commonSettings ++ Seq(
@@ -65,7 +65,9 @@ lazy val api = (project in file("api")).settings(
       "org.typelevel" %% "discipline-specs2" % "1.1.3",
       spireLaws.value,
       "org.slf4j" % "slf4j-simple" % "1.7.31").map(_ % Test),
-    libraryDependencies ++= reactivemongoShaded.value
+    libraryDependencies ++= (
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value) +: (
+      reactivemongoShaded.value)
   ))
 
 lazy val specs2 = (project in file("specs2")).settings(
@@ -93,7 +95,7 @@ lazy val geo = (project in file("geo")).settings(
   commonSettings ++ Seq(
     name := s"${baseArtifact}-geo",
     description := "GeoJSON support for the BSON API",
-    fork in Test := true,
+    Test / fork := true,
     libraryDependencies += slf4jApi % Test
   )
 ).dependsOn(api, monocle % Test)
@@ -111,7 +113,7 @@ lazy val msbCompat = (project in file("msb-compat")).settings(
     name := s"${baseArtifact}-msb-compat",
     description := "Compatibility library with mongo-scala-bson",
     libraryDependencies += {
-      val v = if (scalaBinaryVersion.value != "2.13") "2.8.0" else "4.2.3"
+      val v = if (scalaBinaryVersion.value != "2.13") "2.8.0" else "4.3.0"
 
       "org.mongodb.scala" %% "mongo-scala-bson" % v % Provided
     },

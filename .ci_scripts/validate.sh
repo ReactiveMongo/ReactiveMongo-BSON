@@ -20,13 +20,7 @@ source "$SCRIPT_DIR/jvmopts.sh"
 export JVM_OPTS
 export SBT_OPTS
 
-TEST_ARGS=";error ;test:compile ;mimaReportBinaryIssues"
-
-if [ ! `echo "n$SCALA_VERSION" | sed -e 's/2.13.*/o/'` = "no" ]; then
-  TEST_ARGS=";scapegoat $TEST_ARGS"
-fi
-
-TEST_ARGS="$TEST_ARGS ;warn"
+TEST_ARGS=";error ;test:compile ;mimaReportBinaryIssues ;warn"
 
 if [ ! `echo "n$SCALA_VERSION" | sed -e 's/2.13.*/o/'` = "no" ]; then
   TEST_ARGS="$TEST_ARGS ;msbCompat/testOnly"
