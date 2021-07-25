@@ -64,7 +64,7 @@ lazy val api = (project in file("api")).settings(
       "org.specs2" %% "specs2-matcher-extra" % specsVer,
       "org.typelevel" %% "discipline-specs2" % "1.1.3",
       spireLaws.value,
-      "org.slf4j" % "slf4j-simple" % "1.7.31").map(_ % Test),
+      "org.slf4j" % "slf4j-simple" % "1.7.32").map(_ % Test),
     libraryDependencies ++= (
       "org.scala-lang" % "scala-reflect" % scalaVersion.value) +: (
       reactivemongoShaded.value)
