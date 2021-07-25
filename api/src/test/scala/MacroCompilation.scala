@@ -18,6 +18,7 @@ object MacroCompilation {
 
     implicit def handler2 = Macros.handler[Member2.type]
 
+    @com.github.ghik.silencer.silent(".*Member2.*\\ no\\ case\\ accessor.*")
     implicit def reader2: BSONDocumentReader[Family] = {
       Macros.readerOpts[Family, MacroOptions.Verbose]
     }
