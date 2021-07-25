@@ -13,7 +13,7 @@ object Publish extends AutoPlugin {
     licenses := Seq(
       "Apache 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
     publishMavenStyle := true,
-    publishArtifact in Test := false,
+    Test / publishArtifact := false,
     publishTo := Some(repoUrl).map(repoName at _),
     credentials += Credentials(repoName, env("PUBLISH_REPO_ID"),
       env("PUBLISH_USER"), env("PUBLISH_PASS")),
@@ -21,9 +21,7 @@ object Publish extends AutoPlugin {
     pomPostProcess := {
       val ver = scalaBinaryVersion.value
 
-      val excludes = Seq(
-        s"silencer-lib_${ver}",
-        s"scalac-scapegoat-plugin_${ver}")
+      val excludes = Seq(s"silencer-lib_${ver}")
 
       XmlUtil.transformPomDependencies { dep =>
         val artifact = (dep \ "artifactId").text

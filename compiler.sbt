@@ -44,20 +44,20 @@ ThisBuild / scalacOptions ++= {
   }
 }
 
-scalacOptions in (Compile, console) ~= {
+Compile / console / scalacOptions ~= {
   _.filterNot(o =>
     o.startsWith("-X") || o.startsWith("-Y") || o.startsWith("-P:silencer"))
 }
 
-scalacOptions in Test ~= {
+Test / scalacOptions ~= {
   _.filterNot(_ == "-Xfatal-warnings")
 }
 
-scalacOptions in (Compile, console) ~= {
+Compile / console / scalacOptions ~= {
   _.filterNot { opt => opt.startsWith("-X") || opt.startsWith("-Y") }
 }
 
-scalacOptions in (Test, console) ~= {
+Test / console / scalacOptions ~= {
   _.filterNot { opt => opt.startsWith("-X") || opt.startsWith("-Y") }
 }
 
