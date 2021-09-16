@@ -8,7 +8,7 @@ addSbtPlugin("cchantep" % "sbt-scaladoc-compiler" % "0.2")
 
 addSbtPlugin("cchantep" % "sbt-hl-compiler" % "0.8")
 
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.8.2")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.9.0")
 
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
 
