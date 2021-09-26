@@ -63,7 +63,7 @@ Test / console / scalacOptions ~= {
 
 // Silencer
 ThisBuild / libraryDependencies ++= {
-  val silencerVersion = "1.7.5"
+  val silencerVersion = "1.7.6"
 
   Seq(
     compilerPlugin(("com.github.ghik" %% "silencer-plugin" % silencerVersion).
