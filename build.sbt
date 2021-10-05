@@ -82,10 +82,10 @@ lazy val monocle = (project in file("monocle")).settings(
     name := s"${baseArtifact}-monocle",
     description := "Monocle utilities for BSON values",
     libraryDependencies ++= Seq(
-      "com.github.julien-truffaut" %% "monocle-core" % {
+      "dev.optics" %% "monocle-core" % {
         val ver = scalaBinaryVersion.value
 
-        if (ver == "2.11") "1.6.0-M1"
+        if (ver == "2.11") "3.0.0"
         else "2.0.0-RC1"
       },
       slf4jApi % Test)
