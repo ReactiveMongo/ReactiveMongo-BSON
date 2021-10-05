@@ -85,8 +85,8 @@ lazy val monocle = (project in file("monocle")).settings(
       "dev.optics" %% "monocle-core" % {
         val ver = scalaBinaryVersion.value
 
-        if (ver == "2.11") "3.0.0"
-        else "2.0.0-RC1"
+        if (ver == "2.11") "1.6.0-M1"
+        else "2.0.5"
       },
       slf4jApi % Test)
   )).dependsOn(api)
