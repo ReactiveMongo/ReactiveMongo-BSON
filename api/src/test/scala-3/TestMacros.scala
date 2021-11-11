@@ -93,7 +93,7 @@ object TestMacros:
 
     (withTuple(pure.asTerm) { (tupled: Term) =>
       val fieldMap =
-        helper.withFields(tupled, tupleTpe, tpeElements)
+        helper.withFields(tupled, tupleTpe, tpeElements, debug = _ => ())
 
       val strs: List[Expr[String]] = fieldMap.map {
         case (nme, withField) =>

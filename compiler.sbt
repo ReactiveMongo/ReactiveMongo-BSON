@@ -4,8 +4,8 @@ ThisBuild / crossScalaVersions := Seq(
   "2.11.12",
   scalaVersion.value,
   "2.13.6",
+  //"3.1.2-RC1-bin-SNAPSHOT"
   "3.1.2-RC1-bin-20211022-f7abd32-NIGHTLY"
-  //"3.0.3-RC1-bin-SNAPSHOT" //"3.1.1-RC1-bin-20211011-1ed25ce-NIGHTLY"
 )
 
 crossVersion := CrossVersion.binary
@@ -26,7 +26,7 @@ ThisBuild / scalacOptions ++= {
       "-Xlint",
       "-g:vars"
     )
-  } else Seq.empty
+  } else Seq()
 }
 
 ThisBuild / scalacOptions ++= {
