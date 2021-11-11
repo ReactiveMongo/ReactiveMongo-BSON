@@ -1201,63 +1201,6 @@ final class MacroSpec extends org.specs2.mutable.Specification {
     }
   }
 
-  "DocumentClass" should {
-    import reactivemongo.api.bson.DocumentClass
-
-    "be proved for case class Person" in {
-      implicitly[DocumentClass[Person]] must not(beNull)
-    }
-
-    "be proved for sealed trait UT" in {
-      implicitly[DocumentClass[Union.UT]] must not(beNull)
-    }
-
-    "be proved for BSONDocument" in {
-      implicitly[DocumentClass[BSONDocument]] must not(beNull)
-    }
-
-    "not be proved for" >> {
-      "Int" in {
-        typecheck("implicitly[DocumentClass[Int]]") must failWith(
-          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[Int\\]"
-        )
-      }
-
-      "BSONValue" in {
-        typecheck("implicitly[DocumentClass[BSONValue]]") must failWith(
-          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONValue\\]"
-        )
-      }
-
-      "BSONDateTime" in {
-        typecheck(
-          "implicitly[DocumentClass[reactivemongo.api.bson.BSONDateTime]]"
-        ) must failWith(
-          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONDateTime\\]"
-        )
-      }
-
-      "BSONLong" in {
-        typecheck(
-          "implicitly[DocumentClass[reactivemongo.api.bson.BSONLong]]"
-        ) must failWith(
-          "could\\ not\\ find\\ implicit\\ value .*DocumentClass\\[.*BSONLong\\]"
-        )
-      }
-    }
-  }
-
-  "Utility macros" should {
-    "provide 'migrationRequired' compilation error" in {
-      import reactivemongo.api.bson.migrationRequired
-
-      typecheck("""migrationRequired[String]("Foo"): String""") must failWith(
-        "Migration\\ required:\\ Foo"
-      )
-
-    }
-  }
-
   // ---
 
   def roundtrip[A](

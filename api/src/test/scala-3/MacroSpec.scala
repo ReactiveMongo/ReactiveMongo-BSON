@@ -19,7 +19,7 @@ import reactivemongo.api.bson.{
   FieldNaming,
   MacroConfiguration
 }
-import reactivemongo.api.bson.Macros, Macros.Annotations.NoneAsNull
+import reactivemongo.api.bson.Macros
 import reactivemongo.api.bson.exceptions.{
   HandlerException,
   TypeDoesNotMatchException
@@ -32,18 +32,6 @@ import org.specs2.matcher.TypecheckMatchers._
 import com.github.ghik.silencer.silent
 
 import Typecheck._
-
-object MacroTest {
-  case class Person(firstName: String, lastName: String)
-
-  object Union {
-    sealed trait UT
-  }
-
-  final class FooVal(val v: Int) extends AnyVal
-
-  case class OptionalAsNull(name: String, @NoneAsNull value: Option[String])
-}
 
 import reactivemongo.api.bson.TestUtils.typecheck
 
@@ -96,6 +84,28 @@ class MacroSpec extends org.specs2.mutable.Specification:
         .writeTry(OptionalAsNull("asNull", None)) must beSuccessfulTry(
         BSONDocument("name" -> "asNull", "value" -> BSONNull)
       )
-    } tag "wip"
+    }
+
+    // TODO
+
+    "support generic optional value" >> {
+      val doc1 = BSONDocument("v" -> 1)
+      val none = OptionalGeneric[String](1, None)
+
+      val doc2 = BSONDocument("v" -> 2, "opt" -> "foo")
+      val some = OptionalGeneric(2, Some("foo"))
+
+      // TODO
+
+      "for writer" in {
+        val writer = Macros.writer[OptionalGeneric[String]]
+
+        writer.writeTry(none) must beSuccessfulTry(doc1) and {
+          writer.writeTry(some) must beSuccessfulTry(doc2)
+        }
+      }
+
+      // TODO
+    }
   }
 end MacroSpec
