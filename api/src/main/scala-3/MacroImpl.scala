@@ -914,6 +914,16 @@ private[api] object MacroImpl:
               if (writeCall.asTerm.tpe <:< successBsonVal) {
                 // SafeBSONWriter directly return Success
 
+                val x: List[TypeRepr] = writeCall.asTerm.tpe match {
+                  case AppliedType(_, tps) =>
+                    tps
+
+                  case _ =>
+                    List.empty
+                }
+
+                // TODO: Optimize by also checking writeCall.asTerm.tpe at compile time
+
                 '{
                   ${ writeCall }.get match {
                     case doc: BSONDocument =>
@@ -980,10 +990,19 @@ private[api] object MacroImpl:
                 // TODO: Flatten?
                 if (res.asTerm.tpe <:< successBsonVal) {
                   // SafeBSONWriter directly return Success
+
+                  '{
+                    val v = ${ res }.get
+
+                    println("v=" + v)
+                  }
+
+                  /* TODO
                   '{
                     ${ appendCall(field, '{ ${ res }.get }) }
                     ()
                   }
+                   */
                 } else {
                   '{
                     ${ res }.fold[Unit](
