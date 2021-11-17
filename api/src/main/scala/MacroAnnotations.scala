@@ -1,5 +1,7 @@
 package reactivemongo.api.bson
 
+import scala.reflect.ClassTag
+
 import scala.annotation.{ meta, StaticAnnotation }
 
 private[bson] trait MacroAnnotations { macros: Macros.type =>
@@ -137,9 +139,11 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
     final class DefaultValue[T](val value: T) extends StaticAnnotation {
       @inline override def hashCode: Int = value.hashCode
 
+      private val IsDefault = implicitly[ClassTag[this.type]]
+
       @SuppressWarnings(Array("ComparingUnrelatedTypes"))
       override def equals(that: Any): Boolean = that match {
-        case other: this.type =>
+        case IsDefault(other) =>
           this.value == other.value
 
         case _ => false
@@ -180,9 +184,11 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
     final class Reader[T](val reader: BSONReader[T]) extends StaticAnnotation {
       @inline override def hashCode: Int = reader.hashCode
 
+      private val IsReader = implicitly[ClassTag[this.type]]
+
       @SuppressWarnings(Array("ComparingUnrelatedTypes"))
       override def equals(that: Any): Boolean = that match {
-        case other: this.type =>
+        case IsReader(other) =>
           this.reader == other.reader
 
         case _ => false
@@ -217,9 +223,11 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
     final class Writer[T](val writer: BSONWriter[T]) extends StaticAnnotation {
       @inline override def hashCode: Int = writer.hashCode
 
+      private val IsWriter = implicitly[ClassTag[this.type]]
+
       @SuppressWarnings(Array("ComparingUnrelatedTypes"))
       override def equals(that: Any): Boolean = that match {
-        case other: this.type =>
+        case IsWriter(other) =>
           this.writer == other.writer
 
         case _ => false

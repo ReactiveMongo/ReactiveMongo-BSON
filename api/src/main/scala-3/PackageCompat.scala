@@ -1,5 +1,9 @@
 package reactivemongo.api
 
+import scala.util.{ Failure, Success }
+
+import reactivemongo.api.bson.{ BSONArray, BSONWriter }
+
 private[api] trait PackageCompat:
 
   /**
@@ -10,3 +14,5 @@ private[api] trait PackageCompat:
    */
   inline def migrationRequired[A](inline details: String): A =
     ${ reactivemongo.api.bson.MacroImpl.migrationRequired[A]('details) }
+
+end PackageCompat

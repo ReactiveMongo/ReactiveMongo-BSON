@@ -18,7 +18,10 @@ import scala.util.Success
 
 import org.specs2.specification.core.Fragments
 
-final class HandlerSpec extends org.specs2.mutable.Specification {
+final class HandlerSpec
+    extends org.specs2.mutable.Specification
+    with HandlerExtraSpec {
+
   "Handler".title
 
   import exceptions.TypeDoesNotMatchException
@@ -1050,7 +1053,7 @@ final class HandlerSpec extends org.specs2.mutable.Specification {
   }
 
   "Tuple" should {
-    "be read" >> {
+    "be handle from document" >> {
       val invalidDoc = BSONDocument("ok" -> 0)
       val invalidProduct = Tuple1(0)
       val invalidArr = BSONArray("ko")

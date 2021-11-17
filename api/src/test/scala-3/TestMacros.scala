@@ -17,7 +17,7 @@ object TestMacros:
     }
 
     val tpe = TypeRepr.of[T]
-    val names = helper.productOf(tpe) match {
+    val names = Expr.summon[ProductOf[T]] match {
       case Some(expr) =>
         helper.productElements(tpe, expr).map(_.toString)
 
@@ -30,10 +30,10 @@ object TestMacros:
 
   // ---
 
-  inline def testWithTuple[T](pure: T): String =
+  inline def testWithTuple[T <: Product](pure: T): String =
     ${ testWithTupleMacro[T]('{ pure }) }
 
-  def testWithTupleMacro[T: Type](
+  def testWithTupleMacro[T <: Product: Type](
       pure: Expr[T]
     )(using
       q: Quotes
@@ -46,29 +46,31 @@ object TestMacros:
     }
 
     val tpe = TypeRepr.of[T]
-    val tpeElements = helper
-      .productOf(tpe)
+    val tpeElements = Expr
+      .summon[ProductOf[T]]
       .map {
         helper.productElements(tpe, _)
       }
       .get
+
     val types = tpeElements.map(_._2)
 
-    val (tupleTpe, withTuple) = helper.withTuple(tpe, types)
+    val (tupleTpe, withTuple) =
+      helper.withTuple[T, T, String](tpe, '{ identity[T] }, types)
 
-    (withTuple(pure.asTerm) { (tupled: Term) =>
+    withTuple(pure) { (tupled: Expr[T]) =>
       val a = Expr(tupleTpe.show)
 
       '{
-        $a + "/" + ${ tupled.asExpr }.toString
-      }.asTerm
-    }).asExprOf[String]
+        $a + "/" + ${ tupled }.toString
+      }
+    }
   }
 
-  inline def testWithFields[T](pure: T): String =
+  inline def testWithFields[T <: Product](pure: T): String =
     ${ testWithFieldsMacro[T]('{ pure }) }
 
-  def testWithFieldsMacro[T: Type](
+  def testWithFieldsMacro[T <: Product: Type](
       pure: Expr[T]
     )(using
       q: Quotes
@@ -81,17 +83,18 @@ object TestMacros:
     }
 
     val tpe = TypeRepr.of[T]
-    val tpeElements = helper
-      .productOf(tpe)
+    val tpeElements = Expr
+      .summon[ProductOf[T]]
       .map {
         helper.productElements(tpe, _)
       }
       .get
     val types = tpeElements.map(_._2)
 
-    val (tupleTpe, withTuple) = helper.withTuple(tpe, types)
+    val (tupleTpe, withTuple) =
+      helper.withTuple[T, T, String](tpe, '{ identity[T] }, types)
 
-    (withTuple(pure.asTerm) { (tupled: Term) =>
+    withTuple(pure) { (tupled: Expr[T]) =>
       val fieldMap =
         helper.withFields(tupled, tupleTpe, tpeElements, debug = _ => ())
 
@@ -104,8 +107,8 @@ object TestMacros:
           }).asExprOf[String]
       }.toList
 
-      '{ ${ Expr ofList strs }.mkString(",") }.asTerm
-    }).asExprOf[String]
+      '{ ${ Expr ofList strs }.mkString(",") }
+    }
   }
 
 end TestMacros

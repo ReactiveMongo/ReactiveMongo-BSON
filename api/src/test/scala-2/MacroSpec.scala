@@ -33,7 +33,10 @@ import com.github.ghik.silencer.silent
 
 import Typecheck._
 
-final class MacroSpec extends org.specs2.mutable.Specification {
+final class MacroSpec
+    extends org.specs2.mutable.Specification
+    with MacroExtraSpec {
+
   "Macros" title
 
   import MacroTest._

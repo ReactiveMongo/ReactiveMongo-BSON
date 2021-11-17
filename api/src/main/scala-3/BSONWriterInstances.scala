@@ -107,4 +107,30 @@ private[bson] trait BSONWriterInstances:
     bsonJavaScriptWSWriter,
     collectionWriter
   }
+
+  given tuple2Writer[
+      A: BSONWriter,
+      B: BSONWriter
+  ]: BSONWriter[(A, B)] = BSONWriter.tuple2
+
+  given tuple3Writer[
+      A: BSONWriter,
+      B: BSONWriter,
+      C: BSONWriter
+  ]: BSONWriter[(A, B, C)] = BSONWriter.tuple3
+
+  given tuple4Writer[
+      A: BSONWriter,
+      B: BSONWriter,
+      C: BSONWriter,
+      D: BSONWriter
+  ]: BSONWriter[(A, B, C, D)] = BSONWriter.tuple4
+
+  given tuple5Writer[
+      A: BSONWriter,
+      B: BSONWriter,
+      C: BSONWriter,
+      D: BSONWriter,
+      E: BSONWriter
+  ]: BSONWriter[(A, B, C, D, E)] = BSONWriter.tuple5
 end BSONWriterInstances

@@ -87,4 +87,30 @@ private[bson] trait BSONReaderInstances:
     bsonJavaScriptWSReader,
     collectionReader
   }
+
+  given tuple2Reader[
+      A: BSONReader,
+      B: BSONReader
+  ]: BSONReader[(A, B)] = BSONReader.tuple2
+
+  given tuple3Reader[
+      A: BSONReader,
+      B: BSONReader,
+      C: BSONReader
+  ]: BSONReader[(A, B, C)] = BSONReader.tuple3
+
+  given tuple4Reader[
+      A: BSONReader,
+      B: BSONReader,
+      C: BSONReader,
+      D: BSONReader
+  ]: BSONReader[(A, B, C, D)] = BSONReader.tuple4
+
+  given tuple5Reader[
+      A: BSONReader,
+      B: BSONReader,
+      C: BSONReader,
+      D: BSONReader,
+      E: BSONReader
+  ]: BSONReader[(A, B, C, D, E)] = BSONReader.tuple5
 end BSONReaderInstances

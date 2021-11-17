@@ -1,0 +1,1 @@
+trait DocumentClassExtraSpec { _: DocumentClassSpec => }

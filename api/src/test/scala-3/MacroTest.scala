@@ -1,5 +1,7 @@
 import scala.util.{ Failure, Success }
 
+import scala.deriving.Mirror
+
 import reactivemongo.api.bson.{
   BSONArray,
   BSONDocument,
@@ -12,11 +14,53 @@ import reactivemongo.api.bson.{
   Macros
 }, Macros.Annotations.{ DefaultValue, Flatten, Ignore, Key, NoneAsNull, Writer }
 
-object MacroTest {
+/* TODO
+trait MacroTestCompat { _self: MacroTest.type =>
+  given Conversion[Union.UB, Tuple1[String]] = (ub: Union.UB) => Tuple(ub.s)
+
+  given Mirror.ProductOf[Union.UB] = new Mirror.Product {
+    type MirroredType = Union.UB
+    type MirroredElemTypes = Tuple1[String]
+    type MirroredMonoType = Union.UB
+    type MirroredLabel = "UB"
+    type MirroredElemLabels = Tuple1["s"]
+
+    def fromProduct(p: Product): MirroredMonoType =
+      new Union.UB(p.productElement(0).asInstanceOf[String])
+  }
+}
+ */
+
+object MacroTest { // TODO: extends MacroTestCompat {
   case class Person(firstName: String, lastName: String)
 
   object Union {
     sealed trait UT
+
+    case class UA(n: Int) extends UT
+
+    class UB(val s: String) extends UT
+
+    object UB {
+
+      /* TODO
+      implicit val handler: BSONWriter[UB] =
+        Macros.writer[UB] // TODO: Handler[UB] = Macros.handler[UB]
+       */
+
+    }
+
+    case class UC(s: String) extends UT
+    case class UD(s: String) extends UT
+    object UE extends UT
+    case object UF extends UT
+
+    trait UT2
+    case class UA2(n: Int) extends UT2
+    case class UB2(s: String) extends UT2
+
+    case object DoNotExtendsA
+    object DoNotExtendsB
   }
 
   case class Bar(name: String, next: Option[Bar])
@@ -61,6 +105,8 @@ object MacroTest {
   case class InvalidRecursive(
       property: String,
       @Flatten parent: InvalidRecursive)
+
+  case class InvalidNonDoc(@Flatten name: String)
 
   // ---
 

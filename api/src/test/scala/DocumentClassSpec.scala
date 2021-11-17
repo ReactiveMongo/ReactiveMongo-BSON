@@ -11,7 +11,10 @@ import org.specs2.matcher.TypecheckMatchers._
 
 abstract class AbstractClassA
 
-final class DocumentClassSpec extends org.specs2.mutable.Specification {
+final class DocumentClassSpec
+    extends org.specs2.mutable.Specification
+    with DocumentClassExtraSpec {
+
   "Document class".title
 
   import MacroTest._

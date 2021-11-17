@@ -37,8 +37,7 @@ import Typecheck._
 
 import reactivemongo.api.bson.TestUtils.typecheck
 
-// TODO: Common MacroSpec
-class MacroSpec extends org.specs2.mutable.Specification:
+class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
   "Macros".title
 
   import MacroTest._
@@ -138,7 +137,7 @@ class MacroSpec extends org.specs2.mutable.Specification:
       }
 
       "with Pair type having a default field value" in {
-        //val pairHandler = Macros.handler[Pair]
+        val pairHandler = Macros.writer[Pair] // TODO: Macros.handler[Pair]
         val pairWriter = Macros.writer[Pair]
         //val pairReader = Macros.reader[Pair]
 
@@ -148,8 +147,7 @@ class MacroSpec extends org.specs2.mutable.Specification:
         val doc1 = BSONDocument("right" -> "right1")
         val doc2 = BSONDocument("right" -> "right2")
 
-        /* TODO: pairHandler.writeTry(pair1) must beSuccessfulTry(doc1) and*/
-        {
+        pairHandler.writeTry(pair1) must beSuccessfulTry(doc1) and {
           pairWriter.writeTry(pair2) must beSuccessfulTry(doc2)
         } and {
           /* TODO
@@ -181,10 +179,13 @@ class MacroSpec extends org.specs2.mutable.Specification:
         /* TODO
         implicit val reader: BSONDocumentReader[IgnoredAndKey] =
           Macros.reader[IgnoredAndKey]
-
-        implicit val handler: BSONDocumentHandler[IgnoredAndKey] =
-          Macros.handler[IgnoredAndKey]
          */
+
+        implicit val handler: BSONDocumentWriter[IgnoredAndKey] =
+          Macros.writer[IgnoredAndKey]
+        /* TODO
+        implicit val handler: BSONDocumentHandler[IgnoredAndKey] =
+         Macros.handler[IgnoredAndKey] */
 
         val expected = BSONDocument("second" -> "foo")
         val v = IgnoredAndKey(Person("john", "doe"), "foo")
@@ -195,7 +196,7 @@ class MacroSpec extends org.specs2.mutable.Specification:
         )
 
         writer.writeTry(v) must beSuccessfulTry(expected) and {
-          ok /* TODO: handler.writeTry(v) must beSuccessfulTry(expected) */
+          handler.writeTry(v) must beSuccessfulTry(expected)
         } /* TODO: and {
           handler.readTry(expected) must beSuccessfulTry(withDefault)
         } and {
@@ -227,7 +228,7 @@ class MacroSpec extends org.specs2.mutable.Specification:
     "handle case class with implicits" >> {
       "should fail on Scala3 without custom ProductOf" in {
         typecheck("Macros.writer[WithImplicit2[Double]]") must failWith(
-          ".*ProductOf\\[MacroTest\\$\\.WithImplicit2\\]"
+          ".*ProductOf\\[MacroTest\\$\\.WithImplicit2\\[.*Double\\]\\]"
         )
       }
     }
@@ -261,9 +262,6 @@ class MacroSpec extends org.specs2.mutable.Specification:
     }
 
     "be generated with @Flatten annotation" in {
-      Macros.writer[InvalidRecursive]
-
-      /* TODO
       typecheck("Macros.writer[InvalidRecursive]") must failWith(
         "Cannot\\ flatten\\ writer\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type"
       ) and {
@@ -277,8 +275,6 @@ class MacroSpec extends org.specs2.mutable.Specification:
 
         w.writeTry(lr) must beSuccessfulTry(doc)
       }
-       */
-      ok
     }
 
     "support @Writer annotation" in {
@@ -348,6 +344,7 @@ class MacroSpec extends org.specs2.mutable.Specification:
     }
      */
 
+    /* TODO
     "be generated for Map property" >> {
       "with Locale keys" in {
         import java.util.Locale
@@ -388,5 +385,6 @@ class MacroSpec extends org.specs2.mutable.Specification:
 
       } */
     }
+     */
   }
 end MacroSpec
