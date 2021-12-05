@@ -67,6 +67,8 @@ object MacroTest { // TODO: extends MacroTestCompat {
 
   final class FooVal(val v: Int) extends AnyVal
 
+  final class BarVal(val v: Exception) extends AnyVal
+
   case class OptionalAsNull(name: String, @NoneAsNull value: Option[String])
   case class OptionalGeneric[T](v: Int, opt: Option[T])
 
@@ -162,4 +164,8 @@ object MacroTest { // TODO: extends MacroTestCompat {
   case class WithMap1(
       name: String,
       localizedDescription: Map[java.util.Locale, String])
+
+  case class WithMap2(
+      name: String,
+      values: Map[FooVal, String])
 }

@@ -58,7 +58,29 @@ object Macros extends MacroAnnotations:
    * }}}
    */
   inline def valueWriter[A <: AnyVal]: BSONWriter[A] =
-    ${ MacroImpl.valueWriter[A, MacroOptions.Default] }
+    ${ MacroImpl.anyValWriter[A, MacroOptions.Default] }
+
+  /**
+   * Creates a [[BSONWriter]] for an [[https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html opaque type alias]] `A`, that itself aliases a [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]].
+   *
+   * The inner value will be directly writen from BSON value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONWriter, Macros }
+   *
+   * opaque type Logarithm = Double
+   *
+   * object Logarithm {
+   *   def apply(value: Double): Logarithm = value
+   * }
+   *
+   * val vwriter: BSONWriter[Logarithm] = Macros.valueWriter[Logarithm]
+   *
+   * vwriter.writeTry(Logarithm(1.2D)) // Success(BSONDouble(1.2))
+   * }}}
+   */
+  inline def valueWriter[A: OpaqueAlias]: BSONWriter[A] =
+    ${ MacroImpl.opaqueAliasWriter[A, MacroOptions.Default] }
 
   /**
    * $writerMacro.
@@ -112,3 +134,26 @@ object Macros extends MacroAnnotations:
   }
  */
 end Macros
+
+sealed trait OpaqueAlias[T] {}
+
+object OpaqueAlias:
+  import scala.quoted.{ Expr, Quotes, Type }
+
+  inline given materialized[T]: OpaqueAlias[T] = ${ impl[T] }
+
+  private def impl[T: Type](using q: Quotes): Expr[OpaqueAlias[T]] = {
+    import q.reflect.*
+
+    TypeRepr.of[T] match {
+      case ref: TypeRef if ref.isOpaqueAlias =>
+        ref.asType match {
+          case tpe @ '[t] => '{ new OpaqueAlias[T] {} }
+        }
+
+      case tpr =>
+        report.errorAndAbort(s"${tpr.show} is not an opaque alias")
+    }
+  }
+
+end OpaqueAlias

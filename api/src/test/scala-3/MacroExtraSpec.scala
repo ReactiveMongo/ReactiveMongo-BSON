@@ -1,24 +1,19 @@
-import reactivemongo.api.bson.{ BSONDocument, BSONDocumentWriter, Macros }
+import reactivemongo.api.bson.{
+  BSONDocument,
+  BSONDocumentWriter,
+  BSONDouble,
+  BSONInteger,
+  BSONWriter,
+  Macros
+}
 
 import reactivemongo.api.bson.TestUtils.typecheck
 
 import org.specs2.matcher.TypecheckMatchers._
 
-case class Lorem(
-    name: String,
-    kpi: Int *: Int *: EmptyTuple,
-    tup: Tuple2[Float, Double])
-
-object Lorem {
-  import reactivemongo.api.bson._ // TODO: Move implicit not to have this
-
-  val x = summon[BSONWriter[Int *: Int *: EmptyTuple]]
-
-  val writer = Macros.writer[Lorem] // TODO: Test
-}
-
 trait MacroExtraSpec { self: MacroSpec =>
   import MacroTest._
+  import MacroExtraTest._
 
   "Union types" should {
     "be supported" >> {
@@ -72,4 +67,44 @@ trait MacroExtraSpec { self: MacroSpec =>
       }
     }
   }
+
+  "Opaque type aliases" should {
+    "be supported for Double" in {
+      val writer = Macros.valueWriter[Logarithm]
+
+      writer.writeTry(Logarithm(1.2D)) must beSuccessfulTry(
+        BSONDouble(1.2D)
+      ) and {
+        writer.writeOpt(Logarithm(23.4D)) must beSome(BSONDouble(23.4D))
+      }
+    }
+
+    "be supported for custom Value class" in {
+      given innerWriter: BSONWriter[FooVal] = Macros.valueWriter
+      val writer = Macros.valueWriter[OpaqueFoo]
+
+      val one = OpaqueFoo(new FooVal(1))
+      val two = OpaqueFoo(new FooVal(2))
+
+      writer.writeTry(one) must beSuccessfulTry(BSONInteger(1)) and {
+        writer.writeOpt(two) must beSome(BSONInteger(2))
+      }
+    }
+  }
 }
+
+object MacroExtraTest:
+  import MacroTest._
+
+  opaque type Logarithm = Double
+
+  object Logarithm {
+    def apply(value: Double): Logarithm = value
+  }
+
+  opaque type OpaqueFoo = FooVal
+
+  object OpaqueFoo {
+    def apply(value: FooVal): OpaqueFoo = value
+  }
+end MacroExtraTest

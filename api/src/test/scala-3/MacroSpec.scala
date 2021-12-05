@@ -326,15 +326,12 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
       }
     }
 
-    /* TODO
     "be generated for Value class" in {
       val writer = Macros.valueWriter[FooVal]
 
-      typecheck("Macros.valueWriter[Person]") must failWith(
-        "Person.* do not conform to.* AnyVal"
-      ) and {
+      typecheck("Macros.valueWriter[Person]") must failWith(".*Person.*") and {
         typecheck("Macros.valueWriter[BarVal]") must failWith(
-          "Implicit not found for 'Exception': .*BSONWriter\\[java\\.lang\\.Exception\\]"
+          ".*not found.*BSONWriter\\[.*Exception\\]"
         )
       } and {
         writer.writeTry(new FooVal(1)) must beSuccessfulTry(BSONInteger(1))
@@ -342,9 +339,7 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
         writer.writeOpt(new FooVal(2)) must beSome(BSONInteger(2))
       }
     }
-     */
 
-    /* TODO
     "be generated for Map property" >> {
       "with Locale keys" in {
         import java.util.Locale
@@ -365,7 +360,6 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
 
       }
 
-      /* TODO
       "with custom KeyWriter for FooVal keys" in {
         import reactivemongo.api.bson.KeyWriter
 
@@ -382,9 +376,7 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
             "values" -> BSONDocument("1" -> "Lorem")
           )
         )
-
-      } */
+      }
     }
-     */
   }
 end MacroSpec

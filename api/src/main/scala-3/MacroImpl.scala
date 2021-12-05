@@ -6,12 +6,12 @@ import scala.collection.View
 import scala.collection.mutable.{ Builder => MBuilder }
 
 import scala.deriving.Mirror.ProductOf
-import scala.quoted.{ quotes, Expr, Quotes, Type }
+import scala.quoted.{ Expr, Quotes, Type }
 import scala.reflect.ClassTag
 
 import exceptions.HandlerException
 
-// TODO: Enum
+// TODO: Enum, opaque type alias (alias Value class)
 private[api] object MacroImpl:
   import Macros.Annotations,
   Annotations.{ DefaultValue, Ignore, Key, Writer, Flatten, NoneAsNull /*,
@@ -66,39 +66,138 @@ private[api] object MacroImpl:
     writerWithConfig[A, Opts](conf)
    */
 
-  def valueWriter[A <: AnyVal: Type, Opts <: MacroOptions.Default: Type](
+  private inline def withSelfValWriter[T](
+      f: BSONWriter[T] => (T => TryResult[BSONValue])
+    ): BSONWriter[T] = new BSONWriter[T] { self =>
+    val underlying = f(self)
+    def writeTry(v: T) = underlying(v)
+  }
+
+  /* TODO: Test
+   opaque type Foo = Double
+
+   class FooVal(v: Double) extends AnyVal
+   opaque type Bar = FooVar
+   */
+  def opaqueAliasWriter[A: Type, Opts <: MacroOptions.Default: Type](
       using
-      q: Quotes,
-      wat: Type[Writer],
-      it: Type[Ignore],
-      kt: Type[Key],
-      flt: Type[Flatten],
-      nant: Type[NoneAsNull]
+      q: Quotes
     ): Expr[BSONWriter[A]] = {
     import q.reflect.*
 
-    /* TODO
-    val wlm = Lambda(
-      Symbol.spliceOwner,
-      MethodType(List("macroVal"))(
-        _ => List(TypeRepr.of[A]),
-        _ => TypeRepr.of[TryResult[BSONValue]]
-      ),
-      {
-        case (_ /* TODO: owner */, List(arg: Term)) =>
-          createHelper[A, Opts](implicitOptionsConfig)
-            .valueWriterBody(arg, ??? /* TODO */ )
-            .asTerm
+    type IsAnyVal[T <: AnyVal] = T
+
+    type IsString[T <: String] = T
+
+    TypeRepr.of[A] match {
+      case ref: TypeRef if ref.isOpaqueAlias => {
+        val underlyingTpr = ref.translucentSuperType
+
+        underlyingTpr.asType match {
+          case '[IsString[t]] =>
+            '{
+              @SuppressWarnings(Array("AsInstanceOf"))
+              def writer =
+                summon[BSONWriter[String]].asInstanceOf[BSONWriter[A]]
+
+              writer
+            }
+
+          case tpe @ '[IsAnyVal[t]] =>
+            Expr.summon[BSONWriter[t]] match {
+              case Some(w) =>
+                '{
+                  @SuppressWarnings(Array("AsInstanceOf"))
+                  def writer = ${ w }.asInstanceOf[BSONWriter[A]]
+
+                  writer
+                }
+
+              case _ =>
+                report.errorAndAbort(s"Instance not found: ${classOf[BSONWriter[_]].getName}[${underlyingTpr.typeSymbol.fullName}]")
+            }
+
+          case _ =>
+            report.errorAndAbort(
+              s"${underlyingTpr.show} is not a value class"
+            )
+        }
+      }
+
+      case tpr =>
+        report.errorAndAbort(s"${tpr.show} is not an opaque alias")
+    }
+  }
+
+  def anyValWriter[A <: AnyVal: Type, Opts <: MacroOptions.Default: Type](
+      using
+      q: Quotes
+    ): Expr[BSONWriter[A]] = {
+    import q.reflect.*
+
+    type O = Opts
+
+    val helper = new OptionSupport with MacroLogging {
+      type Q = q.type
+
+      val quotes = q
+
+      type Opts = O
+      val optsTpe = Type.of[O]
+      val optsTpr = TypeRepr.of(using optsTpe)
+
+      val disableWarningsTpe = Type.of[MacroOptions.DisableWarnings]
+      val verboseTpe = Type.of[MacroOptions.Verbose]
+    }
+
+    val aTpr = TypeRepr.of[A]
+
+    def body(macroVal: Expr[A]): Expr[TryResult[BSONValue]] = {
+      val writer = aTpr.typeSymbol.primaryConstructor.paramSymss match {
+        case List(v: Symbol) :: Nil =>
+          v.tree match {
+            case vd: ValDef => {
+              val tpr = vd.tpt.tpe
+
+              tpr.asType match {
+                case vtpe @ '[t] =>
+                  Expr.summon[BSONWriter[t]] match {
+                    case Some(writer) => {
+                      val term = macroVal.asTerm
+                      val inner = term
+                        .select(term.symbol.fieldMember(v.name))
+                        .asExprOf[t](using vtpe)
+
+                      '{ ${ writer }.writeTry($inner) }
+                    }
+
+                    case None =>
+                      report.errorAndAbort(s"Instance not found: ${classOf[BSONWriter[_]].getName}[${tpr.typeSymbol.fullName}]")
+                  }
+              }
+            }
+
+            case _ =>
+              report.errorAndAbort(
+                s"Constructor parameter expected, found: ${v}"
+              )
+          }
 
         case _ =>
-          report.errorAndAbort("Fails compile value writer")
+          report.errorAndAbort(
+            s"Cannot resolve value writer for '${aTpr.typeSymbol.name}'"
+          )
+
       }
-    ).asExprOf[A => TryResult[BSONValue]]
 
-    '{ BSONWriter.from[A](${ wlm }) }
-     */
+      helper.debug(s"// Value writer\n${writer.show}")
 
-    ???
+      writer
+    }
+
+    '{
+      BSONWriter.from[A] { (macroVal: A) => ${ body('{ macroVal }) } }
+    }
   }
 
   /* TODO
@@ -207,14 +306,13 @@ private[api] object MacroImpl:
   def migrationRequired[A: Type](
       details: Expr[String]
     )(using
-      Quotes
+      q: Quotes
     ): Expr[A] = {
     if (
       !sys.props.get("reactivemongo.api.migrationRequired.nonFatal").exists {
         v => v.toLowerCase == "true" || v.toLowerCase == "yes"
       }
     ) {
-      val q = quotes
       val msg: String = q.value(details) match {
         case Some(str) =>
           s"Migration required: $str"
@@ -253,7 +351,7 @@ private[api] object MacroImpl:
   })
    */
 
-  private inline def withSelfWriter[T](
+  private inline def withSelfDocWriter[T](
       f: BSONDocumentWriter[T] => (T => TryResult[BSONDocument])
     ): BSONDocumentWriter[T] = {
     new BSONDocumentWriter[T] { self =>
@@ -262,7 +360,7 @@ private[api] object MacroImpl:
     }
   }
 
-  private def writerWithConfig[A: Type, Opts: Type](
+  private def writerWithConfig[A: Type, Opts <: MacroOptions.Default: Type](
       config: Expr[MacroConfiguration]
     )(using
       q: Quotes,
@@ -277,7 +375,7 @@ private[api] object MacroImpl:
     val helper = createHelper[A, Opts](config)
 
     '{
-      withSelfWriter {
+      withSelfDocWriter {
         (forwardBSONWriter: BSONDocumentWriter[A]) =>
           { (macroVal: A) =>
             ${ helper.writeBody('{ macroVal }, '{ forwardBSONWriter }) }
@@ -328,10 +426,11 @@ private[api] object MacroImpl:
     }
   }
 
-  private def createHelper[A, Opts: Type](
+  private def createHelper[A, O <: MacroOptions.Default](
       config: Expr[MacroConfiguration]
     )(using
       _quotes: Quotes,
+      ot: Type[O],
       at: Type[A],
       dwt: Type[BSONDocumentWriter],
       wat: Type[Writer],
@@ -339,12 +438,15 @@ private[api] object MacroImpl:
       it: Type[Ignore],
       kt: Type[Key],
       flt: Type[Flatten],
-      nant: Type[NoneAsNull]
+      nant: Type[NoneAsNull],
+      dit: Type[MacroOptions.DisableWarnings],
+      vt: Type[MacroOptions.Verbose]
     ) =
     new Helper[A](config)
       with MacroTopHelpers[A]
       //with ReaderHelpers[A]
       with WriterHelpers[A] {
+      protected type Opts = O
       type Q = _quotes.type
       val quotes = _quotes
 
@@ -357,11 +459,14 @@ private[api] object MacroImpl:
       val keyType = kt
       val flattenType = flt
       val noneAsNullType = nant
+      val disableWarningsTpe = dit
+      val verboseTpe = vt
 
       val aTpe = at
       val aTpeRepr = TypeRepr.of[A](using at)
 
-      val optsTpe = TypeRepr.of[Opts]
+      val optsTpe = ot
+      val optsTpr = TypeRepr.of[Opts](using optsTpe)
     }
 
   private abstract class Helper[A](
@@ -400,17 +505,6 @@ private[api] object MacroImpl:
       val writer = documentWriter(macroVal, forwardExpr, top = true)
 
       //TODO:debug(s"// Writer\n${writer.show}")
-
-      writer
-    }
-
-    def valueWriterBody(
-        macroVal: Expr[A],
-        forwardExpr: Expr[BSONWriter[_ /*TODO*/ ]]
-      ): Expr[TryResult[BSONValue]] = {
-      val writer = valueWriterTree(macroVal, forwardExpr)
-
-      debug(s"// Value writer\n${writer.show}")
 
       writer
     }
@@ -624,51 +718,6 @@ private[api] object MacroImpl:
           ${ doc }.map { _ ++ discriminator }
         }
       }
-    }
-
-    def valueWriterTree(
-        macroVal: Expr[A],
-        forwardExpr: Expr[BSONWriter[_ /*TODO*/ ]]
-      ): Expr[TryResult[BSONDocument]] = {
-      /* TODO
-      val ctor = aTpeRepr.typeSymbol.primaryConstructor
-
-      ctor.paramSymss match {
-        case List(v: Symbol) :: Nil =>
-          v.tree match {
-            case term: Term => {
-              val typ = term.tpe
-              val resolve = resolver(Map.empty, forwardExpr, debug)(writerType)
-
-              resolve(typ) match {
-                case Some((writer, _)) => {
-                  val cp = macroVal.select(
-                    Symbol.newMethod(macroVal.symbol, v.name, typ)
-                  )
-
-                  tryWriteDoc(writer.asExprOf[BSONDocumentWriter[_]], cp)
-                }
-
-                case None =>
-                  report.errorAndAbort(s"Instance not found: ${classOf[BSONWriter[_]].getName}[${prettyType(typ)}]")
-              }
-            }
-
-            case _ =>
-              report.errorAndAbort(
-                s"Constructor parameter expected, found: ${v}"
-              )
-          }
-
-        case _ =>
-          report.errorAndAbort(
-            s"Cannot resolve value writer for '${aTpeRepr.typeSymbol.name}'"
-          )
-
-      }
-       */
-
-      ???
     }
 
     /*
@@ -1119,19 +1168,26 @@ private[api] object MacroImpl:
 
             val nme = s"${pname}LeafVal"
 
+            type IsAnyVal[U <: AnyVal] = U
+
             lt.asType match {
-              case tt @ '[at] =>
+              case tt @ '[IsAnyVal[at]] =>
                 val subHelper = createSubHelper[at](tt, lt)
 
                 val wlm = { // Expr[at => TryResult[_ <: BSONValue]]
                   if (lt <:< anyValTpe) {
-                    '{ (arg: at) =>
-                      ${ subHelper.valueWriterTree('{ arg }, forwardExpr) }
+                    given ot: Type[Opts] = optsTpe
+
+                    '{
+                      val subWriter: BSONWriter[at] =
+                        ${ anyValWriter[at, Opts] }
+
+                      subWriter.writeTry(_: at)
                     }
                   } else {
                     '{
                       val subWriter: BSONDocumentWriter[at] =
-                        withSelfWriter {
+                        withSelfDocWriter {
                           (forwardBSONWriter: BSONDocumentWriter[at]) =>
                             { (macroVal: at) =>
                               ${
@@ -1167,6 +1223,7 @@ private[api] object MacroImpl:
         with ImplicitResolver[T]
         with QuotesHelper {
 
+        type Opts = self.Opts
         type Q = self.quotes.type
         val quotes = self.quotes
 
@@ -1181,6 +1238,9 @@ private[api] object MacroImpl:
         val aTpe = tt
         val aTpeRepr = tpr
         val optsTpe = self.optsTpe
+        val optsTpr = self.optsTpr
+        val disableWarningsTpe = self.disableWarningsTpe
+        val verboseTpe = self.verboseTpe
       }
 
     // --- Type helpers ---
@@ -1206,17 +1266,17 @@ private[api] object MacroImpl:
       }
   }
 
-  sealed trait MacroHelpers[A] { _i: ImplicitResolver[A] =>
-    protected val quotes: Quotes
+  sealed trait MacroHelpers[A] extends OptionSupport with MacroLogging {
+    _i: ImplicitResolver[A] =>
+
+    type Q <: Quotes
+    protected val quotes: Q
 
     import quotes.reflect.*
 
     // format: off
-    protected given q: Quotes = quotes
+    protected given q: Q = quotes
     // format: on
-
-    /* Type of compile-time options; See [[MacroOptions]] */
-    protected def optsTpe: TypeRepr
 
     protected[api] def aTpe: Type[A]
     protected[api] def aTpeRepr: TypeRepr
@@ -1343,6 +1403,7 @@ private[api] object MacroImpl:
       }
     }
 
+    /* TODO: Remove
     @inline protected def companion(tpr: TypeRepr): Symbol =
       tpr.typeSymbol.companionModule
 
@@ -1359,27 +1420,7 @@ private[api] object MacroImpl:
           None
       }
     }
-
-    // --- Context helpers ---
-
-    @inline protected final def hasOption[O: Type]: Boolean =
-      optsTpe <:< TypeRepr.of[O]
-
-    /* Prints a compilation warning, if allowed. */
-    protected final lazy val warn: String => Unit = {
-      if (hasOption[MacroOptions.DisableWarnings]) { (_: String) => () }
-      else {
-        report.warning(_: String)
-      }
-    }
-
-    /* Prints debug entry, if allowed. */
-    protected final lazy val debug: String => Unit = {
-      if (!hasOption[MacroOptions.Verbose]) { (_: String) => () }
-      else {
-        report.info(_: String)
-      }
-    }
+     */
   }
 
   sealed trait MacroTopHelpers[A] extends MacroHelpers[A] {
@@ -1439,7 +1480,7 @@ private[api] object MacroImpl:
           case _ => found
         }
 
-      val tree: Option[TypeRepr] = optsTpe match {
+      val tree: Option[TypeRepr] = optsTpr match {
         case t @ AppliedType(_, lst) if t <:< unionOptionTpe =>
           lst.headOption
 
@@ -1458,6 +1499,54 @@ private[api] object MacroImpl:
         if (types.isEmpty) None else Some(types)
       }
     }
+  }
+
+  sealed trait MacroLogging { _self: OptionSupport =>
+    type Q <: Quotes
+    protected val quotes: Q
+
+    import quotes.reflect.*
+
+    protected given disableWarningsTpe: Type[MacroOptions.DisableWarnings]
+
+    protected given verboseTpe: Type[MacroOptions.Verbose]
+
+    // --- Context helpers ---
+
+    /* Prints a compilation warning, if allowed. */
+    final lazy val warn: String => Unit = {
+      if (hasOption[MacroOptions.DisableWarnings]) { (_: String) => () }
+      else {
+        report.warning(_: String)
+      }
+    }
+
+    /* Prints debug entry, if allowed. */
+    final lazy val debug: String => Unit = {
+      if (!hasOption[MacroOptions.Verbose]) { (_: String) => () }
+      else {
+        report.info(_: String)
+      }
+    }
+  }
+
+  sealed trait OptionSupport {
+    type Q <: Quotes
+    protected val quotes: Q
+
+    import quotes.reflect.*
+
+    // format: off
+    private given q: Q = quotes
+
+    protected type Opts <: MacroOptions.Default
+
+    /* Type of compile-time options; See [[MacroOptions]] */
+    protected def optsTpe: Type[Opts]
+    protected def optsTpr: TypeRepr
+
+    @inline protected final def hasOption[O: Type]: Boolean =
+      optsTpr <:< TypeRepr.of[O]
   }
 
   sealed trait ImplicitResolver[A] {
@@ -1682,15 +1771,13 @@ private[api] object MacroImpl:
         s"${prettyType(a)} *: ${prettyType(b)}"
 
       case AppliedType(_, args) =>
-        t.typeSymbol.fullName + args
-          .map(_.typeSymbol.fullName)
-          .mkString("[", ", ", "]")
+        t.typeSymbol.fullName + args.map(prettyType).mkString("[", ", ", "]")
 
       case OrType(a, b) =>
         s"${prettyType(a)} | ${prettyType(b)}"
 
       case _ =>
-        t.typeSymbol.fullName.replaceAll("\\$", "")
+        t.typeSymbol.fullName.replaceAll("(\\.package\\$|\\$)", "")
     }
 
     type Implicit = (Term, Boolean)
