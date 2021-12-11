@@ -5,6 +5,24 @@ import scala.quoted.*
 
 object TestMacros:
 
+  inline def testKnownSubtypes[T]: List[String] =
+    ${ testKnownSubtypesMacro[T] }
+
+  def testKnownSubtypesMacro[T: Type](using q: Quotes): Expr[List[String]] = {
+    import q.reflect.*
+
+    val helper = new MacroImpl.QuotesHelper {
+      type Q = q.type
+      val quotes = q
+    }
+
+    Expr(
+      helper.directKnownSubclasses(TypeRepr.of[T]).toList.flatten.map(_.show)
+    )
+  }
+
+  // ---
+
   inline def testProductElements[T]: List[String] =
     ${ testProductElementsMacro[T] }
 
@@ -17,9 +35,16 @@ object TestMacros:
     }
 
     val tpe = TypeRepr.of[T]
+
     val names = Expr.summon[ProductOf[T]] match {
       case Some(expr) =>
-        helper.productElements(tpe, expr).map(_.toString)
+        helper
+          .productElements(tpe, expr)
+          .map(_.map {
+            case (sym, tpr) =>
+              Tuple3(sym, sym.annotations, tpr).toString
+          })
+          .getOrElse(List.empty[String])
 
       case _ =>
         List.empty[String]
@@ -30,11 +55,21 @@ object TestMacros:
 
   // ---
 
-  inline def testWithTuple[T <: Product](pure: T): String =
-    ${ testWithTupleMacro[T]('{ pure }) }
+  inline def testWithTuple[T <: Product](
+      pure: T
+    ): String =
+    ${ testWithTupleMacro[T, T]('{ pure }, '{ identity[T] }) }
 
-  def testWithTupleMacro[T <: Product: Type](
-      pure: Expr[T]
+  inline def testWithTuple[T, P <: Product](
+      pure: T
+    )(using
+      conv: Conversion[T, P]
+    ): String =
+    ${ testWithTupleMacro[T, P]('{ pure }, '{ conv(_: T) }) }
+
+  def testWithTupleMacro[T: Type, P <: Product: Type](
+      pure: Expr[T],
+      toProduct: Expr[T => P]
     )(using
       q: Quotes
     ): Expr[String] = {
@@ -49,16 +84,16 @@ object TestMacros:
     val tpeElements = Expr
       .summon[ProductOf[T]]
       .map {
-        helper.productElements(tpe, _)
+        helper.productElements(tpe, _).get
       }
-      .get
+      .getOrElse(List.empty[(Symbol, TypeRepr)])
 
     val types = tpeElements.map(_._2)
 
     val (tupleTpe, withTuple) =
-      helper.withTuple[T, T, String](tpe, '{ identity[T] }, types)
+      helper.withTuple[T, P, String](tpe, toProduct, types)
 
-    withTuple(pure) { (tupled: Expr[T]) =>
+    withTuple(pure) { (tupled: Expr[P]) =>
       val a = Expr(tupleTpe.show)
 
       '{
@@ -86,7 +121,7 @@ object TestMacros:
     val tpeElements = Expr
       .summon[ProductOf[T]]
       .map {
-        helper.productElements(tpe, _)
+        helper.productElements(tpe, _).get
       }
       .get
     val types = tpeElements.map(_._2)

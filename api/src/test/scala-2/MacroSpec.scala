@@ -37,7 +37,7 @@ final class MacroSpec
     extends org.specs2.mutable.Specification
     with MacroExtraSpec {
 
-  "Macros" title
+  "Macros".title
 
   import MacroTest._
 
@@ -69,8 +69,8 @@ final class MacroSpec
 
       val resolved = WithConfig.implicitConf
 
-      resolved must_=== MacroConfiguration(fieldNaming =
-        FieldNaming.SnakeCase
+      resolved must_=== MacroConfiguration(
+        fieldNaming = FieldNaming.SnakeCase
       ) and {
         resolved must not(beEqualTo(MacroConfiguration()))
       }
@@ -520,6 +520,7 @@ final class MacroSpec
         // Sub-type UC, UD, UF
         implicit def cHandler = Macros.handler[UC]
         implicit def dHandler = Macros.handler[UD]
+        implicit def eHandler = Macros.handler[UE.type]
         implicit def fHandler = Macros.handler[UF.type]
 
         @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
@@ -736,38 +737,6 @@ final class MacroSpec
       }
     }
 
-    "handle case class with implicits" >> {
-      val doc1 = BSONDocument("pos" -> 2, "text" -> "str")
-      val doc2 = BSONDocument("ident" -> "id", "value" -> 23.456D)
-      val fixture1 = WithImplicit1(2, "str")
-      val fixture2 = WithImplicit2("id", 23.456D)
-
-      def readSpec1(r: BSONDocumentReader[WithImplicit1]) =
-        r.readTry(doc1) must beSuccessfulTry(fixture1)
-
-      def writeSpec2(w: BSONDocumentWriter[WithImplicit2[Double]]) =
-        w.writeTry(fixture2) must beSuccessfulTry(doc2)
-
-      "to generate reader" in readSpec1(Macros.reader[WithImplicit1])
-
-      "to generate writer with type parameters" in writeSpec2(
-        Macros.writer[WithImplicit2[Double]]
-      )
-
-      "to generate handler" in {
-        val f1 = Macros.handler[WithImplicit1]
-        val f2 = Macros.handler[WithImplicit2[Double]]
-
-        readSpec1(f1) and {
-          f1.writeTry(fixture1) must beSuccessfulTry(doc1)
-        } and {
-          writeSpec2(f2)
-        } and {
-          f2.readTry(doc2) must beSuccessfulTry(fixture2)
-        }
-      }
-    }
-
     "support @Reader & @Writer annotations" in {
       val reader1 = Macros.reader[PerField1[String]]
       val writer = Macros.writerOpts[PerField1[String], MacroOptions.Verbose]
@@ -799,8 +768,9 @@ final class MacroSpec
           )
       } and {
         // Define a BSONReader for 'score: Float' corresponding to @Writer
-        implicit def floatReader =
+        implicit def floatReader: BSONReader[Float] =
           BSONReader.collect[Float] { case BSONString(f) => f.toFloat }
+
         val reader2 = Macros.reader[PerField1[String]]
 
         reader2.readTry(expectedDoc) must beSuccessfulTry(expectedVal)
@@ -859,7 +829,9 @@ final class MacroSpec
     }
 
     "be generated for a generic case class" in {
-      implicit def singleReader = Macros.reader[Single]
+      implicit def singleReader: BSONDocumentReader[Single] =
+        Macros.reader[Single]
+
       val r = Macros.reader[Foo[Single]]
       val big = BigDecimal(1.23D)
 
@@ -903,7 +875,7 @@ final class MacroSpec
             .reader[WithDefaultValues1]
 
         val r2: BSONDocumentReader[WithDefaultValues1] = {
-          implicit val cfg =
+          implicit val cfg: MacroConfiguration.Aux[MacroOptions.ReadDefaultValues] =
             MacroConfiguration[MacroOptions.ReadDefaultValues]()
 
           Macros.reader[WithDefaultValues1]
@@ -1070,6 +1042,27 @@ final class MacroSpec
       )
     }
 
+    "be generated for non-case class" in {
+      import Union.UB
+
+      val w = UB.handler
+
+      w.writeTry(new UB("foo")) must beSuccessfulTry(BSONDocument("s" -> "foo"))
+    }
+
+    "be generated for singleton" in {
+      val w1 = Macros.writer[Union.UE.type]
+      val w2 = Macros.writer[Union.UF.type]
+
+      w1.writeTry(Union.UE) must beSuccessfulTry[BSONDocument](
+        BSONDocument.empty
+      ) and {
+        w2.writeTry(Union.UF) must beSuccessfulTry[BSONDocument](
+          BSONDocument.empty
+        )
+      }
+    }
+
     "be generated for class class with self reference" in {
       val w = Macros.writer[Bar]
       val bar1 = Bar("bar1", None)
@@ -1150,11 +1143,9 @@ final class MacroSpec
     "be generated for Value class" in {
       val writer = Macros.valueWriter[FooVal]
 
-      typecheck("Macros.valueWriter[Person]") must failWith(
-        "Person.* do not conform to.* AnyVal"
-      ) and {
+      typecheck("Macros.valueWriter[Person]") must failWith(".*Person.*") and {
         typecheck("Macros.valueWriter[BarVal]") must failWith(
-          "Implicit not found for 'Exception': .*BSONWriter\\[java\\.lang\\.Exception\\]"
+          ".*not found.*BSONWriter\\[.*Exception\\]"
         )
       } and {
         writer.writeTry(new FooVal(1)) must beSuccessfulTry(BSONInteger(1))
@@ -1199,7 +1190,61 @@ final class MacroSpec
             "values" -> BSONDocument("1" -> "Lorem")
           )
         )
+      }
 
+      "be generated for sealed family" >> {
+        "but fail when the subtype is not provided with implicit instance" in {
+          typecheck("Macros.writer[Union.UT]") must failWith(
+            ".*not\\ found.*U[ABCDEF].*"
+          )
+        }
+
+        "when instances are defined for subtypes" in {
+          import Union._
+
+          implicit val uaw = Macros.writer[UA]
+          implicit val ucw = Macros.writer[UC]
+          implicit val udw = Macros.writer[UD]
+          implicit val uew = Macros.writer[UE.type]
+          implicit val ufw = Macros.writer[UF.type]
+          val w = Macros.writer[UT]
+
+          w.writeTry(UA(1)) must beSuccessfulTry(
+            BSONDocument(
+              "n" -> 1,
+              "className" -> "MacroTest.Union.UA"
+            )
+          ) and {
+            w.writeTry(UB("bar")) must beSuccessfulTry(
+              BSONDocument(
+                "s" -> "bar",
+                "className" -> "MacroTest.Union.UB"
+              )
+            )
+          } and {
+            w.writeTry(UC("lorem")) must beSuccessfulTry(
+              BSONDocument(
+                "s" -> "lorem",
+                "className" -> "MacroTest.Union.UC"
+              )
+            )
+          } and {
+            w.writeTry(UD("ipsum")) must beSuccessfulTry(
+              BSONDocument(
+                "s" -> "ipsum",
+                "className" -> "MacroTest.Union.UD"
+              )
+            )
+          } and {
+            w.writeTry(UE) must beSuccessfulTry(
+              BSONDocument("className" -> "MacroTest.Union.UE")
+            )
+          } and {
+            w.writeTry(UF) must beSuccessfulTry(
+              BSONDocument("className" -> "MacroTest.Union.UF")
+            )
+          }
+        }
       }
     }
   }
@@ -1229,5 +1274,4 @@ final class MacroSpec
       reader: BSONReader[A],
       writer: BSONWriter[A]
     ) = roundtrip(data)
-
 }

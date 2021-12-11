@@ -589,15 +589,12 @@ private[api] class MacroImpl(val c: Context) {
           val reader: Tree = resolveReader(pname, sig, fieldReader)
 
           def tryWithDefault(`try`: Tree, dv: Tree) = q"""${`try`} match {
-            case readSuccess @ ${utilPkg}.Success(_) => 
-              readSuccess
-
             case ${utilPkg}.Failure(
               _: ${exceptionsPkg}.BSONValueNotFoundException) =>
               ${utilPkg}.Success(${dv})
 
-            case readFailure @ ${utilPkg}.Failure(_) =>
-              readFailure
+            case result =>
+              result
           }"""
 
           val get: Tree = {
@@ -1220,14 +1217,8 @@ private[api] class MacroImpl(val c: Context) {
 
         case Some(o: ModuleSymbol)
             if (o.companion == NoSymbol && // not a companion object
-              o.typeSignature.baseClasses.contains(tpeSym)) => {
-          val newSub: Set[Type] = if (!o.moduleClass.asClass.isCaseClass) {
-            warn(s"Cannot handle object ${o.fullName}: no case accessor")
-            Set.empty
-          } else Set(o.typeSignature)
-
-          allSubclasses(path.tail, subclasses ++ newSub)
-        }
+              o.typeSignature.baseClasses.contains(tpeSym)) =>
+          allSubclasses(path.tail, subclasses + o.typeSignature)
 
         case Some(o: ModuleSymbol)
             if (

@@ -7,7 +7,6 @@ import reactivemongo.api.bson.{
   BSONWriter,
   Macros
 }
-
 import reactivemongo.api.bson.TestUtils.typecheck
 
 import org.specs2.matcher.TypecheckMatchers._
@@ -15,6 +14,14 @@ import org.specs2.matcher.TypecheckMatchers._
 trait MacroExtraSpec { self: MacroSpec =>
   import MacroTest._
   import MacroExtraTest._
+
+  "Case class" should {
+    "not be handled without custom ProductOf" in {
+      typecheck("Macros.writer[WithImplicit2[Double]]") must failWith(
+        ".*ProductOf\\[MacroTest\\.WithImplicit2\\[.*Double\\]\\]"
+      )
+    }
+  }
 
   "Union types" should {
     "be supported" >> {

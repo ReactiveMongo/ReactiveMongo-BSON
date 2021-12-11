@@ -151,7 +151,7 @@ object MacroTest {
     object Tree {
       import MacroOptions._
 
-      val x = Macros.readerOpts[Tree, UnionType[Node \/ Leaf]]
+      //val x = Macros.readerOpts[Tree, UnionType[Node \/ Leaf]]
 
       implicit val bson: Handler[Tree] =
         Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]

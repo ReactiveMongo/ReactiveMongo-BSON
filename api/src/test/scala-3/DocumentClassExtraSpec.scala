@@ -1,5 +1,4 @@
 import reactivemongo.api.bson.DocumentClass
-
 import reactivemongo.api.bson.TestUtils.typecheck
 
 import org.specs2.matcher.TypecheckMatchers._

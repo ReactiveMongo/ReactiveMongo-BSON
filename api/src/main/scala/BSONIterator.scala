@@ -72,6 +72,9 @@ private[bson] object BSONIterator {
       case id: BSONObjectID =>
         s"${prefix}${BSONObjectID pretty id}"
 
+      case re: BSONRegex =>
+        s"${prefix}${BSONRegex pretty re}"
+
       case ts: BSONTimestamp =>
         s"${prefix}${BSONTimestamp pretty ts}"
 

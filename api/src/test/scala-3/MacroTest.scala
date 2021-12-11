@@ -12,13 +12,22 @@ import reactivemongo.api.bson.{
   BSONString,
   BSONWriter,
   Macros
-}, Macros.Annotations.{ DefaultValue, Flatten, Ignore, Key, NoneAsNull, Writer }
+}
 
-/* TODO
+import Macros.Annotations.{
+  DefaultValue,
+  Flatten,
+  Ignore,
+  Key,
+  NoneAsNull,
+  Reader,
+  Writer
+}
+
 trait MacroTestCompat { _self: MacroTest.type =>
   given Conversion[Union.UB, Tuple1[String]] = (ub: Union.UB) => Tuple(ub.s)
 
-  given Mirror.ProductOf[Union.UB] = new Mirror.Product {
+  implicit object ProductOfUB extends Mirror.Product {
     type MirroredType = Union.UB
     type MirroredElemTypes = Tuple1[String]
     type MirroredMonoType = Union.UB
@@ -29,10 +38,17 @@ trait MacroTestCompat { _self: MacroTest.type =>
       new Union.UB(p.productElement(0).asInstanceOf[String])
   }
 }
- */
 
-object MacroTest { // TODO: extends MacroTestCompat {
+object MacroTest extends MacroTestCompat {
   case class Person(firstName: String, lastName: String)
+  case class Pet(name: String, owner: Person)
+
+  case class Primitives(
+      dbl: Double,
+      str: String,
+      bl: Boolean,
+      int: Int,
+      long: Long)
 
   object Union {
     sealed trait UT
@@ -43,10 +59,8 @@ object MacroTest { // TODO: extends MacroTestCompat {
 
     object UB {
 
-      /* TODO
-      implicit val handler: BSONWriter[UB] =
+      implicit val handler: BSONDocumentWriter[UB] =
         Macros.writer[UB] // TODO: Handler[UB] = Macros.handler[UB]
-       */
 
     }
 
@@ -74,10 +88,12 @@ object MacroTest { // TODO: extends MacroTestCompat {
 
   case class Single(value: BigDecimal)
 
+  // TODO: Remove; Only for Scala 2 tests
   case class WithImplicit1(pos: Int, text: String)(implicit x: Numeric[Int]) {
     def test = x
   }
 
+  // TODO: Remove; Only for Scala 2 tests
   @com.github.ghik.silencer.silent
   case class WithImplicit2[N: Numeric](ident: String, value: N)
 
@@ -94,9 +110,18 @@ object MacroTest { // TODO: extends MacroTestCompat {
   case class Range(start: Int, end: Int)
 
   object Range {
+    /* TODO
+    implicit val handler: BSONDocumentHandler[Range]=
+      Macros.handler[Range]
+     */
 
-    implicit val handler: BSONDocumentWriter[Range] /* TODO: BSONDocumentHandler[Range] */ =
-      Macros.writer[Range] //TODO: Macros.handler[Range]
+    // TODO: Remove
+    implicit val writer: BSONDocumentWriter[Range] =
+      Macros.writer[Range]
+
+    // TODO: Remove
+    implicit val reader: BSONDocumentReader[Range] =
+      Macros.reader[Range]
   }
 
   // Flatten
@@ -109,6 +134,23 @@ object MacroTest { // TODO: extends MacroTestCompat {
       @Flatten parent: InvalidRecursive)
 
   case class InvalidNonDoc(@Flatten name: String)
+
+  // ---
+
+  case class WithDefaultValues1(
+      id: Int,
+      title: String = "default1",
+      score: Option[Float] = Some(1.23F),
+      range: Range = Range(3, 5))
+
+  case class WithDefaultValues2(
+      id: Int,
+      @DefaultValue("default2") title: String,
+      @DefaultValue(Some(45.6F)) score: Option[Float],
+      @DefaultValue(Range(7, 11)) range: Range)
+
+  case class WithDefaultValues3(
+      @DefaultValue(1 /* type mismatch */ ) name: String)
 
   // ---
 
@@ -146,18 +188,18 @@ object MacroTest { // TODO: extends MacroTestCompat {
 
   case class PerField1[T](
       id: Long,
-      /* TODO: @Reader(strStatusReader) */ status: String,
+      @Reader(strStatusReader) status: String,
       @Writer(scoreWriter) score: Float,
-      @Writer(descrWriter) /* TODO: @Reader(descrReader) */ description: Option[
+      @Writer(descrWriter) @Reader(descrReader) description: Option[
         String
       ],
       @Flatten @Writer(
         rangeSeqWriter
-      ) /* TODO: @Reader(rangeSeqReader) */ range: Range,
+      ) @Reader(rangeSeqReader) range: Range,
       foo: T)
 
   case class PerField2(
-      /* TODO: @Reader(implicitly[BSONReader[Int]]) */ @Writer(
+      @Reader(implicitly[BSONReader[Int]]) @Writer(
         descrWriter
       ) name: String)
 

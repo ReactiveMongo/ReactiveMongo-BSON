@@ -159,6 +159,8 @@ object BSONValue extends BSONValueLowPriority1 {
 
     case id: BSONObjectID => BSONObjectID.pretty(id)
 
+    case re: BSONRegex => BSONRegex.pretty(re)
+
     case ts: BSONTimestamp => BSONTimestamp.pretty(ts)
 
     case BSONNull => BSONNull.pretty
@@ -1316,6 +1318,11 @@ object BSONRegex {
   /** Returns a [[BSONRegex]] */
   @inline def apply(value: String, flags: String): BSONRegex =
     new BSONRegex(value, flags)
+
+  /** Returns the plain string representation for the given [[BSONRegex]]. */
+  @inline def pretty(re: BSONRegex): String =
+    s"/${re.value}/${re.flags}"
+
 }
 
 /**

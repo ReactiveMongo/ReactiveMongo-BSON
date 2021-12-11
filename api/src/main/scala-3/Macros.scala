@@ -26,6 +26,44 @@ import scala.util.Success
 object Macros extends MacroAnnotations:
 
   /**
+   * $readerMacro.
+   * $defaultCfg.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentReader, Macros }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val reader: BSONDocumentReader[Foo] = Macros.reader
+   * }}}
+   *
+   * $tparam
+   */
+  inline def reader[A]: BSONDocumentReader[A] = ${
+    MacroImpl.reader[A, MacroOptions.Default]
+  }
+
+  /**
+   * $readerMacro.
+   * $defaultCfg, with given additional options.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ Macros, MacroOptions }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val reader = Macros.readerOpts[Foo, MacroOptions.Verbose]
+   * }}}
+   *
+   * $tparam
+   * $tparamOpts
+   */
+  inline def readerOpts[
+      A,
+      Opts <: MacroOptions.Default
+    ]: BSONDocumentReader[A] = ${ MacroImpl.reader[A, Opts] }
+
+  /**
    * Creates a [[BSONReader]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
    *
    * The inner value will be directly read from BSON value.
@@ -206,7 +244,6 @@ object Macros extends MacroAnnotations:
     }
   }
 
-/* TODO: Remove
   /** Only for internal purposes */
   final class LocalVar[@specialized T] {
     private var underlying: T = _
@@ -218,7 +255,6 @@ object Macros extends MacroAnnotations:
 
     def value(): T = underlying
   }
- */
 end Macros
 
 sealed trait OpaqueAlias[T] {}

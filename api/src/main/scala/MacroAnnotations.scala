@@ -1,8 +1,7 @@
 package reactivemongo.api.bson
 
-import scala.reflect.ClassTag
-
 import scala.annotation.{ meta, StaticAnnotation }
+import scala.reflect.ClassTag
 
 private[bson] trait MacroAnnotations { macros: Macros.type =>
 
