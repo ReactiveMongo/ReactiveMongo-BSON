@@ -242,29 +242,32 @@ private[api] object MacroImpl:
       Opts: c.WeakTypeTag
     ]: c.Expr[BSONDocumentHandler[A]] =
     handlerWithConfig[A, Opts](implicitOptionsConfig)
+   */
 
-  @SuppressWarnings(Array("PointlessTypeBounds"))
-  def valueHandler[
-      A <: AnyVal: c.WeakTypeTag,
-      Opts: c.WeakTypeTag
-    ]: c.Expr[BSONHandler[A]] = {
-    val config = implicitOptionsConfig
+  def opaqueAliasHandler[A: Type, Opts <: MacroOptions.Default: Type](
+      using
+      q: Quotes
+    ): Expr[BSONHandler[A]] = opaqueAliasHelper[A, BSONHandler, Opts](strExpr =
+    '{
+      @SuppressWarnings(Array("AsInstanceOf"))
+      def handler =
+        summon[BSONHandler[String]].asInstanceOf[BSONHandler[A]]
 
-    reify(new BSONHandler[A] {
-      private val r: BSONValue => UTry[A] = { macroVal =>
-        createHelper[A, Opts](config).valueReaderBody.splice
-      }
+      handler
+    }
+  )
 
-      @inline def readTry(bson: BSONValue) = r(bson)
+  def anyValHandler[A <: AnyVal: Type, Opts <: MacroOptions.Default: Type](
+      using
+      q: Quotes
+    ): Expr[BSONHandler[A]] = {
+    val writer = anyValWriter[A, Opts]
+    val reader = anyValReader[A, Opts]
 
-      private val w: A => UTry[BSONValue] = { macroVal =>
-        createHelper[A, Opts](config).valueWriterBody.splice
-      }
-
-      @inline def writeTry(v: A) = w(v)
-    })
+    '{ BSONHandler.provided[A](${ reader }, ${ writer }) }
   }
 
+  /* TODO:
   def configuredHandler[
       A: c.WeakTypeTag,
       Opts: c.WeakTypeTag

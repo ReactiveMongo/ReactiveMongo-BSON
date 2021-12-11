@@ -143,6 +143,52 @@ object Macros extends MacroAnnotations:
     ]: BSONDocumentWriter[A] =
     ${ MacroImpl.writer[A, Opts] }
 
+  /**
+   * Creates a [[BSONHandler]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
+   *
+   * The inner value will be directly write from BSON value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{
+   *   BSONInteger, BSONReader, BSONWriter, Macros
+   * }
+   *
+   * final class FooVal(val v: Int) extends AnyVal // Value Class
+   *
+   * val vreader: BSONReader[FooVal] = Macros.valueReader[FooVal]
+   * val vwriter: BSONWriter[FooVal] = Macros.valueWriter[FooVal]
+   *
+   * vreader.readTry(BSONInteger(1)) // Success(FooVal(1))
+   *
+   * vwriter.writeTry(new FooVal(1)) // Success(BSONInteger(1))
+   * }}}
+   */
+  inline def valueHandler[A <: AnyVal]: BSONHandler[A] =
+    ${ MacroImpl.anyValHandler[A, MacroOptions.Default] }
+
+  /**
+   * Creates a [[BSONHandler]] for an [[https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html opaque type alias]] `A`, that itself aliases a [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]].
+   *
+   * The inner value will be directly written as BSON value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONHandler, Macros }
+   *
+   * opaque type Logarithm = Double
+   *
+   * object Logarithm {
+   *   def apply(value: Double): Logarithm = value
+   * }
+   *
+   * val vhandler: BSONHandler[Logarithm] = Macros.valueHandler[Logarithm]
+   *
+   * vhandler.readTry(BSONDouble(1.2)) // Success(Logarithm(1.2D))
+   * vhandler.writeTry(Logarithm(2.34D)) // Success(BSONDouble(2.34D))
+   * }}}
+   */
+  inline def valueHandler[A: OpaqueAlias]: BSONHandler[A] =
+    ${ MacroImpl.opaqueAliasHandler[A, MacroOptions.Default] }
+
   // --- Internals TODO: Common
 
   /** Only for internal purposes */

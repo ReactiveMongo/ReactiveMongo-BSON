@@ -73,17 +73,30 @@ trait MacroExtraSpec { self: MacroSpec =>
     "be supported for Double" in {
       val writer = Macros.valueWriter[Logarithm]
       val reader = Macros.valueReader[Logarithm]
+      val handler = Macros.valueHandler[Logarithm]
 
       reader.readTry(BSONDouble(0.12D)) must beSuccessfulTry(
         Logarithm(0.12D)
       ) and {
         reader.readOpt(BSONDouble(4.5D)) must beSome(Logarithm(4.5D))
       } and {
+        handler.readTry(BSONDouble(0.12D)) must beSuccessfulTry(
+          Logarithm(0.12D)
+        )
+      } and {
+        handler.readOpt(BSONDouble(4.5D)) must beSome(Logarithm(4.5D))
+      } and {
         writer.writeTry(Logarithm(1.2D)) must beSuccessfulTry(
           BSONDouble(1.2D)
         )
       } and {
         writer.writeOpt(Logarithm(23.4D)) must beSome(BSONDouble(23.4D))
+      } and {
+        handler.writeTry(Logarithm(1.2D)) must beSuccessfulTry(
+          BSONDouble(1.2D)
+        )
+      } and {
+        handler.writeOpt(Logarithm(23.4D)) must beSome(BSONDouble(23.4D))
       }
     }
 
@@ -94,15 +107,25 @@ trait MacroExtraSpec { self: MacroSpec =>
       given innerReader: BSONReader[FooVal] = Macros.valueReader
       val reader = Macros.valueReader[OpaqueFoo]
 
+      val handler = Macros.valueHandler[OpaqueFoo]
+
       val one = OpaqueFoo(new FooVal(1))
       val two = OpaqueFoo(new FooVal(2))
 
       reader.readTry(BSONInteger(1)) must beSuccessfulTry(one) and {
         reader.readOpt(BSONInteger(2)) must beSome(two)
       } and {
+        handler.readTry(BSONInteger(1)) must beSuccessfulTry(one)
+      } and {
+        handler.readOpt(BSONInteger(2)) must beSome(two)
+      } and {
         writer.writeTry(one) must beSuccessfulTry(BSONInteger(1))
       } and {
         writer.writeOpt(two) must beSome(BSONInteger(2))
+      } and {
+        handler.writeTry(one) must beSuccessfulTry(BSONInteger(1))
+      } and {
+        handler.writeOpt(two) must beSome(BSONInteger(2))
       }
     }
   }
