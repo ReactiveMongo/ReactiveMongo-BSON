@@ -234,6 +234,30 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
     }
   }
 
+  "Reader" should {
+    // TODO
+
+    "be generated for Value class" in {
+      val reader = Macros.valueReader[FooVal]
+
+      typecheck("Macros.valueReader[Person]") must failWith(".*Person.*") and {
+        typecheck("Macros.valueReader[BarVal]") must failWith(
+          ".*not found.*BSONReader\\[.*Exception\\]"
+        )
+      } and {
+        reader.readTry(BSONInteger(1)) must beSuccessfulTry(new FooVal(1))
+      } and {
+        reader.readOpt(BSONInteger(2)) must beSome(new FooVal(2))
+      } and {
+        reader.readTry(BSONString("oof")) must beFailedTry
+      } and {
+        reader.readOpt(BSONString("bar")) must beNone
+      }
+    }
+
+    // TODO
+  }
+
   "Writer" should {
     "be generated for a generic case class" in {
       implicit def singleWriter: BSONDocumentWriter[Single] =

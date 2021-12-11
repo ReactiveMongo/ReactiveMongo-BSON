@@ -26,6 +26,46 @@ import scala.util.Success
 object Macros extends MacroAnnotations:
 
   /**
+   * Creates a [[BSONReader]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
+   *
+   * The inner value will be directly read from BSON value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONInteger, BSONReader, Macros }
+   *
+   * final class FooVal(val v: Int) extends AnyVal // Value Class
+   *
+   * val vreader: BSONReader[FooVal] = Macros.valueReader[FooVal]
+   *
+   * vreader.readTry(BSONInteger(1)) // Success(FooVal(1))
+   * }}}
+   */
+  inline def valueReader[A <: AnyVal]: BSONReader[A] =
+    ${ MacroImpl.anyValReader[A, MacroOptions.Default] }
+
+  /**
+   * Creates a [[BSONReader]] for an [[https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html opaque type alias]] `A`, that itself aliases a [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]].
+   *
+   * The inner value will be directly written as BSON value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONReader, Macros }
+   *
+   * opaque type Logarithm = Double
+   *
+   * object Logarithm {
+   *   def apply(value: Double): Logarithm = value
+   * }
+   *
+   * val vreader: BSONReader[Logarithm] = Macros.valueReader[Logarithm]
+   *
+   * vreader.readTry(BSONDouble(1.2)) // Success(Logarithm(1.2D))
+   * }}}
+   */
+  inline def valueReader[A: OpaqueAlias]: BSONReader[A] =
+    ${ MacroImpl.opaqueAliasReader[A, MacroOptions.Default] }
+
+  /**
    * $writerMacro.
    * $defaultCfg.
    *
@@ -120,7 +160,7 @@ object Macros extends MacroAnnotations:
     }
   }
 
-/* TODO
+/* TODO: Remove
   /** Only for internal purposes */
   final class LocalVar[@specialized T] {
     private var underlying: T = _

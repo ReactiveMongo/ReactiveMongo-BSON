@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
 
 import exceptions.HandlerException
 
-// TODO: Enum, opaque type alias (alias Value class)
+// TODO: Enum
 private[api] object MacroImpl:
   import Macros.Annotations,
   Annotations.{ DefaultValue, Ignore, Key, Writer, Flatten, NoneAsNull /*,
@@ -31,15 +31,96 @@ private[api] object MacroImpl:
       Opts: c.WeakTypeTag
     ]: c.Expr[BSONDocumentReader[A]] =
     readerWithConfig[A, Opts](withOptionsConfig)
-
-  @SuppressWarnings(Array("PointlessTypeBounds"))
-  def valueReader[
-      A <: AnyVal: c.WeakTypeTag,
-      Opts: c.WeakTypeTag
-    ]: c.Expr[BSONReader[A]] = reify(BSONReader.from[A] { macroVal =>
-    createHelper[A, Opts](implicitOptionsConfig).valueReaderBody.splice
-  })
    */
+
+  def opaqueAliasReader[A: Type, Opts <: MacroOptions.Default: Type](
+      using
+      q: Quotes
+    ): Expr[BSONReader[A]] = opaqueAliasHelper[A, BSONReader, Opts](strExpr = '{
+    @SuppressWarnings(Array("AsInstanceOf"))
+    def reader =
+      summon[BSONReader[String]].asInstanceOf[BSONReader[A]]
+
+    reader
+  })
+
+  def anyValReader[A <: AnyVal: Type, Opts <: MacroOptions.Default: Type](
+      using
+      q: Quotes
+    ): Expr[BSONReader[A]] = {
+    import q.reflect.*
+
+    type O = Opts
+
+    val helper = new OptionSupport with MacroLogging {
+      type Q = q.type
+
+      val quotes = q
+
+      type Opts = O
+      val optsTpe = Type.of[O]
+      val optsTpr = TypeRepr.of(using optsTpe)
+
+      val disableWarningsTpe = Type.of[MacroOptions.DisableWarnings]
+      val verboseTpe = Type.of[MacroOptions.Verbose]
+    }
+
+    val aTpr = TypeRepr.of[A]
+
+    val ctor = aTpr.typeSymbol.primaryConstructor
+
+    def body(macroVal: Expr[BSONValue]): Expr[TryResult[A]] = {
+      val reader = ctor.paramSymss match {
+        case List(v: Symbol) :: Nil =>
+          v.tree match {
+            case vd: ValDef => {
+              val tpr = vd.tpt.tpe
+
+              tpr.asType match {
+                case vtpe @ '[t] =>
+                  Expr.summon[BSONReader[t]] match {
+                    case Some(reader) => {
+                      def mapf(in: Expr[t]): Expr[A] =
+                        New(Inferred(aTpr))
+                          .select(ctor)
+                          .appliedTo(in.asTerm)
+                          .asExprOf[A]
+
+                      '{
+                        ${ reader }.readTry($macroVal).map { inner =>
+                          ${ mapf('inner) }
+                        }
+                      }
+                    }
+
+                    case None =>
+                      report.errorAndAbort(s"Instance not found: ${classOf[BSONReader[_]].getName}[${tpr.typeSymbol.fullName}]")
+                  }
+              }
+            }
+
+            case _ =>
+              report.errorAndAbort(
+                s"Constructor parameter expected, found: ${v}"
+              )
+          }
+
+        case _ =>
+          report.errorAndAbort(
+            s"Cannot resolve value reader for '${aTpr.typeSymbol.name}'"
+          )
+
+      }
+
+      helper.debug(s"// Value reader\n${reader.show}")
+
+      reader
+    }
+
+    '{
+      BSONReader.from[A] { (macroVal: BSONValue) => ${ body('{ macroVal }) } }
+    }
+  }
 
   def writer[A: Type, Opts <: MacroOptions.Default: Type](
       using
@@ -73,61 +154,16 @@ private[api] object MacroImpl:
     def writeTry(v: T) = underlying(v)
   }
 
-  /* TODO: Test
-   opaque type Foo = Double
-
-   class FooVal(v: Double) extends AnyVal
-   opaque type Bar = FooVar
-   */
   def opaqueAliasWriter[A: Type, Opts <: MacroOptions.Default: Type](
       using
       q: Quotes
-    ): Expr[BSONWriter[A]] = {
-    import q.reflect.*
+    ): Expr[BSONWriter[A]] = opaqueAliasHelper[A, BSONWriter, Opts](strExpr = '{
+    @SuppressWarnings(Array("AsInstanceOf"))
+    def writer =
+      summon[BSONWriter[String]].asInstanceOf[BSONWriter[A]]
 
-    type IsAnyVal[T <: AnyVal] = T
-
-    type IsString[T <: String] = T
-
-    TypeRepr.of[A] match {
-      case ref: TypeRef if ref.isOpaqueAlias => {
-        val underlyingTpr = ref.translucentSuperType
-
-        underlyingTpr.asType match {
-          case '[IsString[t]] =>
-            '{
-              @SuppressWarnings(Array("AsInstanceOf"))
-              def writer =
-                summon[BSONWriter[String]].asInstanceOf[BSONWriter[A]]
-
-              writer
-            }
-
-          case tpe @ '[IsAnyVal[t]] =>
-            Expr.summon[BSONWriter[t]] match {
-              case Some(w) =>
-                '{
-                  @SuppressWarnings(Array("AsInstanceOf"))
-                  def writer = ${ w }.asInstanceOf[BSONWriter[A]]
-
-                  writer
-                }
-
-              case _ =>
-                report.errorAndAbort(s"Instance not found: ${classOf[BSONWriter[_]].getName}[${underlyingTpr.typeSymbol.fullName}]")
-            }
-
-          case _ =>
-            report.errorAndAbort(
-              s"${underlyingTpr.show} is not a value class"
-            )
-        }
-      }
-
-      case tpr =>
-        report.errorAndAbort(s"${tpr.show} is not an opaque alias")
-    }
-  }
+    writer
+  })
 
   def anyValWriter[A <: AnyVal: Type, Opts <: MacroOptions.Default: Type](
       using
@@ -334,6 +370,54 @@ private[api] object MacroImpl:
 
   // ---
 
+  private def opaqueAliasHelper[
+      A: Type,
+      M[_]: Type,
+      Opts <: MacroOptions.Default: Type
+    ](strExpr: => Expr[M[A]]
+    )(using
+      q: Quotes
+    ): Expr[M[A]] = {
+    import q.reflect.*
+
+    type IsAnyVal[T <: AnyVal] = T
+
+    type IsString[T <: String] = T
+
+    TypeRepr.of[A] match {
+      case ref: TypeRef if ref.isOpaqueAlias => {
+        val underlyingTpr = ref.translucentSuperType
+
+        underlyingTpr.asType match {
+          case '[IsString[t]] =>
+            strExpr
+
+          case tpe @ '[IsAnyVal[t]] =>
+            Expr.summon[M[t]] match {
+              case Some(w) =>
+                '{
+                  @SuppressWarnings(Array("AsInstanceOf"))
+                  def instance = ${ w }.asInstanceOf[M[A]]
+
+                  instance
+                }
+
+              case _ =>
+                report.errorAndAbort(s"Instance not found: ${TypeRepr.of[M].typeSymbol.fullName}[${underlyingTpr.typeSymbol.fullName}]")
+            }
+
+          case _ =>
+            report.errorAndAbort(
+              s"${underlyingTpr.show} is not a value class"
+            )
+        }
+      }
+
+      case tpr =>
+        report.errorAndAbort(s"${tpr.show} is not an opaque alias")
+    }
+  }
+
   /* TODO:
   private def readerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](
       config: c.Expr[MacroConfiguration]
@@ -486,15 +570,6 @@ private[api] object MacroImpl:
       debug(s"// Reader\n${show(reader)}")
 
       result
-    }
-
-    lazy val valueReaderBody: Expr[TryResult[A]] = {
-      val nme = TermName("macroVal")
-      val reader = valueReaderTree(id = Ident(nme))
-
-      debug(s"// Value reader\n${show(reader)}")
-
-      c.Expr[TryResult[A]](reader)
     }
      */
 
