@@ -32,7 +32,10 @@ import org.specs2.execute._
 import org.specs2.matcher.MatchResult
 import org.specs2.matcher.TypecheckMatchers._
 
-class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
+final class MacroSpec
+    extends org.specs2.mutable.Specification
+    with MacroExtraSpec:
+
   "Macros".title
 
   import MacroTest._
@@ -663,7 +666,7 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
       "with Pair type having a default field value" in {
         val pairHandler = Macros.writer[Pair] // TODO: Macros.handler[Pair]
         val pairWriter = Macros.writer[Pair]
-        //val pairReader = Macros.reader[Pair]
+        val pairReader = Macros.reader[Pair]
 
         val pair1 = Pair(left = "_1", right = "right1")
         val pair2 = Pair(left = "_2", right = "right2")
@@ -684,15 +687,12 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
            */
           ok
         } and {
-          /* TODO
           pairReader.readTry(doc1) must beSuccessfulTry(
             Pair(
               left = "_left", // from default field value
               right = pair1.right
             )
           )
-           */
-          ok
         }
       }
 
@@ -893,12 +893,10 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
 
     "be generated for case class with default values" >> {
       "using class defaults" in {
-        /* TODO
         val r1: BSONDocumentReader[WithDefaultValues1] =
           Macros
             .using[MacroOptions.ReadDefaultValues]
             .reader[WithDefaultValues1]
-         */
 
         val r2: BSONDocumentReader[WithDefaultValues1] = {
           implicit val cfg: MacroConfiguration.Aux[MacroOptions.ReadDefaultValues] =
@@ -910,19 +908,16 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
         val minimalDoc = BSONDocument("id" -> 1)
         val expected = WithDefaultValues1(id = 1)
 
-        /* TODO: r1.readTry(minimalDoc) must beSuccessfulTry(expected) */
-        ok and {
+        r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
           r2.readTry(minimalDoc) must beSuccessfulTry(expected)
         }
       }
 
       "using annotation @DefaultValue" in {
-        /* TODO
         val r1: BSONDocumentReader[WithDefaultValues2] =
           Macros
             .using[MacroOptions.ReadDefaultValues]
             .reader[WithDefaultValues2]
-         */
 
         val r2: BSONDocumentReader[WithDefaultValues2] = {
           implicit val cfg: MacroConfiguration.Aux[MacroOptions.ReadDefaultValues] =
@@ -939,8 +934,7 @@ class MacroSpec extends org.specs2.mutable.Specification with MacroExtraSpec:
           range = Range(7, 11)
         )
 
-        /* TODO: r1.readTry(minimalDoc) must beSuccessfulTry(expected) */
-        ok and {
+        r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
           r2.readTry(minimalDoc) must beSuccessfulTry(expected)
         } and {
           typecheck("Macros.reader[WithDefaultValues3]") must failWith(

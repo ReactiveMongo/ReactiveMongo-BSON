@@ -21,7 +21,7 @@ private[api] object MacroImpl:
   import Macros.Annotations,
   Annotations.{ DefaultValue, Ignore, Key, Writer, Flatten, NoneAsNull, Reader }
 
-  def reader[A: Type, Opts <: MacroOptions.Default: Type](
+  def reader[A: Type, Opts <: MacroOptions: Type](
       using
       Quotes,
       Type[DefaultValue],
@@ -35,14 +35,6 @@ private[api] object MacroImpl:
     ): Expr[BSONDocumentReader[A]] =
     readerWithConfig[A, Opts](implicitOptionsConfig)
 
-  /* TODO: Remove, directly call readerWithConfig
-  def configuredReader[A: Type, Opts: Type](
-      using
-      Quotes
-    ): Expr[BSONDocumentReader[A]] =
-    readerWithConfig[A, Opts](withOptionsConfig)
-   */
-
   private inline def withSelfDocReader[T](
       f: BSONDocumentReader[T] => (BSONDocument => TryResult[T])
     ): BSONDocumentReader[T] = {
@@ -52,7 +44,7 @@ private[api] object MacroImpl:
     }
   }
 
-  def opaqueAliasReader[A: Type, Opts <: MacroOptions.Default: Type](
+  def opaqueAliasReader[A: Type, Opts <: MacroOptions: Type](
       using
       q: Quotes
     ): Expr[BSONReader[A]] = opaqueAliasHelper[A, BSONReader, Opts](strExpr = {
@@ -66,7 +58,7 @@ private[api] object MacroImpl:
     }
   })
 
-  def anyValReader[A <: AnyVal: Type, Opts <: MacroOptions.Default: Type](
+  def anyValReader[A <: AnyVal: Type, Opts <: MacroOptions: Type](
       using
       q: Quotes
     ): Expr[BSONReader[A]] = {
@@ -144,7 +136,7 @@ private[api] object MacroImpl:
     }
   }
 
-  def writer[A: Type, Opts <: MacroOptions.Default: Type](
+  def writer[A: Type, Opts <: MacroOptions: Type](
       using
       Quotes,
       Type[Writer],
@@ -155,20 +147,6 @@ private[api] object MacroImpl:
     ): Expr[BSONDocumentWriter[A]] =
     writerWithConfig[A, Opts](implicitOptionsConfig)
 
-  /* TODO: Remove, directly call writerWithConfig
-  def configuredWriter[A: Type, Opts <: MacroOptions.Default: Type](
-      conf: Expr[MacroConfiguration]
-    )(using
-      q: Quotes,
-      wat: Type[Writer],
-      it: Type[Ignore],
-      kt: Type[Key],
-      flt: Type[Flatten],
-      nant: Type[NoneAsNull]
-    ): Expr[BSONDocumentWriter[A]] =
-    writerWithConfig[A, Opts](conf)
-   */
-
   private inline def withSelfValWriter[T](
       f: BSONWriter[T] => (T => TryResult[BSONValue])
     ): BSONWriter[T] = new BSONWriter[T] { self =>
@@ -176,7 +154,7 @@ private[api] object MacroImpl:
     def writeTry(v: T) = underlying(v)
   }
 
-  def opaqueAliasWriter[A: Type, Opts <: MacroOptions.Default: Type](
+  def opaqueAliasWriter[A: Type, Opts <: MacroOptions: Type](
       using
       q: Quotes
     ): Expr[BSONWriter[A]] = opaqueAliasHelper[A, BSONWriter, Opts](strExpr = {
@@ -190,7 +168,7 @@ private[api] object MacroImpl:
     }
   })
 
-  def anyValWriter[A <: AnyVal: Type, Opts <: MacroOptions.Default: Type](
+  def anyValWriter[A <: AnyVal: Type, Opts <: MacroOptions: Type](
       using
       q: Quotes
     ): Expr[BSONWriter[A]] = {
@@ -269,7 +247,7 @@ private[api] object MacroImpl:
     handlerWithConfig[A, Opts](implicitOptionsConfig)
    */
 
-  def opaqueAliasHandler[A: Type, Opts <: MacroOptions.Default: Type](
+  def opaqueAliasHandler[A: Type, Opts <: MacroOptions: Type](
       using
       q: Quotes
     ): Expr[BSONHandler[A]] = opaqueAliasHelper[A, BSONHandler, Opts](
@@ -285,7 +263,7 @@ private[api] object MacroImpl:
     }
   )
 
-  def anyValHandler[A <: AnyVal: Type, Opts <: MacroOptions.Default: Type](
+  def anyValHandler[A <: AnyVal: Type, Opts <: MacroOptions: Type](
       using
       q: Quotes
     ): Expr[BSONHandler[A]] = {
@@ -294,14 +272,6 @@ private[api] object MacroImpl:
 
     '{ BSONHandler.provided[A](${ reader }, ${ writer }) }
   }
-
-  /* TODO:
-  def configuredHandler[
-      A: c.WeakTypeTag,
-      Opts: c.WeakTypeTag
-    ]: c.Expr[BSONDocumentHandler[A]] =
-    handlerWithConfig[A, Opts](withOptionsConfig)
-   */
 
   def documentClass[A: Type](using q: Quotes): Expr[DocumentClass[A]] = {
     import q.reflect.*
@@ -404,7 +374,7 @@ private[api] object MacroImpl:
   private def opaqueAliasHelper[
       A: Type,
       M[_]: Type,
-      Opts <: MacroOptions.Default: Type
+      Opts <: MacroOptions: Type
     ](strExpr: => Expr[M[A]]
     )(using
       q: Quotes
@@ -462,7 +432,7 @@ private[api] object MacroImpl:
     }
   }
 
-  private def readerWithConfig[A: Type, Opts <: MacroOptions.Default: Type](
+  def readerWithConfig[A: Type, Opts <: MacroOptions: Type](
       config: Expr[MacroConfiguration]
     )(using
       q: Quotes,
@@ -500,7 +470,7 @@ private[api] object MacroImpl:
     }
   }
 
-  private def writerWithConfig[A: Type, Opts <: MacroOptions.Default: Type](
+  def writerWithConfig[A: Type, Opts <: MacroOptions: Type](
       config: Expr[MacroConfiguration]
     )(using
       q: Quotes,
@@ -527,7 +497,7 @@ private[api] object MacroImpl:
   }
 
   /* TODO
-  private def handlerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](
+  def handlerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](
       config: c.Expr[MacroConfiguration]
     ): c.Expr[BSONDocumentHandler[A]] = reify(new BSONDocumentHandler[A] {
 
@@ -568,7 +538,7 @@ private[api] object MacroImpl:
     }
   }
 
-  private def createReaderHelper[A, O <: MacroOptions.Default](
+  private def createReaderHelper[A, O <: MacroOptions](
       config: Expr[MacroConfiguration]
     )(using
       _quotes: Quotes,
@@ -628,7 +598,7 @@ private[api] object MacroImpl:
     }
   }
 
-  private def createWriterHelper[A, O <: MacroOptions.Default](
+  private def createWriterHelper[A, O <: MacroOptions](
       config: Expr[MacroConfiguration]
     )(using
       _quotes: Quotes,
@@ -2538,7 +2508,7 @@ private[api] object MacroImpl:
     // format: off
     private given q: Q = quotes
 
-    protected type Opts <: MacroOptions.Default
+    protected type Opts <: MacroOptions
 
     /* Type of compile-time options; See [[MacroOptions]] */
     protected def optsTpe: Type[Opts]

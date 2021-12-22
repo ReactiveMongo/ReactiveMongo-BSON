@@ -227,7 +227,99 @@ object Macros extends MacroAnnotations:
   inline def valueHandler[A: OpaqueAlias]: BSONHandler[A] =
     ${ MacroImpl.opaqueAliasHandler[A, MacroOptions.Default] }
 
-  // --- Internals TODO: Common
+  // ---
+
+  /**
+   * Returns macros using the current BSON configuration.
+   *
+   * $tparamOpts
+   *
+   * {{{
+   * import reactivemongo.api.bson.{
+   *   BSONDocumentReader, MacroConfiguration, Macros
+   * }
+   *
+   * case class Foo(name: String)
+   *
+   * // Materializes a `BSONDocumentReader[Foo]`,
+   * // with the configuration resolved at compile time
+   * val r1: BSONDocumentReader[Foo] = Macros.configured.reader[Foo]
+   *
+   * val r2: BSONDocumentReader[Foo] = Macros.configured(
+   *   MacroConfiguration.simpleTypeName).reader[Foo]
+   *
+   * }}}
+   */
+  def configured[Opts <: MacroOptions](
+      using
+      config: MacroConfiguration.Aux[Opts]
+    ) = new WithOptions[Opts](config)
+
+  /**
+   * Returns an inference context to call the BSON macros,
+   * using explicit compile-time options.
+   *
+   * $tparamOpts
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentWriter, Macros, MacroOptions }
+   *
+   * case class Bar(score: Float)
+   *
+   * val w: BSONDocumentWriter[Bar] =
+   *   Macros.using[MacroOptions.Default].writer[Bar]
+   * }}}
+   */
+  def using[Opts <: MacroOptions] =
+    new WithOptions[Opts](MacroConfiguration[Opts]())
+
+  // ---
+
+  /**
+   * Macros for generating `BSONReader` and `BSONWriter` at compile time,
+   * with given options.
+   *
+   * @define readerMacro Creates a [[BSONDocumentReader]] for type `A`
+   * @define writerMacro Creates a [[BSONDocumentWriter]] for type `A`
+   * @define handlerMacro Creates a [[BSONDocumentHandler]] for type `A`
+   * @define tparam @tparam A the type of the value represented as BSON
+   *
+   * @tparam Opts the compile-time options
+   */
+  final class WithOptions[Opts <: MacroOptions](
+      val config: MacroConfiguration.Aux[Opts]) {
+
+    def this() = this(MacroConfiguration.default)
+
+    // ---
+
+    /**
+     * $readerMacro.
+     *
+     * $tparam
+     */
+    inline def reader[A]: BSONDocumentReader[A] =
+      ${ MacroImpl.readerWithConfig[A, Opts]('config) }
+
+    /**
+     * $writerMacro.
+     *
+     * $tparam
+     */
+    inline def writer[A]: BSONDocumentWriter[A] =
+      ${ MacroImpl.writerWithConfig[A, Opts]('config) }
+
+    /**
+     * TODO
+     * $handlerMacro.
+     *
+     * $tparam
+     *    inline def handler[A]: BSONDocumentHandler[A] =
+     *      ${ MacroImpl.handlerWithConfig[A, Opts]('config) }
+     */
+  }
+
+  // --- Internals TODO: Common with Scala2
 
   /** Only for internal purposes */
   final class Placeholder private () {}
