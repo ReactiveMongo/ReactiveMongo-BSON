@@ -1,17 +1,20 @@
-import scala.util.{ Failure, Success }
+import scala.util.{ Failure, Success, Try }
 
 import scala.deriving.Mirror
 
 import reactivemongo.api.bson.{
   BSONArray,
   BSONDocument,
+  BSONDocumentHandler,
   BSONDocumentReader,
   BSONDocumentWriter,
+  BSONHandler,
   BSONInteger,
   BSONReader,
   BSONString,
   BSONWriter,
-  Macros
+  Macros,
+  MacroOptions
 }
 
 import Macros.Annotations.{
@@ -40,6 +43,11 @@ trait MacroTestCompat { _self: MacroTest.type =>
 }
 
 object MacroTest extends MacroTestCompat {
+
+  type Handler[A] = BSONDocumentReader[A]
+    with BSONDocumentWriter[A]
+    with BSONHandler[A]
+
   case class Person(firstName: String, lastName: String)
   case class Pet(name: String, owner: Person)
 
@@ -50,12 +58,40 @@ object MacroTest extends MacroTestCompat {
       int: Int,
       long: Long)
 
+  case class OverloadedApply(string: String)
+
+  object OverloadedApply {
+    val apply: Int => Unit = _ => (); //println(n)
+
+    def apply(seq: Seq[String]): OverloadedApply =
+      OverloadedApply(seq mkString " ")
+  }
+
+  case class OverloadedApply2(string: String, number: Int)
+
+  object OverloadedApply2 {
+    def apply(string: String): OverloadedApply2 = OverloadedApply2(string, 0)
+  }
+
+  case class OverloadedApply3(string: String, number: Int)
+
+  object OverloadedApply3 {
+    def apply(): OverloadedApply3 = OverloadedApply3("", 0)
+  }
+
   object Union {
     sealed trait UT
 
     case class UA(n: Int) extends UT
 
-    class UB(val s: String) extends UT
+    class UB(val s: String) extends UT {
+      override def hashCode: Int = if (s == null) -1 else s.hashCode
+
+      override def equals(that: Any): Boolean = that match {
+        case other: UB => this.s == other.s
+        case _         => false
+      }
+    }
 
     object UB {
 
@@ -77,16 +113,112 @@ object MacroTest extends MacroTestCompat {
     object DoNotExtendsB
   }
 
-  case class Bar(name: String, next: Option[Bar])
+  trait NestModule {
+    case class Nested(name: String)
+    val format: Handler[Nested] = Macros.handler[Nested]
+  }
+
+  object TreeModule {
+    /*
+     Due to compiler limitations (read: only workaround I found),
+     handlers must be defined here and explicit type annotations added
+     to enable compiler to use implicit handlers recursively.
+     */
+
+    sealed trait Tree
+
+    case class Node(left: Tree, right: Tree) extends Tree
+    implicit val nodeHandler: Handler[Node] = Macros.handler[Node]
+
+    case class Leaf(data: String) extends Tree
+    implicit val leafHandler: Handler[Leaf] = Macros.handler[Leaf]
+
+    object Tree {
+      import MacroOptions._
+
+      //val x = Macros.readerOpts[Tree, UnionType[Node \/ Leaf]]
+
+      implicit val todoRemove: BSONDocumentReader[Tree] =
+        Macros.readerOpts[Tree, UnionType[Node \/ Leaf]]
+
+      implicit val bson: Handler[Tree] =
+        Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
+    }
+  }
+
+  object TreeCustom {
+    sealed trait Tree
+
+    case class Node(left: Tree, right: Tree) extends Tree
+    implicit val nodeHandler: Handler[Node] = Macros.handler[Node]
+
+    case class Leaf(data: String) extends Tree
+
+    object Leaf {
+      private val helper: Handler[Leaf] = Macros.handler[Leaf]
+
+      implicit val bson: Handler[Leaf] = new BSONDocumentHandler[Leaf] {
+
+        def writeTry(t: Leaf): Try[BSONDocument] =
+          helper.writeTry(Leaf("hai"))
+
+        def readDocument(bson: BSONDocument): Try[Leaf] = helper readTry bson
+      }
+    }
+
+    object Tree {
+      import MacroOptions._
+
+      implicit val bson: Handler[Tree] =
+        Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
+      //Macros.handlerOpts[Tree, UnionType[Node \/ Leaf] with Verbose]
+    }
+  }
+
+  object IntListModule {
+    sealed trait IntList
+
+    case class Cons(head: Int, tail: IntList) extends IntList
+    implicit val consHandler: Handler[Cons] = Macros.handler[Cons]
+
+    case object Tail extends IntList
+    implicit val tailHandler: Handler[Tail.type] = Macros.handler[Tail.type]
+
+    object IntList {
+      import MacroOptions.{ UnionType, \/ }
+
+      implicit val bson: Handler[IntList] =
+        Macros.handlerOpts[IntList, UnionType[Cons \/ Tail.type]]
+    }
+  }
+
+  object InheritanceModule {
+    sealed trait T
+
+    case class A() extends T
+    implicit val ah: Handler[A] = Macros.handlerOpts[A, MacroOptions.Verbose]
+
+    case object B extends T
+    implicit val bh: Handler[B.type] = Macros.handler[B.type]
+
+    sealed trait TT extends T
+    case class C() extends TT
+    implicit val ch: Handler[C] = Macros.handler[C]
+  }
 
   final class FooVal(val v: Int) extends AnyVal
 
   final class BarVal(val v: Exception) extends AnyVal
 
+  case class Optional(name: String, value: Option[String])
   case class OptionalAsNull(name: String, @NoneAsNull value: Option[String])
+  case class OptionalSingle(value: Option[String])
   case class OptionalGeneric[T](v: Int, opt: Option[T])
 
   case class Single(value: BigDecimal)
+  case class WordLover(name: String, words: Seq[String])
+  case class Empty()
+  object EmptyObject
 
   // TODO: Remove; Only for Scala 2 tests
   case class WithImplicit1(pos: Int, text: String)(implicit x: Numeric[Int]) {
@@ -98,6 +230,9 @@ object MacroTest extends MacroTestCompat {
   case class WithImplicit2[N: Numeric](ident: String, value: N)
 
   case class Foo[T](bar: T, lorem: String)
+  case class Bar(name: String, next: Option[Bar])
+
+  case class GenSeq[A](items: Seq[A], count: Int)
 
   case class NotIgnorable(@Ignore title: String, score: Int)
 
@@ -210,4 +345,13 @@ object MacroTest extends MacroTestCompat {
   case class WithMap2(
       name: String,
       values: Map[FooVal, String])
+
+  case class Person2(
+      name: String,
+      age: Int,
+      phoneNum: Long,
+      itemList: Seq[Item],
+      list: Seq[Int])
+
+  case class Item(name: String, number: FooVal)
 }

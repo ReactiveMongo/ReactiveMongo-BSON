@@ -4,7 +4,6 @@ import reactivemongo.api.bson.TestUtils.typecheck
 import org.specs2.matcher.TypecheckMatchers._
 
 trait DocumentClassExtraSpec { self: DocumentClassSpec =>
-  /* TODO
   import MacroTest._
 
   "Non-case class" should {
@@ -48,7 +47,6 @@ trait DocumentClassExtraSpec { self: DocumentClassSpec =>
       }
     }
   }
-   */
 }
 
 final class UnsupportedExtraClass(val name: String, val age: Int)

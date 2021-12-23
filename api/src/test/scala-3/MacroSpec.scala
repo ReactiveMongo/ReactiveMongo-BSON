@@ -20,7 +20,8 @@ import reactivemongo.api.bson.{
   MacroAnnotations,
   MacroConfiguration,
   MacroOptions,
-  Macros
+  Macros,
+  TypeNaming
 }
 import reactivemongo.api.bson.TestUtils.typecheck
 import reactivemongo.api.bson.exceptions.{
@@ -32,6 +33,7 @@ import org.specs2.execute._
 import org.specs2.matcher.MatchResult
 import org.specs2.matcher.TypecheckMatchers._
 
+// TODO: Common with Scala2?
 final class MacroSpec
     extends org.specs2.mutable.Specification
     with MacroExtraSpec:
@@ -77,26 +79,21 @@ final class MacroSpec
   }
 
   "Formatter" should {
-    /* TODO
     "handle primitives" in {
       roundtrip(
         Primitives(1.2, "hai", true, 42, Long.MaxValue),
         Macros.handler[Primitives]
       )
     }
-     */
 
     "support nesting" in {
-      implicit val personReader = Macros.reader[Person] // TODO: Remove
-      implicit val personWriter = Macros.writer[Person] // TODO: Remove
-      // TODO: implicit val personFormat = Macros.handler[Person]
+      implicit val personFormat = Macros.handler[Person]
 
       val doc = Pet("woof", Person("john", "doe"))
 
       roundtrip(doc)(Macros.reader[Pet], Macros.writer[Pet])
     }
 
-    /* TODO
     "support option" in {
       val format = Macros.handler[Optional]
       val some = Optional("some", Some("value"))
@@ -119,7 +116,6 @@ final class MacroSpec
         .readTry(BSONDocument("name" -> "name", "value" -> BSONNull))
         .map(_.value) must beSuccessfulTry(Option.empty[String])
     }
-     */
 
     "write empty option as null" in {
       Macros
@@ -129,7 +125,6 @@ final class MacroSpec
       )
     }
 
-    /* TODO
     "support seq" in {
       roundtrip(
         WordLover("john", Seq("hello", "world")),
@@ -148,7 +143,6 @@ final class MacroSpec
         roundtrip(OptionalSingle(None), f)
       }
     }
-     */
 
     "support generic optional value" >> {
       val doc1 = BSONDocument("v" -> 1)
@@ -177,18 +171,16 @@ final class MacroSpec
         }
       }
 
-      /* TODO
       "for handler" in {
         val h = Macros.handler[OptionalGeneric[String]]
 
         roundtrip(none, h) and roundtrip(some, h)
       }
-       */
     }
 
-    /* TODO
     "support generic case class Foo" >> {
-      implicit def singleHandler = Macros.handler[Single]
+      implicit def singleHandler: BSONDocumentHandler[Single] =
+        Macros.handler[Single]
 
       "directly" in {
         roundtrip(
@@ -209,24 +201,26 @@ final class MacroSpec
     }
 
     "support generic case class GenSeq" in {
-      implicit def singleHandler = new BSONWriter[Single]
-        with BSONReader[Single]
-        with BSONHandler[Single] {
-        def writeTry(single: Single) = BSONDecimal.fromBigDecimal(single.value)
+      implicit def singleHandler: BSONWriter[Single] with BSONReader[Single] with BSONHandler[Single] =
+        new BSONWriter[Single]
+          with BSONReader[Single]
+          with BSONHandler[Single] {
+          def writeTry(single: Single) =
+            BSONDecimal.fromBigDecimal(single.value)
 
-        def readTry(bson: BSONValue): Try[Single] = bson match {
-          case dec: BSONDecimal =>
-            BSONDecimal.toBigDecimal(dec).map(Single(_))
+          def readTry(bson: BSONValue): Try[Single] = bson match {
+            case dec: BSONDecimal =>
+              BSONDecimal.toBigDecimal(dec).map(Single(_))
 
-          case _ =>
-            Failure(
-              TypeDoesNotMatchException(
-                "BSONDecimal",
-                bson.getClass.getSimpleName
+            case _ =>
+              Failure(
+                TypeDoesNotMatchException(
+                  "BSONDecimal",
+                  bson.getClass.getSimpleName
+                )
               )
-            )
+          }
         }
-      }
 
       implicit def optionHandler[T](
           implicit
@@ -256,13 +250,13 @@ final class MacroSpec
     }
 
     "support auto-materialization for property types (not recommended)" in {
-      val handler = Macros.handlerOpts[
+      val handler = Macros.handlerOpts[ // TODO: Reproducer show error
         Person2,
         MacroOptions.AutomaticMaterialization with MacroOptions.DisableWarnings
       ]
 
       typecheck("Macros.handler[Person2]") must failWith(
-        "Implicit\\ not\\ found\\ for\\ .*itemList"
+        ".*found\\ for\\ .*itemList.*"
       ) and {
         roundtrip(
           Person2(
@@ -373,9 +367,12 @@ final class MacroSpec
       }
 
       "with macro-configured handler (SnakeCase)" in {
+        // TODO: Same as separate test for Reader/Writer
         spec(
           handler = Macros
-            .configured(MacroConfiguration(fieldNaming = FieldNaming.SnakeCase))
+            .configured(
+              MacroConfiguration(fieldNaming = FieldNaming.SnakeCase)
+            )
             .handler[Person],
           expectedBson =
             BSONDocument("first_name" -> "Jane", "last_name" -> "doe")
@@ -383,6 +380,7 @@ final class MacroSpec
       }
     }
 
+    /* TODO
     "handle union types (ADT)" >> {
       import Union._
       import MacroOptions._
@@ -456,6 +454,7 @@ final class MacroSpec
         } and roundtrip(a, format) and roundtrip(b, format)
       }
     }
+     */
 
     "handle recursive structure" in {
       import TreeModule._
@@ -500,9 +499,7 @@ final class MacroSpec
       import Union._
 
       "but fail when the subtype is not provided with implicit instance" in {
-        typecheck("Macros.handler[UT]") must failWith(
-          "Implicit\\ not\\ found\\ for\\ 'U"
-        )
+        typecheck("Macros.handler[UT]") must failWith(".*not\\ found.*U.*")
       }
 
       "with auto-materialization & default configuration" in {
@@ -525,15 +522,20 @@ final class MacroSpec
 
       "with custom configuration" in {
         // For sub-type UA
-        implicit def aReader = Macros.reader[UA]
-        implicit def aWriter = Macros.writer[UA]
+        implicit def aReader: BSONDocumentReader[UA] = Macros.reader[UA]
+        implicit def aWriter: BSONDocumentWriter[UA] = Macros.writer[UA]
 
         // Sub-type UC, UD, UF
-        implicit def cHandler = Macros.handler[UC]
-        implicit def dHandler = Macros.handler[UD]
-        implicit def eHandler = Macros.handler[UE.type]
-        implicit def fHandler = Macros.handler[UF.type]
+        implicit def bHandler: BSONDocumentHandler[UB] = Macros.handler[UB]
+        implicit def cHandler: BSONDocumentHandler[UC] = Macros.handler[UC]
+        implicit def dHandler: BSONDocumentHandler[UD] = Macros.handler[UD]
+        implicit def eHandler: BSONDocumentHandler[UE.type] =
+          Macros.handler[UE.type]
 
+        implicit def fHandler: BSONDocumentHandler[UF.type] =
+          Macros.handler[UF.type]
+
+        import com.github.ghik.silencer.silent
         @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
         implicit val format: BSONDocumentHandler[UT] = {
           implicit val cfg: MacroConfiguration = MacroConfiguration(
@@ -560,6 +562,7 @@ final class MacroSpec
       }
     }
 
+    /* TODO
     "support automatic implementations search with nested traits" in {
       import MacroOptions._
       import InheritanceModule._
@@ -654,17 +657,14 @@ final class MacroSpec
             expectedReadErr
           )
         } and {
-          /* TODO:
           typecheck("Macros.handler[NotIgnorable]") must failWith(
             expectedReadErr
           )
-           */
-          ok
         }
       }
 
       "with Pair type having a default field value" in {
-        val pairHandler = Macros.writer[Pair] // TODO: Macros.handler[Pair]
+        val pairHandler = Macros.handler[Pair]
         val pairWriter = Macros.writer[Pair]
         val pairReader = Macros.reader[Pair]
 
@@ -677,15 +677,12 @@ final class MacroSpec
         pairHandler.writeTry(pair1) must beSuccessfulTry(doc1) and {
           pairWriter.writeTry(pair2) must beSuccessfulTry(doc2)
         } and {
-          /* TODO
           pairHandler.readTry(doc2) must beSuccessfulTry(
             Pair(
               left = "_left", // from default field value
               right = pair2.right
             )
           )
-           */
-          ok
         } and {
           pairReader.readTry(doc1) must beSuccessfulTry(
             Pair(
@@ -703,11 +700,8 @@ final class MacroSpec
         implicit val reader: BSONDocumentReader[IgnoredAndKey] =
           Macros.reader[IgnoredAndKey]
 
-        implicit val handler: BSONDocumentWriter[IgnoredAndKey] =
-          Macros.writer[IgnoredAndKey]
-        /* TODO
         implicit val handler: BSONDocumentHandler[IgnoredAndKey] =
-         Macros.handler[IgnoredAndKey] */
+          Macros.handler[IgnoredAndKey]
 
         val expected = BSONDocument("second" -> "foo")
         val v = IgnoredAndKey(Person("john", "doe"), "foo")
@@ -720,8 +714,7 @@ final class MacroSpec
         writer.writeTry(v) must beSuccessfulTry(expected) and {
           handler.writeTry(v) must beSuccessfulTry(expected)
         } and {
-          // TODO: handler.readTry(expected) must beSuccessfulTry(withDefault)
-          ok
+          handler.readTry(expected) must beSuccessfulTry(withDefault)
         } and {
           reader.readTry(expected) must beSuccessfulTry(withDefault)
         }
@@ -729,30 +722,29 @@ final class MacroSpec
     }
 
     "be generated for class class with self reference" in {
-      val h = Macros.writer[Bar] // TODO: Macros.handler[Bar]
+      val h = Macros.handler[Bar]
       val bar1 = Bar("bar1", None)
       val doc1 = BSONDocument("name" -> "bar1")
 
-      /* TODO:
       h.readTry(doc1) must beSuccessfulTry(bar1) and {
         h.readTry(BSONDocument("name" -> "bar2", "next" -> doc1))
           .aka("bar2") must beSuccessfulTry(Bar("bar2", Some(bar1)))
 
-      } and */
-      (h.writeTry(bar1) must beSuccessfulTry(doc1)) and {
+      } and {
+        (h.writeTry(bar1) must beSuccessfulTry(doc1))
+      } and {
         h.writeTry(Bar("bar2", Some(bar1))) must beSuccessfulTry(
           BSONDocument("name" -> "bar2", "next" -> doc1)
         )
       }
     }
 
-    /* TODO
     "support @Flatten annotation" in {
       typecheck("Macros.handler[InvalidRecursive]") must failWith(
-        "Cannot\\ flatten\\ reader\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type"
+        "Cannot\\ flatten\\ .*\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type"
       ) and {
         typecheck("Macros.handler[InvalidNonDoc]") must failWith(
-          "doesn't\\ conform\\ BSONDocumentReader"
+          ".*doesn't\\ conform\\ BSONDocument.*"
         )
       } and {
         roundtrip(
@@ -761,7 +753,6 @@ final class MacroSpec
         )
       }
     }
-     */
 
     "support @Reader & @Writer annotations" in {
       val reader1 = Macros.reader[PerField1[String]]

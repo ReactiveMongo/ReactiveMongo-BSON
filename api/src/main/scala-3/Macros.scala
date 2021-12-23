@@ -205,6 +205,43 @@ object Macros extends MacroAnnotations:
     ${ MacroImpl.anyValHandler[A, MacroOptions.Default] }
 
   /**
+   * $handlerMacro.
+   * $defaultCfg.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocumentHandler, Macros }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val handler: BSONDocumentHandler[Foo] = Macros.handler
+   * }}}
+   *
+   * $tparam
+   */
+  inline def handler[A]: BSONDocumentHandler[A] =
+    ${ MacroImpl.handler[A, MacroOptions.Default] }
+
+  /**
+   * $handlerMacro.
+   * $defaultCfg, with given additional options.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ Macros, MacroOptions }
+   *
+   * case class Foo(bar: String, lorem: Int)
+   *
+   * val handler = Macros.handlerOpts[Foo, MacroOptions.Default]
+   * }}}
+   *
+   * $tparam
+   * $tparamOpts
+   */
+  inline def handlerOpts[
+      A,
+      Opts <: MacroOptions.Default
+    ]: BSONDocumentHandler[A] = ${ MacroImpl.handler[A, Opts] }
+
+  /**
    * Creates a [[BSONHandler]] for an [[https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html opaque type alias]] `A`, that itself aliases a [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]].
    *
    * The inner value will be directly written as BSON value.
@@ -251,7 +288,7 @@ object Macros extends MacroAnnotations:
    * }}}
    */
   def configured[Opts <: MacroOptions](
-      using
+      implicit
       config: MacroConfiguration.Aux[Opts]
     ) = new WithOptions[Opts](config)
 
@@ -310,16 +347,15 @@ object Macros extends MacroAnnotations:
       ${ MacroImpl.writerWithConfig[A, Opts]('config) }
 
     /**
-     * TODO
      * $handlerMacro.
      *
      * $tparam
-     *    inline def handler[A]: BSONDocumentHandler[A] =
-     *      ${ MacroImpl.handlerWithConfig[A, Opts]('config) }
      */
+    inline def handler[A]: BSONDocumentHandler[A] =
+      ${ MacroImpl.handlerWithConfig[A, Opts]('config) }
   }
 
-  // --- Internals TODO: Common with Scala2
+  // --- Internals
 
   /** Only for internal purposes */
   final class Placeholder private () {}
@@ -334,18 +370,6 @@ object Macros extends MacroAnnotations:
       @com.github.ghik.silencer.silent
       def writeTry(pl: Placeholder) = Success(BSONDocument.empty)
     }
-  }
-
-  /** Only for internal purposes */
-  final class LocalVar[@specialized T] {
-    private var underlying: T = _
-
-    def take(value: T): LocalVar[T] = {
-      underlying = value
-      this
-    }
-
-    def value(): T = underlying
   }
 end Macros
 

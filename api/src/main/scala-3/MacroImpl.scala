@@ -13,7 +13,11 @@ import scala.deriving.Mirror.ProductOf
 import scala.quoted.{ Expr, Quotes, Type }
 import scala.reflect.ClassTag
 
-import exceptions.{ HandlerException, ValueDoesNotMatchException }
+import exceptions.{
+  HandlerException,
+  TypeDoesNotMatchException,
+  ValueDoesNotMatchException
+}
 
 // TODO: Enum
 // TODO: Remove `top` parameters (unused)
@@ -126,7 +130,7 @@ private[api] object MacroImpl:
 
       }
 
-      helper.debug(s"// Value reader\n${reader.show}")
+      //TODO: helper.debug(s"// Value reader\n${reader.show}")
 
       reader
     }
@@ -239,13 +243,20 @@ private[api] object MacroImpl:
     }
   }
 
-  /* TODO
-  def handler[
-      A: c.WeakTypeTag,
-      Opts: c.WeakTypeTag
-    ]: c.Expr[BSONDocumentHandler[A]] =
+  def handler[A: Type, Opts <: MacroOptions: Type](
+      using
+      Quotes,
+      Type[DefaultValue],
+      Type[Reader],
+      Type[Writer],
+      Type[Ignore],
+      Type[Key],
+      Type[Flatten],
+      Type[NoneAsNull],
+      Type[MacroOptions.DisableWarnings],
+      Type[MacroOptions.Verbose]
+    ): Expr[BSONDocumentHandler[A]] =
     handlerWithConfig[A, Opts](implicitOptionsConfig)
-   */
 
   def opaqueAliasHandler[A: Type, Opts <: MacroOptions: Type](
       using
@@ -496,31 +507,46 @@ private[api] object MacroImpl:
     }
   }
 
-  /* TODO
-  def handlerWithConfig[A: c.WeakTypeTag, Opts: c.WeakTypeTag](
-      config: c.Expr[MacroConfiguration]
-    ): c.Expr[BSONDocumentHandler[A]] = reify(new BSONDocumentHandler[A] {
+  def handlerWithConfig[A: Type, Opts <: MacroOptions: Type](
+      config: Expr[MacroConfiguration]
+    )(using
+      q: Quotes,
+      dvat: Type[DefaultValue],
+      rat: Type[Reader],
+      wat: Type[Writer],
+      it: Type[Ignore],
+      kt: Type[Key],
+      flt: Type[Flatten],
+      nant: Type[NoneAsNull],
+      dit: Type[MacroOptions.DisableWarnings],
+      vt: Type[MacroOptions.Verbose]
+    ): Expr[BSONDocumentHandler[A]] = {
+    import q.reflect.*
 
-    private val r: BSONDocument => UTry[A] = { macroDoc =>
-      createHelper[A, Opts](config).readBody.splice
+    ensureFindType[A]
+
+    val whelper = createWriterHelper[A, Opts](config)
+    val rhelper = createReaderHelper[A, Opts](config)
+
+    // TODO: Common calls?
+    '{
+      val writer = withSelfDocWriter {
+        (forwardBSONWriter: BSONDocumentWriter[A]) =>
+          { (macroVal: A) =>
+            ${ whelper.writeBody('{ macroVal }, '{ forwardBSONWriter }) }
+          }
+      }
+
+      val reader = withSelfDocReader {
+        (forwardBSONReader: BSONDocumentReader[A]) =>
+          { (macroVal: BSONDocument) =>
+            ${ rhelper.readBody('{ macroVal }, '{ forwardBSONReader }) }
+          }
+      }
+
+      BSONDocumentHandler.provided[A](reader, writer)
     }
-
-    lazy val forwardBSONReader: BSONDocumentReader[A] =
-      BSONDocumentReader.from[A](r)
-
-    private val w: A => UTry[BSONDocument] = { macroVal =>
-      createHelper[A, Opts](config).writeBody.splice
-    }
-
-    lazy val forwardBSONWriter: BSONDocumentWriter[A] =
-      BSONDocumentWriter.from[A](w)
-
-    def readDocument(document: BSONDocument): UTry[A] =
-      forwardBSONReader.readDocument(document)
-
-    def writeTry(v: A) = forwardBSONWriter.writeTry(v)
-  })
-   */
+  }
 
   def implicitOptionsConfig(
       using
@@ -584,6 +610,8 @@ private[api] object MacroImpl:
       with QuotesHelper {
     self: MacroHelpers[A] with ReaderHelpers[A] =>
 
+    val macroCfgInit = config
+
     import quotes.reflect.*
 
     def readBody(
@@ -644,6 +672,8 @@ private[api] object MacroImpl:
       with QuotesHelper {
     self: MacroHelpers[A] with WriterHelpers[A] =>
 
+    val macroCfgInit = config
+
     import quotes.reflect.*
 
     def writeBody(
@@ -652,11 +682,13 @@ private[api] object MacroImpl:
       ): Expr[TryResult[BSONDocument]] = {
       val writer = documentWriter(macroVal, forwardExpr, top = true)
 
-      debug(s"// Writer\n${writer.show}")
+      // TODO: debug(s"// Writer\n${writer.show}")
 
       writer
     }
   }
+
+// TODO: HandlerHelper that mix MacroHelpers with WriterHelpers with ReaderHelpers to avoid instanciated both separately
 
   // ---
 
@@ -713,7 +745,7 @@ private[api] object MacroImpl:
         top: Boolean
       ): Expr[TryResult[A]] = withMacroCfg { config =>
 
-      val readClass: Expr[TryResult[A]] =
+      def readClass: Expr[TryResult[A]] =
         readBodyConstruct(config, macroVal, forwardExpr, top)(using aTpe)
 
       def handleChildTypes(discriminator: Expr[String]): Expr[TryResult[A]] = {
@@ -737,15 +769,13 @@ private[api] object MacroImpl:
                   readDiscriminatedCase[at](
                     macroVal,
                     discriminator,
-                    /* TODO: Remove;
                     '{
                       @SuppressWarnings(Array("AsInstanceOf"))
                       def forward =
                         ${ forwardExpr }.asInstanceOf[BSONDocumentReader[at]]
 
                       forward
-                     },*/
-                    forwardExpr.asExprOf[BSONDocumentReader[at]],
+                    },
                     top,
                     config,
                     resolve,
@@ -755,11 +785,11 @@ private[api] object MacroImpl:
               }
             }
 
-            Match(macroVal.asTerm, cases).asExprOf[TryResult[A]]
+            Match(discriminator.asTerm, cases).asExprOf[TryResult[A]]
           }
 
         val discriminatedSubTypes: Option[Expr[TryResult[A]]] =
-          subTypes.map { types =>
+          subTypes.map { (types, exhaustive) =>
             val resolve = resolver[BSONDocumentReader, A](
               Map.empty,
               forwardExpr,
@@ -773,16 +803,17 @@ private[api] object MacroImpl:
                 case tt @ '[Subtype[at]] =>
                   readDiscriminatedCase[at](
                     macroVal,
-                    discriminator,
-                    /* TODO: Remove;
-                    '{
-                      @SuppressWarnings(Array("AsInstanceOf"))
-                      def forward =
-                        ${ forwardExpr }.asInstanceOf[BSONDocumentReader[at]]
+                    discriminator, {
+                      def expectedTpe = prettyType(TypeRepr.of[at])
 
-                      forward
-                     },*/
-                    forwardExpr.asExprOf[BSONDocumentReader[at]],
+                      '{
+                        BSONDocumentReader.from[at] { doc =>
+                          ${ forwardExpr }.readTry(doc).collect {
+                            case v: at => v
+                          }
+                        }
+                      }
+                    },
                     top,
                     config,
                     resolve,
@@ -792,19 +823,19 @@ private[api] object MacroImpl:
               }
             }
 
-            /* TODO: Remove?
             def fallback = CaseDef(
               Wildcard(),
               None,
               '{
                 TryFailure(
-                  exceptions.ValueDoesNotMatchException(${ macroVal }.toString)
+                  exceptions.ValueDoesNotMatchException(${
+                    macroVal
+                  }.toString)
                 )
               }.asTerm
             )
-             */
 
-            Match(macroVal.asTerm, cases /* :+ fallback*/ )
+            Match(discriminator.asTerm, cases :+ fallback)
               .asExprOf[TryResult[A]]
           }
 
@@ -931,8 +962,20 @@ private[api] object MacroImpl:
       ): Expr[TryResult[T]] = {
       val repr = TypeRepr.of[T](using tpe)
 
-      if (repr.isSingleton) singletonReader[T](macroCfg)
-      else {
+      if (repr.isSingleton) {
+        singletonReader[T]
+      } else if (repr.typeSymbol == repr.typeSymbol.moduleClass) {
+
+        /* TODO: Remove
+        val instance = New(Inferred(repr))
+          .select(repr.typeSymbol.primaryConstructor)
+          .appliedToNone
+          .asExprOf[T]
+         */
+        val instance = Ref(repr.typeSymbol.companionModule).asExprOf[T]
+
+        '{ TrySuccess($instance) }
+      } else {
         type IsProduct[U <: Product] = U
 
         tpe match {
@@ -977,19 +1020,16 @@ private[api] object MacroImpl:
       }
     }
 
-    private def singletonReader[T](
-        macroCfg: Expr[MacroConfiguration]
-      )(using
-        tpe: Type[T]
-      ): Expr[TrySuccess[T]] = Expr.summon[ValueOf[T]] match {
-      case Some(vof) =>
-        '{ TrySuccess(${ vof }.value) }
+    private def singletonReader[T](using tpe: Type[T]): Expr[TrySuccess[T]] =
+      Expr.summon[ValueOf[T]] match {
+        case Some(vof) =>
+          '{ TrySuccess(${ vof }.value) }
 
-      case _ =>
-        report.errorAndAbort(
-          s"Something weird is going on with '${prettyType(TypeRepr.of(using tpe))}'. Should be a singleton but can't parse it"
-        )
-    }
+        case _ =>
+          report.errorAndAbort(
+            s"Something weird is going on with '${prettyType(TypeRepr.of(using tpe))}'. Should be a singleton but can't parse it"
+          )
+      }
 
     private type ReadableProperty =
       Tuple5[Symbol, Int, TypeRepr, /*default:*/ Option[
@@ -1316,6 +1356,7 @@ private[api] object MacroImpl:
             .sortBy(_._1)
             .map(_._2) // Make sure the exprs respect fields order
 
+        // TODO: Extract trySeq (avoid "generate" it for each handler)
         '{
           @annotation.tailrec
           def trySeq[T](
@@ -1406,7 +1447,7 @@ private[api] object MacroImpl:
             // TODO: Test AutoMat
             val lt = leafType(tpr)
 
-            report.warning(
+            warn(
               s"Materializing ${classOf[BSONReader[_]].getName}[${prettyType(
                 lt
               )}] for '${prettyType(TypeRepr.of(using tpe))}.$pname': it's recommended to declare it explicitly"
@@ -1480,6 +1521,8 @@ private[api] object MacroImpl:
         type Opts = self.Opts
         type Q = self.quotes.type
         val quotes = self.quotes
+
+        val macroCfgInit = self.macroCfgInit
 
         val docReaderType = self.docReaderType
         val readerAnnotationTpe = self.readerAnnotationTpe
@@ -1580,7 +1623,7 @@ private[api] object MacroImpl:
         }
 
       val discriminatedSubTypes: Option[Expr[TryResult[BSONDocument]]] =
-        subTypes.map { types =>
+        subTypes.map { (types, exhaustive) =>
           val resolve = resolver[BSONDocumentWriter, A](
             Map.empty,
             forwardExpr,
@@ -1609,20 +1652,22 @@ private[api] object MacroImpl:
             }
           }
 
-          /* TODO: Remove
-          def fallback = CaseDef(
-            Wildcard(),
-            None,
-            '{
-              TryFailure(
-                exceptions.ValueDoesNotMatchException(${ macroVal }.toString)
-              )
-            }.asTerm
-          )
-           */
+          if (exhaustive) {
+            Match(macroVal.asTerm, cases).asExprOf[TryResult[BSONDocument]]
+          } else {
+            def fallback = CaseDef(
+              Wildcard(),
+              None,
+              '{
+                TryFailure(
+                  exceptions.ValueDoesNotMatchException(${ macroVal }.toString)
+                )
+              }.asTerm
+            )
 
-          Match(macroVal.asTerm, cases /* :+ fallback*/ )
-            .asExprOf[TryResult[BSONDocument]]
+            Match(macroVal.asTerm, cases :+ fallback)
+              .asExprOf[TryResult[BSONDocument]]
+          }
         }
 
       discriminatedUnion orElse discriminatedSubTypes getOrElse {
@@ -1660,7 +1705,7 @@ private[api] object MacroImpl:
       val be = Ref(bind).asExprOf[T]
 
       val body: Expr[TryResult[BSONDocument]] =
-        givenWriter[T](config, be, tpe)(resolve).getOrElse {
+        givenWriter[T](be, tpe)(resolve).getOrElse {
           if (hasOption[MacroOptions.AutomaticMaterialization]) {
             // No existing implicit, but can fallback to automatic mat
             subHelper.writeBodyConstruct[T](
@@ -1677,7 +1722,10 @@ private[api] object MacroImpl:
       CaseDef(
         Bind(bind, Typed(Wildcard(), Inferred(tpr))),
         guard = None,
-        rhs = body.asTerm
+        rhs = '{
+          def discriminator = ${ discriminatorElement[T](config) }
+          ${ body }.map { _ ++ discriminator }
+        }.asTerm
       )
     }
 
@@ -1688,7 +1736,6 @@ private[api] object MacroImpl:
      * @param tpe the type of the `macroVal`
      */
     private def givenWriter[T](
-        config: Expr[MacroConfiguration],
         macroVal: Expr[T],
         tpe: Type[T]
       )(r: TypeRepr => Option[Implicit]
@@ -1697,15 +1744,8 @@ private[api] object MacroImpl:
       val tpr = TypeRepr.of[T](using tpe)
 
       r(tpr).map { (writer, _) =>
-        def doc: Expr[TryResult[BSONDocument]] = '{
-          ${ writer.asExprOf[BSONDocumentWriter[T]] }.writeTry(${
-            macroVal.asExprOf[T]
-          })
-        }
-
         '{
-          def discriminator = ${ discriminatorElement[T](config) }
-          ${ doc }.map { _ ++ discriminator }
+          ${ writer.asExprOf[BSONDocumentWriter[T]] }.writeTry(${ macroVal })
         }
       }
     }
@@ -1723,8 +1763,10 @@ private[api] object MacroImpl:
       ): Expr[TryResult[BSONDocument]] = {
       val repr = TypeRepr.of[T](using tpe)
 
-      if (repr.isSingleton) singletonWriter[T](macroCfg)
-      else {
+      if (repr.isSingleton || repr.typeSymbol == repr.typeSymbol.moduleClass) {
+        // TODO: isObject
+        singletonWriter[T]
+      } else {
         type IsProduct[U <: Product] = U
 
         tpe match {
@@ -1771,11 +1813,7 @@ private[api] object MacroImpl:
       }
     }
 
-    private def singletonWriter[T](
-        macroCfg: Expr[MacroConfiguration] // TODO: Remove
-      )(using
-        tpe: Type[T]
-      ): Expr[TrySuccess[BSONDocument]] =
+    private def singletonWriter[T: Type]: Expr[TrySuccess[BSONDocument]] =
       '{ TrySuccess(BSONDocument.empty) }
 
     private type WritableProperty =
@@ -1833,150 +1871,134 @@ private[api] object MacroImpl:
           elms
       }
 
-      val types = tprElements.map(_._2)
+      if (tprElements.isEmpty) {
+        // Empty class
+        singletonWriter[T]
+      } else {
+        val types = tprElements.map(_._2)
 
-      val resolve =
-        resolver[BSONWriter, T](Map.empty, forwardExpr, debug)(writerType)
+        val resolve =
+          resolver[BSONWriter, T](Map.empty, forwardExpr, debug)(writerType)
 
-      val (optional, required) = tprElements.zipWithIndex.view.filterNot {
-        case ((sym, _), _) => ignoreField(sym)
-      }.map {
-        case ((sym, pt), i) =>
-          pt.asType match {
-            case '[t] =>
-              val writerAnnTpe = writerAnnotationRepr.appliedTo(pt)
+        val (optional, required) = tprElements.zipWithIndex.view.filterNot {
+          case ((sym, _), _) => ignoreField(sym)
+        }.map {
+          case ((sym, pt), i) =>
+            pt.asType match {
+              case '[t] =>
+                val writerAnnTpe = writerAnnotationRepr.appliedTo(pt)
 
-              val writerAnns = sym.annotations.flatMap {
-                case ann if (ann.tpe <:< writerAnyAnnotationRepr) => {
-                  if (!(ann.tpe <:< writerAnnTpe)) {
-                    report.errorAndAbort(s"Invalid annotation @Writer(${ann.show}) for '${prettyType(tpr)}.${sym.name}': Writer[${prettyType(pt)}]")
-                  }
-
-                  sym.getAnnotation(writerAnnTpe.typeSymbol).collect {
-                    case Apply(_, List(writer)) =>
-                      writer.asExprOf[BSONWriter[t]]
-                  }
-                }
-
-                case a =>
-                  Seq.empty[Expr[BSONWriter[t]]]
-              }
-
-              val writerFromAnn: Option[Expr[BSONWriter[t]]] =
-                writerAnns match {
-                  case w +: other => {
-                    if (other.nonEmpty) {
-                      warn(s"Exactly one @Writer must be provided for each property; Ignoring invalid annotations for '${prettyType(tpr)}.${sym.name}'")
+                val writerAnns = sym.annotations.flatMap {
+                  case ann if (ann.tpe <:< writerAnyAnnotationRepr) => {
+                    if (!(ann.tpe <:< writerAnnTpe)) {
+                      report.errorAndAbort(s"Invalid annotation @Writer(${ann.show}) for '${prettyType(tpr)}.${sym.name}': Writer[${prettyType(pt)}]")
                     }
 
-                    Some(w)
+                    sym.getAnnotation(writerAnnTpe.typeSymbol).collect {
+                      case Apply(_, List(writer)) =>
+                        writer.asExprOf[BSONWriter[t]]
+                    }
                   }
 
-                  case _ =>
-                    None
+                  case a =>
+                    Seq.empty[Expr[BSONWriter[t]]]
                 }
 
-              WritableProperty(sym, i, pt, writerFromAnn)
-          }
-      }.partition {
-        case WritableProperty(_, _, t, writerFromAnn) =>
-          writerFromAnn.isEmpty && isOptionalType(t)
-      }
+                val writerFromAnn: Option[Expr[BSONWriter[t]]] =
+                  writerAnns match {
+                    case w +: other => {
+                      if (other.nonEmpty) {
+                        warn(s"Exactly one @Writer must be provided for each property; Ignoring invalid annotations for '${prettyType(tpr)}.${sym.name}'")
+                      }
 
-      type ElementAcc = MBuilder[BSONElement, Seq[BSONElement]]
-      type ExceptionAcc = MBuilder[HandlerException, Seq[HandlerException]]
+                      Some(w)
+                    }
 
-      def withIdents[U: Type](
-          f: Function3[Expr[MacroConfiguration], /* ok */ Expr[
-            ElementAcc
-          ], /* err */ Expr[ExceptionAcc], Expr[U]]
-        ): Expr[U] = withMacroCfg { config =>
-        '{
-          val ok = Seq.newBuilder[BSONElement]
-          val err = Seq.newBuilder[HandlerException]
+                    case _ =>
+                      None
+                  }
 
-          ${ f(config, '{ ok }, '{ err }) }
+                WritableProperty(sym, i, pt, writerFromAnn)
+            }
+        }.partition {
+          case WritableProperty(_, _, t, writerFromAnn) =>
+            writerFromAnn.isEmpty && isOptionalType(t)
         }
-      }
 
-      val (tupleTpe, withTupled) =
-        withTuple[T, U, TryResult[BSONDocument]](tpr, toProduct, types)
+        type ElementAcc = MBuilder[BSONElement, Seq[BSONElement]]
+        type ExceptionAcc = MBuilder[HandlerException, Seq[HandlerException]]
 
-      withTupled(macroVal) { tupled =>
-        val fieldMap = withFields(tupled, tupleTpe, tprElements, debug)
+        def withIdents[U: Type](
+            f: Function3[Expr[MacroConfiguration], /* ok */ Expr[
+              ElementAcc
+            ], /* err */ Expr[ExceptionAcc], Expr[U]]
+          ): Expr[U] = withMacroCfg { config =>
+          '{
+            val ok = Seq.newBuilder[BSONElement]
+            val err = Seq.newBuilder[HandlerException]
 
-        withIdents[TryResult[BSONDocument]] { (config, bufOk, bufErr) =>
-          /*
-           * @param field the name for the document field
-           */
-          def appendCall(
-              field: Expr[String],
-              bson: Expr[BSONValue]
-            ): Expr[ElementAcc] =
-            '{ ${ bufOk } += BSONElement($field, $bson) }
-
-          /*
-           * @param field the name for the document field
-           */
-          def appendDocCall[V](
-              doc: Expr[BSONDocument],
-              field: Expr[String],
-              param: Symbol,
-              pt: TypeRepr,
-              writer: Expr[BSONWriter[V]]
-            ): Expr[ElementAcc] = {
-            if (mustFlatten[V](tpr, param, pt, writer)) {
-              '{
-                ${ bufOk } ++= ${ doc }.elements
-              }
-            } else appendCall(field, doc)
+            ${ f(config, '{ ok }, '{ err }) }
           }
+        }
 
-          def writeCall[V: Type](
-              field: Expr[String],
-              param: Symbol,
-              pt: TypeRepr,
-              writer: Expr[BSONWriter[V]],
-              v: Expr[V]
-            ): Expr[Unit] = {
-            lazy val res = '{ ${ writer }.writeTry(${ v }) }
+        val (tupleTpe, withTupled) =
+          withTuple[T, U, TryResult[BSONDocument]](tpr, toProduct, types)
 
-            if (res.asTerm.tpe <:< successBsonDoc) {
-              // SafeBSONWriter directly return Success document
+        withTupled(macroVal) { tupled =>
+          val fieldMap = withFields(tupled, tupleTpe, tprElements, debug)
 
-              val docRes =
-                res.asExprOf[TrySuccess[BSONDocument]]
+          withIdents[TryResult[BSONDocument]] { (config, bufOk, bufErr) =>
+            /*
+             * @param field the name for the document field
+             */
+            def appendCall(
+                field: Expr[String],
+                bson: Expr[BSONValue]
+              ): Expr[ElementAcc] =
+              '{ ${ bufOk } += BSONElement($field, $bson) }
 
-              '{
-                val doc: BSONDocument = ${ docRes }.get
-                ${ appendDocCall('{ doc }, field, param, pt, writer) }
-                ()
-              }
-            } else if (res.asTerm.tpe <:< successBsonVal) {
-              // SafeBSONWriter directly return Success value
-
-              '{
-                ${ res }.get match {
-                  case doc: BSONDocument =>
-                    ${ appendDocCall('{ doc }, field, param, pt, writer) }
-                    ()
-
-                  case bson =>
-                    ${ appendCall(field, '{ bson }) }
-                    ()
+            /*
+             * @param field the name for the document field
+             */
+            def appendDocCall[V](
+                doc: Expr[BSONDocument],
+                field: Expr[String],
+                param: Symbol,
+                pt: TypeRepr,
+                writer: Expr[BSONWriter[V]]
+              ): Expr[ElementAcc] = {
+              if (mustFlatten[V](tpr, param, pt, writer)) {
+                '{
+                  ${ bufOk } ++= ${ doc }.elements
                 }
-              }
-            } else {
-              '{
-                ${ res }.fold[Unit](
-                  { e =>
-                    ${ bufErr } += HandlerException(
-                      ${ Expr(param.name) },
-                      e
-                    )
-                    ()
-                  },
-                  {
+              } else appendCall(field, doc)
+            }
+
+            def writeCall[V: Type](
+                field: Expr[String],
+                param: Symbol,
+                pt: TypeRepr,
+                writer: Expr[BSONWriter[V]],
+                v: Expr[V]
+              ): Expr[Unit] = {
+              lazy val res = '{ ${ writer }.writeTry(${ v }) }
+
+              if (res.asTerm.tpe <:< successBsonDoc) {
+                // SafeBSONWriter directly return Success document
+
+                val docRes =
+                  res.asExprOf[TrySuccess[BSONDocument]]
+
+                '{
+                  val doc: BSONDocument = ${ docRes }.get
+                  ${ appendDocCall('{ doc }, field, param, pt, writer) }
+                  ()
+                }
+              } else if (res.asTerm.tpe <:< successBsonVal) {
+                // SafeBSONWriter directly return Success value
+
+                '{
+                  ${ res }.get match {
                     case doc: BSONDocument =>
                       ${ appendDocCall('{ doc }, field, param, pt, writer) }
                       ()
@@ -1985,124 +2007,145 @@ private[api] object MacroImpl:
                       ${ appendCall(field, '{ bson }) }
                       ()
                   }
-                )
-              }
-            }
-          }
-
-          val values: View[Expr[Unit]] = required.map {
-            case WritableProperty(param, i, pt, writerFromAnn) =>
-              val pname = param.name
-
-              val withField = fieldMap.get(pname) match {
-                case Some(f) => f
-
-                case _ =>
-                  report.errorAndAbort(
-                    s"Field not found: ${prettyType(tpr)}.${pname}"
-                  )
-              }
-
-              val field = fieldName(config, fieldKey(param))
-
-              pt.asType match {
-                case pTpe @ '[p] =>
-                  val writer: Expr[BSONWriter[p]] = writerFromAnn.fold(
-                    resolveWriter[p, T](forwardExpr, pname, pt, resolve)(
-                      using pTpe
-                    )
-                  )(_.asExprOf[BSONWriter[p]])
-
-                  (withField { f =>
-                    writeCall[p](
-                      field,
-                      param,
-                      pt,
-                      writer,
-                      f.asExprOf[p]
-                    ).asTerm
-                  }).asExprOf[Unit]
-              }
-          } // end of required.map
-
-          val extra: View[Expr[Unit]] = optional.collect {
-            case WritableProperty(
-                  param,
-                  i,
-                  optType @ OptionTypeParameter(pt),
-                  None
-                ) =>
-              val pname = param.name
-
-              val withField = fieldMap.get(pname) match {
-                case Some(f) => f
-
-                case _ =>
-                  report.errorAndAbort(
-                    s"Optional field not found: ${prettyType(tpr)}.${pname}"
-                  )
-              }
-
-              pt.asType match {
-                case pTpe @ '[p] =>
-                  val writer: Expr[BSONWriter[p]] =
-                    resolveWriter[p, T](forwardExpr, pname, pt, resolve)(
-                      using pTpe
-                    )
-
-                  val field = fieldName(config, fieldKey(param))
-
-                  val write = writeCall[p](field, param, pt, writer, _)
-
-                  (withField { f =>
-                    // pt => Unit
-                    val ml = '{ (v: p) => ${ write('{ v }) } }
-
-                    if (param.annotations.exists(_.tpe =:= noneAsNullRepr)) {
-                      val empty: Expr[Unit] = '{
-                        ${ appendCall(field, '{ BSONNull }) }
+                }
+              } else {
+                '{
+                  ${ res }.fold[Unit](
+                    { e =>
+                      ${ bufErr } += HandlerException(
+                        ${ Expr(param.name) },
+                        e
+                      )
+                      ()
+                    },
+                    {
+                      case doc: BSONDocument =>
+                        ${ appendDocCall('{ doc }, field, param, pt, writer) }
                         ()
-                      }
 
-                      '{
-                        ${ f.asExprOf[Option[p]] }.fold(${ empty })(${ ml })
-                      }.asTerm
-                    } else {
-                      '{ ${ f.asExprOf[Option[p]] }.foreach(${ ml }) }.asTerm
+                      case bson =>
+                        ${ appendCall(field, '{ bson }) }
+                        ()
                     }
-                  }).asExprOf[Unit]
+                  )
+                }
               }
-          } // end of extra.collect
-
-          // List[Tree] corresponding to fields appended to the buffer/builder
-          def fields = values ++ extra
-
-          val resExpr: Expr[TryResult[BSONDocument]] = '{
-            val acc = ${ bufErr }.result()
-
-            acc.headOption match {
-              case Some(error) =>
-                TryFailure[BSONDocument](error suppress acc.tail)
-
-              case _ =>
-                TrySuccess(BSONDocument(${ bufOk }.result(): _*))
             }
-          }
 
-          // => TryResult[BSONDocument]
-          def writer =
-            Block(fields.map(_.asTerm).toList, resExpr.asTerm)
+            val values: View[Expr[Unit]] = required.map {
+              case WritableProperty(param, i, pt, writerFromAnn) =>
+                val pname = param.name
 
-          if (values.isEmpty && extra.isEmpty) {
-            // TODO: Remove error as no field at all?
-            //writer.asExprOf[TryResult[BSONDocument]]
+                val withField = fieldMap.get(pname) match {
+                  case Some(f) => f
 
-            report.errorAndAbort(
-              s"No field found: class ${prettyType(TypeRepr.of[T](using tpe))}"
-            )
-          } else {
-            Block(tupled.asTerm :: Nil, writer)
-              .asExprOf[TryResult[BSONDocument]]
+                  case _ =>
+                    report.errorAndAbort(
+                      s"Field not found: ${prettyType(tpr)}.${pname}"
+                    )
+                }
+
+                val field = fieldName(config, fieldKey(param))
+
+                pt.asType match {
+                  case pTpe @ '[p] =>
+                    val writer: Expr[BSONWriter[p]] = writerFromAnn.fold(
+                      resolveWriter[p, T](forwardExpr, pname, pt, resolve)(
+                        using pTpe
+                      )
+                    )(_.asExprOf[BSONWriter[p]])
+
+                    (withField { f =>
+                      writeCall[p](
+                        field,
+                        param,
+                        pt,
+                        writer,
+                        f.asExprOf[p]
+                      ).asTerm
+                    }).asExprOf[Unit]
+                }
+            } // end of required.map
+
+            val extra: View[Expr[Unit]] = optional.collect {
+              case WritableProperty(
+                    param,
+                    i,
+                    optType @ OptionTypeParameter(pt),
+                    None
+                  ) =>
+                val pname = param.name
+
+                val withField = fieldMap.get(pname) match {
+                  case Some(f) => f
+
+                  case _ =>
+                    report.errorAndAbort(
+                      s"Optional field not found: ${prettyType(tpr)}.${pname}"
+                    )
+                }
+
+                pt.asType match {
+                  case pTpe @ '[p] =>
+                    val writer: Expr[BSONWriter[p]] =
+                      resolveWriter[p, T](forwardExpr, pname, pt, resolve)(
+                        using pTpe
+                      )
+
+                    val field = fieldName(config, fieldKey(param))
+
+                    val write = writeCall[p](field, param, pt, writer, _)
+
+                    (withField { f =>
+                      // pt => Unit
+                      val ml = '{ (v: p) => ${ write('{ v }) } }
+
+                      if (param.annotations.exists(_.tpe =:= noneAsNullRepr)) {
+                        val empty: Expr[Unit] = '{
+                          ${ appendCall(field, '{ BSONNull }) }
+                          ()
+                        }
+
+                        '{
+                          ${ f.asExprOf[Option[p]] }.fold(${ empty })(${ ml })
+                        }.asTerm
+                      } else {
+                        '{ ${ f.asExprOf[Option[p]] }.foreach(${ ml }) }.asTerm
+                      }
+                    }).asExprOf[Unit]
+                }
+            } // end of extra.collect
+
+            // List[Tree] corresponding to fields appended to the buffer/builder
+            def fields = values ++ extra
+
+            val resExpr: Expr[TryResult[BSONDocument]] = '{
+              val acc = ${ bufErr }.result()
+
+              acc.headOption match {
+                case Some(error) =>
+                  TryFailure[BSONDocument](error suppress acc.tail)
+
+                case _ =>
+                  TrySuccess(BSONDocument(${ bufOk }.result(): _*))
+              }
+            }
+
+            // => TryResult[BSONDocument]
+            def writer =
+              Block(fields.map(_.asTerm).toList, resExpr.asTerm)
+
+            if (values.isEmpty && extra.isEmpty) {
+              // TODO: Remove error as no field at all?
+              //writer.asExprOf[TryResult[BSONDocument]]
+
+              report.errorAndAbort(
+                s"No field found: class ${prettyType(TypeRepr.of[T](using tpe))}"
+              )
+            } else {
+              Block(tupled.asTerm :: Nil, writer)
+                .asExprOf[TryResult[BSONDocument]]
+            }
           }
         }
       }
@@ -2226,6 +2269,8 @@ private[api] object MacroImpl:
         with ImplicitResolver[T]
         with QuotesHelper {
 
+        val macroCfgInit = self.macroCfgInit
+
         type Opts = self.Opts
         type Q = self.quotes.type
         val quotes = self.quotes
@@ -2310,21 +2355,15 @@ private[api] object MacroImpl:
 
     // --- Macro configuration helpers ---
 
-    protected lazy val macroCfgInit: Option[Expr[MacroConfiguration]] =
-      Option.empty[Expr[MacroConfiguration]]
+    protected def macroCfgInit: Expr[MacroConfiguration]
 
     protected def withMacroCfg[T](
         body: Expr[MacroConfiguration] => Expr[T]
-      ): Expr[T] = macroCfgInit.orElse(Expr.summon[MacroConfiguration]) match {
-      case None =>
-        report.errorAndAbort("Missing MacroConfiguration")
-
-      case Some(expr) => body(expr)
-    }
+      ): Expr[T] = body(macroCfgInit)
 
     // --- Case classes helpers ---
 
-    protected final def isClass(tpr: TypeRepr): Boolean = {
+    @inline protected final def isClass(tpr: TypeRepr): Boolean = {
       lazy val tpeFlags = tpr.typeSymbol.flags
 
       !tpeFlags.is(Flags.Trait) && !tpeFlags.is(Flags.Abstract) &&
@@ -2354,12 +2393,14 @@ private[api] object MacroImpl:
 
     // --- Union helpers ---
 
-    protected final lazy val subTypes: Option[List[TypeRepr]] =
-      parseSubTypes orElse directKnownSubclasses(aTpeRepr)
+    protected final lazy val subTypes: Option[(List[TypeRepr], /* exhaustive: */ Boolean)] =
+      parseRestrictedSubTypes.map(_ -> false) orElse directKnownSubclasses(
+        aTpeRepr
+      ).map(_ -> true)
 
     protected def unionTypes = Option.empty[List[TypeRepr]]
 
-    protected def parseSubTypes = Option.empty[List[TypeRepr]]
+    protected def parseRestrictedSubTypes = Option.empty[List[TypeRepr]]
 
     // --- Type helpers ---
 
@@ -2426,7 +2467,7 @@ private[api] object MacroImpl:
       }
     }
 
-    protected override def parseSubTypes: Option[List[TypeRepr]] = {
+    protected override def parseRestrictedSubTypes: Option[List[TypeRepr]] = {
       @annotation.tailrec
       def parseTypes(
           types: List[TypeRepr],
@@ -2712,11 +2753,19 @@ private[api] object MacroImpl:
           Option.empty[Term]
       }
 
-      debug(
+      debug {
+        val show: Option[String] =
+          try {
+            neededGiven.map(_.show)
+          } catch {
+            case e: MatchError /* Dotty bug */ =>
+              neededGiven.map(_.symbol.fullName)
+          }
+
         s"// Resolve given ${prettyType(TypeRepr.of(using tc))} for ${prettyType(ntpe)} as ${prettyType(
           neededGivenType
-        )} (self? ${selfRef}) = ${neededGiven.map(_.show).mkString}"
-      )
+        )} (self? ${selfRef}) = ${show.mkString}"
+      }
 
       neededGiven.map(_ -> selfRef)
     }
@@ -2958,7 +3007,7 @@ private[api] object MacroImpl:
         }.toList
       }
 
-      val elements = pof.asTerm.tpe match {
+      val elements: Option[List[(Symbol, TypeRepr)]] = pof.asTerm.tpe match {
         case Refinement(
               Refinement(_, _, TypeBounds(t1 @ AppliedType(tycon1, _), _)),
               _,
@@ -2967,9 +3016,25 @@ private[api] object MacroImpl:
             if (tycon1 <:< TypeRepr.of[Product] && tycon2 <:< TypeRepr
               .of[Product]) =>
           // TODO: Merge cases ?
-          prepare(t2, t1)
+          Option(prepare(t2, t1))
+
+        case Refinement(
+              ref @ Refinement(_, _, TypeBounds(t1 @ TermRef(_, _), _)),
+              _,
+              TypeBounds(t2 @ TermRef(_, _), _)
+            ) if {
+              val emptyTupTpe = TypeRepr.of[EmptyTuple]
+              (Ref.term(t1).tpe <:< emptyTupTpe && Ref
+                .term(t2)
+                .tpe <:< emptyTupTpe)
+            } =>
+          None
 
         case pofTpe =>
+          if (pofTpe.dealias.typeSymbol == Symbol.noSymbol) {
+            println(s"==> ${pofTpe.dealias}")
+          }
+
           pofTpe.dealias.typeSymbol.tree match {
             case ClassDef(_, _, _, _, members) =>
               members.collect {
@@ -2980,25 +3045,30 @@ private[api] object MacroImpl:
                   n -> tt.tpe
               }.sortBy(_._1) match {
                 case (_, elmLabels) :: (_, elmTypes) :: Nil =>
-                  prepare(elmLabels, elmTypes)
+                  Option(prepare(elmLabels, elmTypes))
 
                 case _ =>
-                  List.empty[(Symbol, TypeRepr)]
+                  Some(List.empty[(Symbol, TypeRepr)])
               }
 
             case _ =>
-              List.empty[(Symbol, TypeRepr)]
+              Some(List.empty[(Symbol, TypeRepr)])
           }
       }
 
-      if (elements.isEmpty) {
-        TryFailure(
-          new IllegalArgumentException(
-            s"Ill-typed ProductOf[${owner.typeSymbol.fullName}]: Fails to resolve element types and labels (bad refinement?)"
+      elements match {
+        case Some(ls) if (elements.isEmpty) =>
+          TryFailure(
+            new IllegalArgumentException(
+              s"Ill-typed ProductOf[${owner.typeSymbol.fullName}]: Fails to resolve element types and labels (bad refinement?)"
+            )
           )
-        )
-      } else {
-        TrySuccess(elements)
+
+        case Some(ls) =>
+          TrySuccess(ls)
+
+        case _ =>
+          TrySuccess(List.empty[(Symbol, TypeRepr)])
       }
     }
   }
