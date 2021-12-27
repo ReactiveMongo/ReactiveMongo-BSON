@@ -21,6 +21,7 @@ import exceptions.{
 
 // TODO: Enum
 // TODO: Remove `top` parameters (unused)
+// TODO: Use Ref for common values?
 private[api] object MacroImpl:
   import Macros.Annotations,
   Annotations.{ DefaultValue, Ignore, Key, Writer, Flatten, NoneAsNull, Reader }
@@ -682,7 +683,7 @@ private[api] object MacroImpl:
       ): Expr[TryResult[BSONDocument]] = {
       val writer = documentWriter(macroVal, forwardExpr, top = true)
 
-      // TODO: debug(s"// Writer\n${writer.show}")
+      //debug(s"// Writer\n${writer.show}")
 
       writer
     }
@@ -742,7 +743,7 @@ private[api] object MacroImpl:
     final def documentReader(
         macroVal: Expr[BSONDocument],
         forwardExpr: Expr[BSONDocumentReader[A]],
-        top: Boolean
+        top: Boolean // TODO: Remove
       ): Expr[TryResult[A]] = withMacroCfg { config =>
 
       def readClass: Expr[TryResult[A]] =
@@ -828,9 +829,7 @@ private[api] object MacroImpl:
               None,
               '{
                 TryFailure(
-                  exceptions.ValueDoesNotMatchException(${
-                    macroVal
-                  }.toString)
+                  exceptions.ValueDoesNotMatchException(${ discriminator })
                 )
               }.asTerm
             )
@@ -866,8 +865,6 @@ private[api] object MacroImpl:
         tpe: Type[T]
       ): CaseDef = {
 
-      val subHelper = createSubHelper[T](tpe, tpr)
-
       type CaseType[U <: T] = U
 
       tpe match {
@@ -889,9 +886,9 @@ private[api] object MacroImpl:
               }
 
               val body: Expr[TryResult[t]] =
-                givenReader[t](config, macroVal, typ)(resolve).getOrElse {
+                givenReader[t](macroVal, typ)(resolve).getOrElse {
                   if (hasOption[MacroOptions.AutomaticMaterialization]) {
-                    // TODO: Test
+                    val subHelper = createSubHelper[T](tpe, tpr)
 
                     // No existing implicit, but can fallback to automatic mat
                     subHelper.readBodyConstruct[t](
@@ -936,7 +933,6 @@ private[api] object MacroImpl:
      * @param tpe the type to be read
      */
     private def givenReader[T](
-        config: Expr[MacroConfiguration],
         macroVal: Expr[BSONDocument],
         tpe: Type[T]
       )(r: TypeRepr => Option[Implicit]
@@ -956,7 +952,7 @@ private[api] object MacroImpl:
         macroCfg: Expr[MacroConfiguration],
         macroVal: Expr[BSONDocument],
         forwardExpr: Expr[BSONDocumentReader[T]],
-        top: Boolean
+        top: Boolean // TODO: Remove
       )(using
         tpe: Type[T]
       ): Expr[TryResult[T]] = {
@@ -1705,7 +1701,7 @@ private[api] object MacroImpl:
       val be = Ref(bind).asExprOf[T]
 
       val body: Expr[TryResult[BSONDocument]] =
-        givenWriter[T](be, tpe)(resolve).getOrElse {
+        givenWriter[T](be, tpe, tpr)(resolve).getOrElse {
           if (hasOption[MacroOptions.AutomaticMaterialization]) {
             // No existing implicit, but can fallback to automatic mat
             subHelper.writeBodyConstruct[T](
@@ -1734,10 +1730,12 @@ private[api] object MacroImpl:
      *
      * @param macroVal the value to be written
      * @param tpe the type of the `macroVal`
+     * @param tpr the representation of `tpe`
      */
     private def givenWriter[T](
         macroVal: Expr[T],
-        tpe: Type[T]
+        tpe: Type[T],
+        tpr: TypeRepr
       )(r: TypeRepr => Option[Implicit]
       ): Option[Expr[TryResult[BSONDocument]]] = {
       given typ: Type[T] = tpe
@@ -1764,7 +1762,7 @@ private[api] object MacroImpl:
       val repr = TypeRepr.of[T](using tpe)
 
       if (repr.isSingleton || repr.typeSymbol == repr.typeSymbol.moduleClass) {
-        // TODO: isObject
+        // is object
         singletonWriter[T]
       } else {
         type IsProduct[U <: Product] = U
@@ -2336,8 +2334,6 @@ private[api] object MacroImpl:
 
     protected final lazy val tryTpe: TypeRepr = TypeRepr.of[TryResult[_]]
 
-    protected final lazy val anyValTpe: TypeRepr = TypeRepr.of[AnyVal]
-
     protected lazy val bsonDocTpe = TypeRepr.of[BSONDocument]
 
     protected lazy val bsonValTpe = TypeRepr.of[BSONValue]
@@ -2357,9 +2353,9 @@ private[api] object MacroImpl:
 
     protected def macroCfgInit: Expr[MacroConfiguration]
 
-    protected def withMacroCfg[T](
+    protected def withMacroCfg[T: Type](
         body: Expr[MacroConfiguration] => Expr[T]
-      ): Expr[T] = body(macroCfgInit)
+      ): Expr[T] = body(macroCfgInit) // TODO: Ref
 
     // --- Case classes helpers ---
 
@@ -2393,10 +2389,28 @@ private[api] object MacroImpl:
 
     // --- Union helpers ---
 
-    protected final lazy val subTypes: Option[(List[TypeRepr], /* exhaustive: */ Boolean)] =
-      parseRestrictedSubTypes.map(_ -> false) orElse directKnownSubclasses(
-        aTpeRepr
-      ).map(_ -> true)
+    protected final lazy val subTypes: Option[(List[TypeRepr], /* exhaustive: */ Boolean)] = {
+      lazy val subClasses = knownSubclasses(aTpeRepr)
+
+      val restricted = parseRestrictedSubTypes
+
+      restricted match {
+        case None =>
+          subClasses.map(_ -> true)
+
+        case Some(types) =>
+          subClasses match {
+            case Some(classes) => {
+              val exhaustive = types.size == classes.size
+
+              Some(types -> exhaustive)
+            }
+
+            case None =>
+              Some(types -> false)
+          }
+      }
+    }
 
     protected def unionTypes = Option.empty[List[TypeRepr]]
 
@@ -2474,36 +2488,45 @@ private[api] object MacroImpl:
           found: List[TypeRepr]
         ): List[TypeRepr] =
         types match {
-          case typ :: rem =>
-            if (typ <:< unionTpe) {
-              typ match {
-                case AppliedType(_, List(a, b)) =>
-                  parseTypes(a :: b :: rem, found)
+          case AppliedType(t, List(a, b)) :: rem if (t <:< unionTpe) =>
+            parseTypes(a :: b :: rem, found)
 
-                case _ =>
-                  report.errorAndAbort(
-                    s"Union type parameters expected: ${prettyType(typ)}"
-                  )
-              }
-            } else parseTypes(rem, typ :: found)
+          case (app @ AppliedType(_, _)) :: _ =>
+            report.errorAndAbort(
+              s"Union type parameters expected: ${prettyType(app)}"
+            )
+
+          case typ :: rem if (typ <:< aTpeRepr) =>
+            parseTypes(rem, typ :: found)
+
+          case _ :: rem =>
+            parseTypes(rem, found)
 
           case _ => found
         }
 
-      val tree: Option[TypeRepr] = optsTpr match {
-        case t @ AppliedType(_, lst) if t <:< unionOptionTpe =>
+      @annotation.tailrec
+      def tree(in: List[TypeRepr]): Option[TypeRepr] = in.headOption match {
+        case Some(AppliedType(t, lst)) if t <:< unionOptionTpe =>
           lst.headOption
 
-        case Refinement(parent, _, _) if parent <:< unionOptionTpe =>
+        case Some(Refinement(parent, _, _)) if parent <:< unionOptionTpe =>
           parent match {
             case AppliedType(_, args) => args.headOption
             case _                    => None
           }
 
-        case _ => None
+        case Some(and: AndType) =>
+          tree(and.left :: and.right :: in.tail)
+
+        case Some(t) =>
+          tree(in.tail)
+
+        case None =>
+          Option.empty[TypeRepr]
       }
 
-      tree.flatMap { t =>
+      tree(List(optsTpr)).flatMap { t =>
         val types = parseTypes(List(t), Nil)
 
         if (types.isEmpty) None else Some(types)
@@ -2817,25 +2840,67 @@ private[api] object MacroImpl:
     private given q: Q = quotes
     // format: on
 
-    final def directKnownSubclasses(tpr: TypeRepr): Option[List[TypeRepr]] =
+    protected final lazy val anyValTpe: TypeRepr = TypeRepr.of[AnyVal]
+
+    /**
+     * Recursively find the sub-classes of `tpr`.
+     *
+     * Sub-abstract types are not listed, but their own sub-types are examined;
+     * e.g. for trait `Foo`
+     *
+     * {{{
+     * sealed trait Foo
+     * case class Bar(name: String) extends Foo
+     * sealed trait SubFoo extends Foo
+     * case class Lorem() extends SubFoo
+     * }}}
+     *
+     * Class `Lorem` is listed through `SubFoo`,
+     * but `SubFoo` itself is not returned.
+     */
+    final def knownSubclasses(tpr: TypeRepr): Option[List[TypeRepr]] =
       tpr.classSymbol.flatMap { cls =>
-        def treeTpr(tree: Tree): Option[TypeRepr] = tree match {
-          case tpd: Typed =>
-            Some(tpd.tpt.tpe)
+        @annotation.tailrec
+        def subclasses(
+            children: List[Tree],
+            out: List[TypeRepr]
+          ): List[TypeRepr] = {
+          val childTpr = children.headOption.collect {
+            case tpd: Typed =>
+              tpd.tpt.tpe
 
-          case vd: ValDef =>
-            Some(vd.tpt.tpe)
+            case vd: ValDef =>
+              vd.tpt.tpe
 
-          case cd: ClassDef =>
-            Some(cd.constructor.returnTpt.tpe)
+            case cd: ClassDef =>
+              cd.constructor.returnTpt.tpe
 
-          case _ =>
-            None
+          }
+
+          childTpr match {
+            case Some(child) => {
+              val tpeSym = child.typeSymbol
+
+              if (
+                (tpeSym.flags.is(Flags.Abstract) &&
+                  tpeSym.flags.is(Flags.Sealed) &&
+                  !(child <:< anyValTpe)) ||
+                (tpeSym.flags.is(Flags.Sealed) &&
+                  tpeSym.flags.is(Flags.Trait))
+              ) {
+                // Ignore sub-trait itself, but check the sub-sub-classes
+                subclasses(tpeSym.children.map(_.tree) ::: children.tail, out)
+              } else {
+                subclasses(children.tail, child :: out)
+              }
+            }
+
+            case _ =>
+              out.reverse
+          }
         }
 
-        val types = cls.children.collect(Function.unlift { t =>
-          treeTpr(t.tree)
-        })
+        val types = subclasses(cls.children.map(_.tree), Nil)
 
         if (types.isEmpty) None else Some(types)
       }
@@ -3031,10 +3096,6 @@ private[api] object MacroImpl:
           None
 
         case pofTpe =>
-          if (pofTpe.dealias.typeSymbol == Symbol.noSymbol) {
-            println(s"==> ${pofTpe.dealias}")
-          }
-
           pofTpe.dealias.typeSymbol.tree match {
             case ClassDef(_, _, _, _, members) =>
               members.collect {

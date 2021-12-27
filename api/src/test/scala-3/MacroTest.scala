@@ -10,6 +10,7 @@ import reactivemongo.api.bson.{
   BSONDocumentWriter,
   BSONHandler,
   BSONInteger,
+  BSONObjectID,
   BSONReader,
   BSONString,
   BSONWriter,
@@ -136,11 +137,6 @@ object MacroTest extends MacroTestCompat {
     object Tree {
       import MacroOptions._
 
-      //val x = Macros.readerOpts[Tree, UnionType[Node \/ Leaf]]
-
-      implicit val todoRemove: BSONDocumentReader[Tree] =
-        Macros.readerOpts[Tree, UnionType[Node \/ Leaf]]
-
       implicit val bson: Handler[Tree] =
         Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
     }
@@ -228,6 +224,10 @@ object MacroTest extends MacroTestCompat {
   // TODO: Remove; Only for Scala 2 tests
   @com.github.ghik.silencer.silent
   case class WithImplicit2[N: Numeric](ident: String, value: N)
+
+  case class RenamedId(
+      @Key("_id") myID: BSONObjectID = BSONObjectID.generate(),
+      @CustomAnnotation value: String)
 
   case class Foo[T](bar: T, lorem: String)
   case class Bar(name: String, next: Option[Bar])

@@ -33,6 +33,8 @@ import org.specs2.execute._
 import org.specs2.matcher.MatchResult
 import org.specs2.matcher.TypecheckMatchers._
 
+import com.github.ghik.silencer.silent
+
 // TODO: Common with Scala2?
 final class MacroSpec
     extends org.specs2.mutable.Specification
@@ -355,6 +357,8 @@ final class MacroSpec
       }
 
       "with implicit configuration (PascalCase)" in {
+        // TODO: Same as separate test for Reader/Writer
+
         implicit def cfg: MacroConfiguration =
           MacroConfiguration(fieldNaming = FieldNaming.PascalCase)
 
@@ -368,6 +372,7 @@ final class MacroSpec
 
       "with macro-configured handler (SnakeCase)" in {
         // TODO: Same as separate test for Reader/Writer
+
         spec(
           handler = Macros
             .configured(
@@ -380,7 +385,6 @@ final class MacroSpec
       }
     }
 
-    /* TODO
     "handle union types (ADT)" >> {
       import Union._
       import MacroOptions._
@@ -389,7 +393,8 @@ final class MacroSpec
         val a = UA(1)
         val b = UB("hai")
 
-        implicit val cfg = MacroConfiguration(discriminator = "_type")
+        implicit val cfg: MacroConfiguration.Aux[MacroOptions.Default] =
+          MacroConfiguration(discriminator = "_type")
 
         val format = Macros.handlerOpts[UT, UnionType[
           UA \/ UB \/ UC \/ UD \/ UF.type
@@ -414,7 +419,8 @@ final class MacroSpec
         val a = UA(1)
         val b = UB("hai")
 
-        implicit def config = MacroConfiguration.simpleTypeName
+        implicit def config: MacroConfiguration.Aux[MacroOptions.Default] =
+          MacroConfiguration.simpleTypeName
 
         val format = Macros.handlerOpts[UT, UnionType[
           UA \/ UB \/ UC \/ UD
@@ -429,9 +435,11 @@ final class MacroSpec
             .flatMap(_.getAsTry[String]("className"))
             .aka("discriminator UB") must beSuccessfulTry("UB")
         } and roundtrip(a, format) and roundtrip(b, format)
+
+        // TODO: Test UE & UF not supported due to the UnionType specification
       }
 
-      "without sealed trait" in {
+      "without sealed trait using UnionType specification" in {
         import Union._
         import MacroOptions._
 
@@ -454,7 +462,6 @@ final class MacroSpec
         } and roundtrip(a, format) and roundtrip(b, format)
       }
     }
-     */
 
     "handle recursive structure" in {
       import TreeModule._
@@ -535,7 +542,6 @@ final class MacroSpec
         implicit def fHandler: BSONDocumentHandler[UF.type] =
           Macros.handler[UF.type]
 
-        import com.github.ghik.silencer.silent
         @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
         implicit val format: BSONDocumentHandler[UT] = {
           implicit val cfg: MacroConfiguration = MacroConfiguration(
@@ -562,7 +568,6 @@ final class MacroSpec
       }
     }
 
-    /* TODO
     "support automatic implementations search with nested traits" in {
       import MacroOptions._
       import InheritanceModule._
@@ -595,7 +600,8 @@ final class MacroSpec
       )
 
       @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
-      implicit val format = configuredMacros.handler[UT]
+      implicit val format: BSONDocumentHandler[UT] =
+        configuredMacros.handler[UT]
 
       format
         .writeTry(UA(1))
@@ -615,7 +621,7 @@ final class MacroSpec
     "support automatic implementations search with nested traits with simple name" in {
       import InheritanceModule._
 
-      implicit val format =
+      implicit val format: BSONDocumentHandler[T] =
         Macros.configured(MacroConfiguration.simpleTypeName).handler[T]
 
       format
@@ -641,7 +647,6 @@ final class MacroSpec
         format.readTry(serialized) must beSuccessfulTry(doc)
       }
     }
-     */
 
     "skip ignored fields" >> {
       "with error if no default value for read" in {

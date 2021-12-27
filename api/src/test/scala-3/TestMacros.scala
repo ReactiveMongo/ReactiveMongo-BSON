@@ -17,7 +17,7 @@ object TestMacros:
     }
 
     Expr(
-      helper.directKnownSubclasses(TypeRepr.of[T]).toList.flatten.map(_.show)
+      helper.knownSubclasses(TypeRepr.of[T]).toList.flatten.map(_.show)
     )
   }
 

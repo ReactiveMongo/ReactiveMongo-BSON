@@ -32,7 +32,7 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
       "of non-case class" >> {
         "when there is no ProductOf" in {
           testProductElements[TestUnion.UC] must beEmpty
-        } tag "wip"
+        }
 
         "if it's defined a ill-typed ProductOf" in {
           // Bad refinement type, so element labels/types cannot be resolved
@@ -124,9 +124,10 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
         "reactivemongo.api.bson.TestUnion.UA",
         "reactivemongo.api.bson.TestUnion.UB",
         "reactivemongo.api.bson.TestUnion.UC",
-        "reactivemongo.api.bson.TestUnion.UD"
+        "reactivemongo.api.bson.TestUnion.UD",
+        "reactivemongo.api.bson.TestUnion.UE" // through UTT sub-trait
       )
-    }
+    } tag "wip"
   }
 end QuotesSpec
 
@@ -141,7 +142,11 @@ object TestUnion:
 
   class UC(val name: String, @Macros.Annotations.DefaultValue(18) val age: Int)
       extends UT
+
   object UD extends UT
+
+  sealed trait UTT extends UT
+  case class UE() extends UTT
 
   object ProductOfUC extends Mirror.Product {
     type MirroredType = TestUnion.UC
