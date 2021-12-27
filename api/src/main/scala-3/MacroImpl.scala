@@ -20,8 +20,12 @@ import exceptions.{
 }
 
 // TODO: Enum
-// TODO: Remove `top` parameters (unused)
-// TODO: Use Ref for common values?
+/* TODO: Double config
+// Reader
+[info]     |{
+[info]     |  val config: reactivemongo.api.bson.MacroConfiguration = reactivemongo.api.bson.MacroConfiguration.default[Opts](reactivemongo.api.bson.MacroOptions.ValueOf.optionsDefault)
+[info]     |  val `config₂`: reactivemongo.api.bson.MacroConfiguration = reactivemongo.api.bson.MacroConfiguration.default[Opts](reactivemongo.api.bson.MacroOptions.ValueOf.optionsDefault)
+ */
 private[api] object MacroImpl:
   import Macros.Annotations,
   Annotations.{ DefaultValue, Ignore, Key, Writer, Flatten, NoneAsNull, Reader }
@@ -529,7 +533,8 @@ private[api] object MacroImpl:
     val whelper = createWriterHelper[A, Opts](config)
     val rhelper = createReaderHelper[A, Opts](config)
 
-    // TODO: Common calls?
+    // TODO: HandlerHelper that mix MacroHelpers with WriterHelpers with ReaderHelpers to avoid instanciated both separately
+
     '{
       val writer = withSelfDocWriter {
         (forwardBSONWriter: BSONDocumentWriter[A]) =>
@@ -619,7 +624,7 @@ private[api] object MacroImpl:
         macroVal: Expr[BSONDocument],
         forwardExpr: Expr[BSONDocumentReader[A]]
       ): Expr[TryResult[A]] = {
-      val reader = documentReader(macroVal, forwardExpr, top = true)
+      val reader = documentReader(macroVal, forwardExpr)
 
       debug(s"// Reader\n${reader.show}")
 
@@ -681,15 +686,13 @@ private[api] object MacroImpl:
         macroVal: Expr[A],
         forwardExpr: Expr[BSONDocumentWriter[A]]
       ): Expr[TryResult[BSONDocument]] = {
-      val writer = documentWriter(macroVal, forwardExpr, top = true)
+      val writer = documentWriter(macroVal, forwardExpr)
 
       //debug(s"// Writer\n${writer.show}")
 
       writer
     }
   }
-
-// TODO: HandlerHelper that mix MacroHelpers with WriterHelpers with ReaderHelpers to avoid instanciated both separately
 
   // ---
 
@@ -742,12 +745,11 @@ private[api] object MacroImpl:
      */
     final def documentReader(
         macroVal: Expr[BSONDocument],
-        forwardExpr: Expr[BSONDocumentReader[A]],
-        top: Boolean // TODO: Remove
+        forwardExpr: Expr[BSONDocumentReader[A]]
       ): Expr[TryResult[A]] = withMacroCfg { config =>
 
       def readClass: Expr[TryResult[A]] =
-        readBodyConstruct(config, macroVal, forwardExpr, top)(using aTpe)
+        readBodyConstruct(config, macroVal, forwardExpr)(using aTpe)
 
       def handleChildTypes(discriminator: Expr[String]): Expr[TryResult[A]] = {
         val discriminatedUnion: Option[Expr[TryResult[A]]] =
@@ -777,7 +779,6 @@ private[api] object MacroImpl:
 
                       forward
                     },
-                    top,
                     config,
                     resolve,
                     tpr,
@@ -815,7 +816,6 @@ private[api] object MacroImpl:
                         }
                       }
                     },
-                    top,
                     config,
                     resolve,
                     tpr,
@@ -856,7 +856,6 @@ private[api] object MacroImpl:
         macroVal: Expr[BSONDocument],
         discriminator: Expr[String],
         forwardBSONReader: Expr[BSONDocumentReader[T]],
-        top: Boolean,
         config: Expr[MacroConfiguration],
         resolve: TypeRepr => Option[Implicit],
         tpr: TypeRepr,
@@ -879,8 +878,6 @@ private[api] object MacroImpl:
                   TypeRepr.of[String]
                 )
 
-              //TODO: Remove; val be = Ref(bind).asExprOf[String]
-
               val tpeCaseName: Expr[String] = '{
                 ${ config }.typeNaming(${ cls }.runtimeClass)
               }
@@ -894,17 +891,7 @@ private[api] object MacroImpl:
                     subHelper.readBodyConstruct[t](
                       config,
                       macroVal,
-                      /* TODO: Remove;
-                      '{
-                        @SuppressWarnings(Array("AsInstanceOf"))
-                        def forward = ${ forwardBSONReader }
-                          .asInstanceOf[BSONDocumentReader[t]]
-
-                        forward
-                      },
-                       */
-                      forwardBSONReader.asExprOf[BSONDocumentReader[t]],
-                      top
+                      forwardBSONReader.asExprOf[BSONDocumentReader[t]]
                     )(using typ)
                   } else {
                     report.errorAndAbort(s"Instance not found: ${classOf[BSONReader[_]].getName}[${prettyType(tpr)}]")
@@ -945,14 +932,10 @@ private[api] object MacroImpl:
       }
     }
 
-    /*
-     * @param top $topParam
-     */
     @inline private def readBodyConstruct[T](
         macroCfg: Expr[MacroConfiguration],
         macroVal: Expr[BSONDocument],
-        forwardExpr: Expr[BSONDocumentReader[T]],
-        top: Boolean // TODO: Remove
+        forwardExpr: Expr[BSONDocumentReader[T]]
       )(using
         tpe: Type[T]
       ): Expr[TryResult[T]] = {
@@ -961,13 +944,6 @@ private[api] object MacroImpl:
       if (repr.isSingleton) {
         singletonReader[T]
       } else if (repr.typeSymbol == repr.typeSymbol.moduleClass) {
-
-        /* TODO: Remove
-        val instance = New(Inferred(repr))
-          .select(repr.typeSymbol.primaryConstructor)
-          .appliedToNone
-          .asExprOf[T]
-         */
         val instance = Ref(repr.typeSymbol.companionModule).asExprOf[T]
 
         '{ TrySuccess($instance) }
@@ -979,9 +955,9 @@ private[api] object MacroImpl:
             Expr.summon[ProductOf[t]] match {
               case Some(pof) =>
                 productReader[t, t](
+                  macroCfg,
                   macroVal,
                   forwardExpr.asExprOf[BSONDocumentReader[t]],
-                  top,
                   pof
                 ).asExprOf[TryResult[T]]
 
@@ -997,9 +973,9 @@ private[api] object MacroImpl:
                 Expr.summon[ProductOf[t]] match {
                   case Some(pof) =>
                     productReader[t, p](
+                      macroCfg,
                       macroVal,
                       forwardExpr.asExprOf[BSONDocumentReader[t]],
-                      top,
                       pof
                     ).asExprOf[TryResult[T]]
 
@@ -1050,10 +1026,9 @@ private[api] object MacroImpl:
      * @param tpe the value type
      */
     private def productReader[T, U <: Product](
+        macroCfg: Expr[MacroConfiguration],
         macroVal: Expr[BSONDocument],
         forwardExpr: Expr[BSONDocumentReader[T]],
-        top: Boolean,
-        //TODO: Remove; toProduct: Expr[T => U], // the function to convert the input value as product `U`
         pof: Expr[ProductOf[T]]
       )(using
         tpe: Type[T],
@@ -1170,12 +1145,10 @@ private[api] object MacroImpl:
           f: Function2[Expr[MacroConfiguration], /* err */ Expr[
             ExceptionAcc
           ], Expr[U]]
-        ): Expr[U] = withMacroCfg { config =>
-        '{
-          val err = Seq.newBuilder[HandlerException]
+        ): Expr[U] = '{
+        val err = Seq.newBuilder[HandlerException]
 
-          ${ f(config, '{ err }) }
-        }
+        ${ f(macroCfg, '{ err }) }
       }
 
       // For required field
@@ -1352,43 +1325,10 @@ private[api] object MacroImpl:
             .sortBy(_._1)
             .map(_._2) // Make sure the exprs respect fields order
 
-        // TODO: Extract trySeq (avoid "generate" it for each handler)
         '{
-          @annotation.tailrec
-          def trySeq[T](
-              in: List[TryResult[T]],
-              suc: List[T],
-              fail: Option[Throwable]
-            ): TryResult[List[T]] =
-            in.headOption match {
-              case Some(TrySuccess(v)) =>
-                trySeq(in.tail, v :: suc, fail)
-
-              case Some(TryFailure(cause)) =>
-                trySeq(
-                  in.tail,
-                  suc,
-                  fail.map { exc =>
-                    exc.addSuppressed(cause)
-                    exc
-                  }.orElse(Some(cause))
-                )
-
-              case _ =>
-                fail match {
-                  case Some(cause) =>
-                    TryFailure(cause)
-
-                  case _ =>
-                    TrySuccess(suc.reverse)
-                }
-            }
-
-          trySeq(
-            ${ Expr.ofList(tupElmts.toList) },
-            List.empty,
-            Option.empty
-          ).map { ls => ${ pof }.fromProduct(Tuple fromArray ls.toArray) }
+          trySeq(${ Expr.ofList(tupElmts.toList) }).map { ls =>
+            ${ pof }.fromProduct(Tuple fromArray ls.toArray)
+          }
         }
       }
     }
@@ -1440,7 +1380,6 @@ private[api] object MacroImpl:
           if (!hasOption[MacroOptions.AutomaticMaterialization]) {
             report.errorAndAbort(s"No implicit found for '${prettyType(aTpeRepr)}.$pname': ${classOf[BSONReader[_]].getName}[${prettyType(tpr)}]")
           } else {
-            // TODO: Test AutoMat
             val lt = leafType(tpr)
 
             warn(
@@ -1484,8 +1423,7 @@ private[api] object MacroImpl:
                         ${
                           subHelper.documentReader(
                             macroVal = '{ macroVal },
-                            forwardExpr = '{ forwardBSONReader },
-                            top = false
+                            forwardExpr = '{ forwardBSONReader }
                           )
                         }
                       }
@@ -1577,8 +1515,7 @@ private[api] object MacroImpl:
      */
     protected final def documentWriter(
         macroVal: Expr[A],
-        forwardExpr: Expr[BSONDocumentWriter[A]],
-        top: Boolean
+        forwardExpr: Expr[BSONDocumentWriter[A]]
       ): Expr[TryResult[BSONDocument]] = withMacroCfg { config =>
       val discriminatedUnion: Option[Expr[TryResult[BSONDocument]]] =
         unionTypes.map { types =>
@@ -1606,7 +1543,6 @@ private[api] object MacroImpl:
 
                     forward
                   },
-                  top,
                   config,
                   resolve,
                   tpr,
@@ -1634,7 +1570,6 @@ private[api] object MacroImpl:
                 writeDiscriminatedCase[at](
                   macroVal,
                   '{ ${ forwardExpr }.narrow[at] },
-                  top,
                   config,
                   resolve,
                   tpr,
@@ -1670,8 +1605,7 @@ private[api] object MacroImpl:
         writeBodyConstruct(
           config,
           macroVal,
-          forwardExpr,
-          top
+          forwardExpr
         )(using aTpe)
       }
     }
@@ -1679,7 +1613,6 @@ private[api] object MacroImpl:
     private def writeDiscriminatedCase[T](
         macroVal: Expr[A],
         forwardBSONWriter: Expr[BSONDocumentWriter[T]],
-        top: Boolean,
         config: Expr[MacroConfiguration],
         resolve: TypeRepr => Option[Implicit],
         tpr: TypeRepr,
@@ -1707,8 +1640,7 @@ private[api] object MacroImpl:
             subHelper.writeBodyConstruct[T](
               config,
               be,
-              forwardBSONWriter,
-              top
+              forwardBSONWriter
             )(using tpe)
           } else {
             report.errorAndAbort(s"Instance not found: ${classOf[BSONWriter[_]].getName}[${prettyType(tpr)}]")
@@ -1748,14 +1680,10 @@ private[api] object MacroImpl:
       }
     }
 
-    /*
-     * @param top $topParam
-     */
     @inline private def writeBodyConstruct[T](
         macroCfg: Expr[MacroConfiguration],
         macroVal: Expr[T],
-        forwardExpr: Expr[BSONDocumentWriter[T]],
-        top: Boolean
+        forwardExpr: Expr[BSONDocumentWriter[T]]
       )(using
         tpe: Type[T]
       ): Expr[TryResult[BSONDocument]] = {
@@ -1774,7 +1702,6 @@ private[api] object MacroImpl:
                 productWriter[t, t](
                   macroVal.asExprOf[t],
                   forwardExpr.asExprOf[BSONDocumentWriter[t]],
-                  top,
                   '{ identity[t] },
                   pof
                 )
@@ -1793,7 +1720,6 @@ private[api] object MacroImpl:
                     productWriter[t, p](
                       macroVal.asExprOf[t],
                       forwardExpr.asExprOf[BSONDocumentWriter[t]],
-                      top,
                       conv,
                       pof
                     )
@@ -1853,7 +1779,6 @@ private[api] object MacroImpl:
     private def productWriter[T, U <: Product](
         macroVal: Expr[T],
         forwardExpr: Expr[BSONDocumentWriter[T]],
-        top: Boolean,
         toProduct: Expr[T => U],
         pof: Expr[ProductOf[T]]
       )(using
@@ -2237,8 +2162,7 @@ private[api] object MacroImpl:
                         ${
                           subHelper.documentWriter(
                             macroVal = '{ macroVal },
-                            forwardExpr = '{ forwardBSONWriter },
-                            top = false
+                            forwardExpr = '{ forwardBSONWriter }
                           )
                         }
                       }
@@ -2355,7 +2279,10 @@ private[api] object MacroImpl:
 
     protected def withMacroCfg[T: Type](
         body: Expr[MacroConfiguration] => Expr[T]
-      ): Expr[T] = body(macroCfgInit) // TODO: Ref
+      ): Expr[T] = '{
+      val config: MacroConfiguration = ${ macroCfgInit }
+      ${ body('config) }
+    }
 
     // --- Case classes helpers ---
 
@@ -3133,4 +3060,38 @@ private[api] object MacroImpl:
       }
     }
   }
+
+  private inline def trySeq[T](in: List[TryResult[T]]): TryResult[Seq[T]] = {
+    @annotation.tailrec
+    def execute[T](
+        in: List[TryResult[T]],
+        suc: List[T],
+        fail: Option[Throwable]
+      ): TryResult[List[T]] = in.headOption match {
+      case Some(TrySuccess(v)) =>
+        execute(in.tail, v :: suc, fail)
+
+      case Some(TryFailure(cause)) =>
+        execute(
+          in.tail,
+          suc,
+          fail.map { exc =>
+            exc.addSuppressed(cause)
+            exc
+          }.orElse(Some(cause))
+        )
+
+      case _ =>
+        fail match {
+          case Some(cause) =>
+            TryFailure(cause)
+
+          case _ =>
+            TrySuccess(suc.reverse)
+        }
+    }
+
+    execute[T](in, List.empty, Option.empty)
+  }
+
 end MacroImpl

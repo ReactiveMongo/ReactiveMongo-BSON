@@ -1,7 +1,7 @@
 import reactivemongo.api.bson._
 
 final class GeometrySpec extends org.specs2.mutable.Specification {
-  "Geometry" title
+  "Geometry".title
 
   "Point" should {
     // { type: "Point", coordinates: [ 40, 5 ] }

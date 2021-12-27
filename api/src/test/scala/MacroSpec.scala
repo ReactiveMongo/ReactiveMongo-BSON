@@ -2,7 +2,6 @@ import scala.util.{ Failure, Success, Try }
 
 import reactivemongo.api.bson.{
   BSON,
-  BSONDateTime,
   BSONDecimal,
   BSONDocument,
   BSONDocumentHandler,
@@ -10,14 +9,12 @@ import reactivemongo.api.bson.{
   BSONDocumentWriter,
   BSONHandler,
   BSONInteger,
-  BSONLong,
   BSONNull,
   BSONReader,
   BSONString,
   BSONValue,
   BSONWriter,
   FieldNaming,
-  MacroAnnotations,
   MacroConfiguration,
   MacroOptions,
   Macros,
@@ -29,16 +26,14 @@ import reactivemongo.api.bson.exceptions.{
   TypeDoesNotMatchException
 }
 
-import org.specs2.execute._
 import org.specs2.matcher.MatchResult
 import org.specs2.matcher.TypecheckMatchers._
 
 import com.github.ghik.silencer.silent
 
-// TODO: Common with Scala2?
 final class MacroSpec
     extends org.specs2.mutable.Specification
-    with MacroExtraSpec:
+    with MacroExtraSpec {
 
   "Macros".title
 
@@ -93,7 +88,7 @@ final class MacroSpec
 
       val doc = Pet("woof", Person("john", "doe"))
 
-      roundtrip(doc)(Macros.reader[Pet], Macros.writer[Pet])
+      roundtrip(doc, Macros.handler[Pet])
     }
 
     "support option" in {
@@ -181,8 +176,7 @@ final class MacroSpec
     }
 
     "support generic case class Foo" >> {
-      implicit def singleHandler: BSONDocumentHandler[Single] =
-        Macros.handler[Single]
+      implicit def singleHandler: Handler[Single] = Macros.handler[Single]
 
       "directly" in {
         roundtrip(
@@ -203,7 +197,7 @@ final class MacroSpec
     }
 
     "support generic case class GenSeq" in {
-      implicit def singleHandler: BSONWriter[Single] with BSONReader[Single] with BSONHandler[Single] =
+      implicit def singleHandler: BSONHandler[Single] =
         new BSONWriter[Single]
           with BSONReader[Single]
           with BSONHandler[Single] {
@@ -357,8 +351,6 @@ final class MacroSpec
       }
 
       "with implicit configuration (PascalCase)" in {
-        // TODO: Same as separate test for Reader/Writer
-
         implicit def cfg: MacroConfiguration =
           MacroConfiguration(fieldNaming = FieldNaming.PascalCase)
 
@@ -371,8 +363,6 @@ final class MacroSpec
       }
 
       "with macro-configured handler (SnakeCase)" in {
-        // TODO: Same as separate test for Reader/Writer
-
         spec(
           handler = Macros
             .configured(
@@ -434,9 +424,21 @@ final class MacroSpec
             .writeTry(b)
             .flatMap(_.getAsTry[String]("className"))
             .aka("discriminator UB") must beSuccessfulTry("UB")
-        } and roundtrip(a, format) and roundtrip(b, format)
+        } and roundtrip(a, format) and roundtrip(b, format) and {
+          // UE & UF not supported due to the UnionType specification
 
-        // TODO: Test UE & UF not supported due to the UnionType specification
+          format.writeTry(UE) must beFailedTry[BSONDocument] and {
+            format.writeTry(UF) must beFailedTry[BSONDocument]
+          } and {
+            format.readTry(
+              BSONDocument("className" -> UE.getClass.getSimpleName)
+            ) must beFailedTry[UT]
+          } and {
+            format.readTry(
+              BSONDocument("className" -> UF.getClass.getSimpleName)
+            ) must beFailedTry[UT]
+          }
+        }
       }
 
       "without sealed trait using UnionType specification" in {
@@ -736,7 +738,7 @@ final class MacroSpec
           .aka("bar2") must beSuccessfulTry(Bar("bar2", Some(bar1)))
 
       } and {
-        (h.writeTry(bar1) must beSuccessfulTry(doc1))
+        h.writeTry(bar1) must beSuccessfulTry(doc1)
       } and {
         h.writeTry(Bar("bar2", Some(bar1))) must beSuccessfulTry(
           BSONDocument("name" -> "bar2", "next" -> doc1)
@@ -804,7 +806,7 @@ final class MacroSpec
 
       typecheck("Macros.valueHandler[Person]") must failWith(".*Person.*") and {
         typecheck("Macros.valueHandler[BarVal]") must failWith(
-          ".*not found.*BSON(Writer|Handler)\\[.*Exception\\]"
+          ".*not found.*BSON(Writer|Reader)\\[.*Exception\\]"
         )
       } and {
         handler.readTry(BSONInteger(1)) must beSuccessfulTry(new FooVal(1))
@@ -1045,6 +1047,43 @@ final class MacroSpec
 
       }
     }
+
+    "respect field naming" >> {
+      val person = Person("Jane", "doe")
+
+      def spec(
+          reader: BSONDocumentReader[Person],
+          doc: BSONDocument
+        ) = reader.readTry(doc) must beSuccessfulTry(person)
+
+      "with default configuration" in {
+        spec(
+          reader = Macros.reader[Person],
+          doc = BSONDocument("firstName" -> "Jane", "lastName" -> "doe")
+        )
+      }
+
+      "with implicit configuration (PascalCase)" in {
+        implicit def cfg: MacroConfiguration =
+          MacroConfiguration(fieldNaming = FieldNaming.PascalCase)
+
+        spec(
+          reader = Macros.reader[Person],
+          doc = BSONDocument("FirstName" -> "Jane", "LastName" -> "doe")
+        )
+      }
+
+      "with macro-configured handler (SnakeCase)" in {
+        spec(
+          reader = Macros
+            .configured(
+              MacroConfiguration(fieldNaming = FieldNaming.SnakeCase)
+            )
+            .reader[Person],
+          doc = BSONDocument("first_name" -> "Jane", "last_name" -> "doe")
+        )
+      }
+    }
   }
 
   "Writer" should {
@@ -1267,6 +1306,46 @@ final class MacroSpec
         }
       }
     }
+
+    "respect field naming" >> {
+      val person = Person("Jane", "doe")
+
+      def spec(
+          writer: BSONDocumentWriter[Person],
+          expectedBson: BSONDocument
+        ) = writer.writeTry(person) must beSuccessfulTry(expectedBson)
+
+      "with default configuration" in {
+        spec(
+          writer = Macros.writer[Person],
+          expectedBson =
+            BSONDocument("firstName" -> "Jane", "lastName" -> "doe")
+        )
+      }
+
+      "with implicit configuration (PascalCase)" in {
+        implicit def cfg: MacroConfiguration =
+          MacroConfiguration(fieldNaming = FieldNaming.PascalCase)
+
+        spec(
+          writer = Macros.writer[Person],
+          expectedBson =
+            BSONDocument("FirstName" -> "Jane", "LastName" -> "doe")
+        )
+      }
+
+      "with macro-configured handler (SnakeCase)" in {
+        spec(
+          writer = Macros
+            .configured(
+              MacroConfiguration(fieldNaming = FieldNaming.SnakeCase)
+            )
+            .writer[Person],
+          expectedBson =
+            BSONDocument("first_name" -> "Jane", "last_name" -> "doe")
+        )
+      }
+    }
   }
 
   // ---
@@ -1294,4 +1373,4 @@ final class MacroSpec
       reader: BSONReader[A],
       writer: BSONWriter[A]
     ) = roundtrip(data)
-end MacroSpec
+}

@@ -27,8 +27,8 @@ package object monocle extends LowPriorityMonocle {
     )(implicit
       ct: ClassTag[T]
     ): Optional[BSONDocument, T] =
-    Optional[BSONDocument, T](_.get(name).flatMap(ct.unapply)) {
-      newVal: T => { doc: BSONDocument => doc -- (name) ++ (name -> newVal) }
+    Optional[BSONDocument, T](_.get(name).flatMap(ct.unapply)) { (newVal: T) =>
+      { (_: BSONDocument) -- (name) ++ (name -> newVal) }
     }
 
   /**
@@ -117,8 +117,8 @@ private[bson] sealed trait LowPriorityMonocle {
       w: BSONWriter[T],
       r: BSONReader[T]
     ): Optional[BSONDocument, T] =
-    Optional[BSONDocument, T](_.getAsOpt[T](name)) {
-      newVal: T => { doc: BSONDocument => doc -- (name) ++ (name -> newVal) }
+    Optional[BSONDocument, T](_.getAsOpt[T](name)) { (newVal: T) =>
+      { (_: BSONDocument) -- (name) ++ (name -> newVal) }
     }
 
 }

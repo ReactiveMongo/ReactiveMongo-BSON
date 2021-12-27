@@ -4,7 +4,7 @@ import reactivemongo.api.bson.specs2._
 import org.specs2.matcher.describe.{ PrimitiveDifference, PrimitiveIdentical }
 
 final class DiffableSpec extends org.specs2.mutable.Specification {
-  "Diffable" title
+  "Diffable".title
 
   "Array comparision result" should {
     "indicate everything is null" in {

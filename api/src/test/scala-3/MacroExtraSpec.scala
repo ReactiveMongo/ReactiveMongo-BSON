@@ -11,14 +11,22 @@ import reactivemongo.api.bson.TestUtils.typecheck
 
 import org.specs2.matcher.TypecheckMatchers._
 
+final class CustomNoProductOf(val name: String, val age: Int)
+
+object CustomNoProductOf {
+
+  given Conversion[CustomNoProductOf, Tuple2[String, Int]] =
+    (v: CustomNoProductOf) => v.name -> v.age
+}
+
 trait MacroExtraSpec { self: MacroSpec =>
   import MacroTest._
   import MacroExtraTest._
 
   "Case class" should {
     "not be handled without custom ProductOf" in {
-      typecheck("Macros.writer[WithImplicit2[Double]]") must failWith(
-        ".*ProductOf\\[MacroTest\\.WithImplicit2\\[.*Double\\]\\]"
+      typecheck("Macros.writer[CustomNoProductOf]") must failWith(
+        ".*ProductOf\\[CustomNoProductOf\\]"
       )
     }
   }

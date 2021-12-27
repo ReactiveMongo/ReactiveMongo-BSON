@@ -298,7 +298,7 @@ final class GeoGeometryCollection private[api] (
 }
 
 /** See [[GeoGeometryCollection]] */
-object GeoGeometryCollection {
+object GeoGeometryCollection extends GeoGeometryCollectionCompat {
 
   /** Creates a new collection. */
   def apply(geometries: Seq[GeoGeometry]): GeoGeometryCollection =

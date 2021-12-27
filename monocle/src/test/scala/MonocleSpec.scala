@@ -1,7 +1,7 @@
 import reactivemongo.api.bson._
 
 final class MonocleSpec extends org.specs2.mutable.Specification {
-  "Monocle" title
+  "Monocle".title
 
   // Requires import
   import reactivemongo.api.bson.monocle._
