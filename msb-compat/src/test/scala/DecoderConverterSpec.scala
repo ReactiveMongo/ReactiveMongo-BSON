@@ -3,9 +3,9 @@ package reactivemongo
 import java.lang.{ Boolean => JBool }
 
 import reactivemongo.api.bson.{
+  `null`,
   maxKey,
   minKey,
-  `null`,
   undefined,
   BSONArray,
   BSONBinary,

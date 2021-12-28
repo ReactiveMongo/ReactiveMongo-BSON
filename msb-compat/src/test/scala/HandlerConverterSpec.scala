@@ -37,7 +37,7 @@ final class HandlerConverterSpec
     with DecoderConverterSpec
     with ConverterFixtures {
 
-  "Handler converters" title
+  "Handler converters".title
 
   "Default codec registry" should {
     import HandlerConverters.DefaultCodecRegistry

@@ -64,6 +64,8 @@ private[bson] trait BSONReaderInstances:
   ): BSONDocumentReader[Map[K, V]] =
     pkg.mapKeyReader[K, V]
 
+  given bsonValueIdentityReader: BSONReader[BSONValue] = BSONValueIdentity
+
   export pkg.{
     bsonStringReader,
     bsonSymbolReader,

@@ -166,7 +166,7 @@ trait HandlerConverters extends LowPriorityHandlerConverters1 {
 }
 
 private[bson] sealed trait LowPriorityHandlerConverters1 {
-  _: HandlerConverters =>
+  _self: HandlerConverters =>
 
   implicit final def toWriter[T](enc: Encoder[T]): BSONWriter[T] =
     BSONWriter.from[T] { v =>

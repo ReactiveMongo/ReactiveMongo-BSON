@@ -54,4 +54,6 @@ private[bson] trait BSONHandlerInstances:
   given uuidHandler: BSONHandler[UUID] = BSONUUIDHandler
 
   given localeHandler: BSONHandler[Locale] = BSONLocaleHandler
+
+  export pkg.BSONValueIdentity
 end BSONHandlerInstances

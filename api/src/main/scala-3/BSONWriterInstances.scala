@@ -84,6 +84,8 @@ private[bson] trait BSONWriterInstances:
   ): BSONDocumentWriter[Map[K, V]] =
     pkg.mapKeyWriter[K, V]
 
+  given bsonValueIdentityWriter: BSONWriter[BSONValue] = BSONValueIdentity
+
   export pkg.{
     bsonStringWriter,
     bsonSymbolWriter,

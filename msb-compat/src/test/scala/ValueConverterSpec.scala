@@ -57,7 +57,7 @@ final class ValueConverterSpec
     extends org.specs2.mutable.Specification
     with ConverterFixtures {
 
-  "Value converters" title
+  "Value converters".title
 
   import reactivemongo.api.bson.msb._
 

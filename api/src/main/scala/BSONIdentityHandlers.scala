@@ -334,7 +334,8 @@ private[bson] trait BSONIdentityHandlers
   private[bson] sealed trait IdentityBSONHandler[B <: BSONValue]
       extends BSONReader[B]
       with BSONWriter[B]
-      with SafeBSONWriter[B] {
+      with SafeBSONWriter[B]
+      with BSONHandler[B] {
 
     protected def valueType: String
 
@@ -358,11 +359,9 @@ private[bson] trait BSONIdentityHandlers
 private[bson] trait BSONIdentityLowPriorityHandlers {
   self: DefaultBSONHandlers =>
 
-  implicit object BSONValueIdentity
-      extends BSONReader[BSONValue]
-      with BSONWriter[BSONValue] {
+  implicit object BSONValueIdentity extends IdentityBSONHandler[BSONValue] {
+    protected val valueType = "BSONValue"
 
-    @inline def writeTry(bson: BSONValue): Try[BSONValue] = Success(bson)
-    @inline def readTry(bson: BSONValue): Try[BSONValue] = Success(bson)
+    protected def unapply(bson: BSONValue) = Some(bson)
   }
 }

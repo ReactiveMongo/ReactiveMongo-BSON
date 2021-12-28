@@ -81,7 +81,19 @@ lazy val api = (project in file("api"))
           )
         }
       },
-      libraryDependencies ++= reactivemongoShaded.value
+      libraryDependencies ++= reactivemongoShaded.value,
+      mimaBinaryIssueFilters ++= {
+        // TODO: Purge after release
+        import com.typesafe.tools.mima.core._
+
+        val fmt = ProblemFilters.exclude[FinalMethodProblem](_)
+
+
+        Seq(
+          fmt("reactivemongo.api.bson.BSONIdentityLowPriorityHandlers#BSONValueIdentity.readOpt"),
+          fmt("reactivemongo.api.bson.BSONIdentityLowPriorityHandlers#BSONValueIdentity.readTry")
+        )
+      }
     )
   )
 

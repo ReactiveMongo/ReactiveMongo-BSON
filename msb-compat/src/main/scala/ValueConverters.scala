@@ -56,7 +56,7 @@ object ValueConverters extends ValueConverters
  * val oldVal: org.bson.BsonValue = BSONDouble(1.2D)
  * }}}
  */
-trait ValueConverters extends LowPriorityConverters {
+trait ValueConverters extends ValueConvertersCompat with LowPriorityConverters {
   import JavaConverters._
 
   implicit final def toArray(bson: BsonArray): BSONArray =
@@ -265,41 +265,9 @@ trait ValueConverters extends LowPriorityConverters {
     new BsonDecimal128(
       Decimal128.fromIEEE754BIDEncoding(decimal.high, decimal.low)
     )
-
-  implicit val toUndefined: BsonUndefined => BSONUndefined =
-    _ => BSONUndefined
-
-  implicit val fromUndefined: BSONUndefined => BsonUndefined = {
-    val bson = new BsonUndefined
-    _ => bson
-  }
-
-  implicit val toNull: BsonNull => BSONNull =
-    _ => BSONNull
-
-  implicit val fromNull: BSONNull => BsonNull = {
-    val bson = new BsonNull
-    _ => bson
-  }
-
-  implicit val toMinKey: BsonMinKey => BSONMinKey =
-    _ => BSONMinKey
-
-  implicit val fromMinKey: BSONMinKey => BsonMinKey = {
-    val bson = new BsonMinKey
-    _ => bson
-  }
-
-  implicit val toMaxKey: BsonMaxKey => BSONMaxKey =
-    _ => BSONMaxKey
-
-  implicit val fromMaxKey: BSONMaxKey => BsonMaxKey = {
-    val bson = new BsonMaxKey
-    _ => bson
-  }
 }
 
-private[bson] sealed trait LowPriorityConverters { _: ValueConverters =>
+private[bson] sealed trait LowPriorityConverters { _self: ValueConverters =>
 
   implicit final def toValue(bson: BsonValue): BSONValue = bson match {
     case arr: BsonArray               => toArray(arr)
