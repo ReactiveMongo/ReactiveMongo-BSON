@@ -96,6 +96,7 @@ lazy val specs2 = (project in file("specs2"))
   .dependsOn(api)
 
 lazy val monocle = (project in file("monocle"))
+  .enablePlugins(VelocityPlugin)
   .settings(
     commonSettings ++ Seq(
       name := s"${baseArtifact}-monocle",

@@ -1,7 +1,7 @@
 package reactivemongo.api.bson
 
 private[bson] trait GeoGeometryCollectionCompat {
-  _self: GeoGeometryCollection =>
+  _self: GeoGeometryCollection.type =>
 
   given Conversion[GeoGeometryCollection, Tuple1[Seq[GeoGeometry]]] = {
     (geo: GeoGeometryCollection) => Tuple1(geo.geometries)

@@ -1,3 +1,4 @@
+## -*- mode: scala -*-
 package reactivemongo.api.bson
 
 import scala.reflect.ClassTag
@@ -10,6 +11,7 @@ import _root_.monocle.Optional
  */
 package object monocle extends LowPriorityMonocle {
 
+#if( $scalaVersion.indexOf("2.") == 0 )
   /**
    * Returns an optional lens for a field with the given `name`
    *
@@ -30,6 +32,13 @@ package object monocle extends LowPriorityMonocle {
     Optional[BSONDocument, T](_.get(name).flatMap(ct.unapply)) { (newVal: T) =>
       { (_: BSONDocument) -- (name) ++ (name -> newVal) }
     }
+#else
+  def field[T](name: String)(
+    using lens: FieldLens[T]): Optional[BSONDocument, T] = 
+    Optional[BSONDocument, T](lens.getter(name)) { (newVal: T) =>
+      { (_: BSONDocument) -- (name) ++ lens.element(name, newVal) }
+    }
+#end
 
   /**
    * Returns an optional lens for a field `f`,
@@ -100,6 +109,7 @@ package object monocle extends LowPriorityMonocle {
 
 private[bson] sealed trait LowPriorityMonocle {
 
+#if( $scalaVersion.indexOf("2.") == 0 )
   /**
    * Returns an optional lens for a field with the given `name`.
    *
@@ -111,14 +121,12 @@ private[bson] sealed trait LowPriorityMonocle {
    * val lens = field[String]("bar")
    * }}}
    */
-  def field[T](
-      name: String
-    )(implicit
-      w: BSONWriter[T],
-      r: BSONReader[T]
-    ): Optional[BSONDocument, T] =
+  def field[T](name: String)(
+    implicit
+    w: BSONWriter[T], r: BSONReader[T]
+  ): Optional[BSONDocument, T] =
     Optional[BSONDocument, T](_.getAsOpt[T](name)) { (newVal: T) =>
       { (_: BSONDocument) -- (name) ++ (name -> newVal) }
     }
-
+#end
 }
