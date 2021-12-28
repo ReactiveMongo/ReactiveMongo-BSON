@@ -41,15 +41,27 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
   "Creation" should {
     "be successful" in {
-      val elements = Seq(
+      val nonEmpty = Seq(
         BSONElement("foo", BSONInteger(1)),
         BSONElement("bar", BSONDouble(2D))
       )
 
-      BSONDocument("foo" -> 1, "bar" -> 2D).elements must_=== elements and {
+      val elements = nonEmpty ++ Seq(
+        BSONElement("lorem", Option.empty[Long]),
+        BSONElement("ipsum", None)
+      )
+
+      elements.size must_=== 4 and {
+        BSONDocument(
+          "foo" -> 1,
+          "bar" -> 2D,
+          "lorem" -> Option.empty[Long],
+          "ipsum" -> None
+        ).elements must_=== nonEmpty
+      } and {
         BSONDocument
           .safe("foo" -> 1, "bar" -> 2D)
-          .map(_.elements) must_=== Success(elements)
+          .map(_.elements) must_=== Success(nonEmpty)
       }
     }
 

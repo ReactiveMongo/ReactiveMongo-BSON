@@ -8,7 +8,8 @@ import reactivemongo.api.bson.{
   BSONReader,
   BSONValue,
   BSONWriter,
-  ElementProducer
+  ElementProducer,
+  SafeBSONWriter
 }
 
 sealed trait FieldLens[T] {
@@ -27,6 +28,15 @@ object FieldLens:
       def element(name: String, value: T): BSONElement = name -> value
 
       def getter(name: String) = (_: BSONDocument).get(name).flatMap(ct.unapply)
+    }
+
+  given safe[T](using w: SafeBSONWriter[T], r: BSONReader[T]): FieldLens[T] =
+    new FieldLens[T] {
+
+      def element(name: String, value: T): BSONElement =
+        implicitly[BSONElement](name -> w.safeWrite(value))
+
+      def getter(name: String) = (_: BSONDocument).getAsOpt[T](name)(r)
     }
 
   given default[T](using w: BSONWriter[T], r: BSONReader[T]): FieldLens[T] =

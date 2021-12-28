@@ -1,5 +1,7 @@
 import reactivemongo.api.bson.{
   BSONDocument,
+  BSONDocumentHandler,
+  BSONDocumentReader,
   BSONDocumentWriter,
   BSONDouble,
   BSONInteger,
@@ -33,36 +35,62 @@ trait MacroExtraSpec { self: MacroSpec =>
 
   "Union types" should {
     "be supported" >> {
+      val person = Person(firstName = "Foo", lastName = "Bar")
       val personDoc = BSONDocument(
         "className" -> "MacroTest.Person",
         "firstName" -> "Foo",
         "lastName" -> "Bar"
       )
 
+      val bar = Bar("foo", None)
       val barDoc = BSONDocument("className" -> "MacroTest.Bar", "name" -> "foo")
 
-      given personWriter: BSONDocumentWriter[Person] = Macros.writer[Person]
-      given barWriter: BSONDocumentWriter[Bar] = Macros.writer[Bar]
+      given personHandler: BSONDocumentHandler[Person] = Macros.handler[Person]
+      given barHandler: BSONDocumentHandler[Bar] = Macros.handler[Bar]
 
       "for alias" in {
         type Alias1 = Person | Bar
 
         val writer: BSONDocumentWriter[Alias1] = Macros.writer[Alias1]
+        val reader: BSONDocumentReader[Alias1] = Macros.reader[Alias1]
+        val handler: BSONDocumentHandler[Alias1] = Macros.handler[Alias1]
 
-        writer.writeTry(
-          Person(firstName = "Foo", lastName = "Bar")
-        ) must beSuccessfulTry(personDoc) and {
-          writer.writeTry(Bar("foo", None)) must beSuccessfulTry(barDoc)
+        writer.writeTry(person) must beSuccessfulTry(personDoc) and {
+          reader.readTry(personDoc) must beSuccessfulTry(person)
+        } and {
+          handler.writeTry(person) must beSuccessfulTry(personDoc)
+        } and {
+          handler.readTry(personDoc) must beSuccessfulTry(person)
+        } and {
+          writer.writeTry(bar) must beSuccessfulTry(barDoc)
+        } and {
+          reader.readTry(barDoc) must beSuccessfulTry(bar)
+        } and {
+          handler.writeTry(bar) must beSuccessfulTry(barDoc)
+        } and {
+          handler.readTry(barDoc) must beSuccessfulTry(bar)
         }
       }
 
       "directly" in {
         val writer = Macros.writer[Person | Bar]
+        val reader = Macros.reader[Person | Bar]
+        val handler = Macros.handler[Person | Bar]
 
-        writer.writeTry(
-          Person(firstName = "Foo", lastName = "Bar")
-        ) must beSuccessfulTry(personDoc) and {
-          writer.writeTry(Bar("foo", None)) must beSuccessfulTry(barDoc)
+        writer.writeTry(person) must beSuccessfulTry(personDoc) and {
+          reader.readTry(personDoc) must beSuccessfulTry(person)
+        } and {
+          handler.writeTry(person) must beSuccessfulTry(personDoc)
+        } and {
+          handler.readTry(personDoc) must beSuccessfulTry(person)
+        } and {
+          writer.writeTry(bar) must beSuccessfulTry(barDoc)
+        } and {
+          reader.readTry(barDoc) must beSuccessfulTry(bar)
+        } and {
+          handler.writeTry(bar) must beSuccessfulTry(barDoc)
+        } and {
+          handler.readTry(barDoc) must beSuccessfulTry(bar)
         }
       }
     }

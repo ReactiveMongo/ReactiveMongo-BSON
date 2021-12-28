@@ -334,8 +334,7 @@ private[bson] trait BSONIdentityHandlers
   private[bson] sealed trait IdentityBSONHandler[B <: BSONValue]
       extends BSONReader[B]
       with BSONWriter[B]
-      with SafeBSONWriter[B]
-      with BSONHandler[B] {
+      with SafeBSONWriter[B] {
 
     protected def valueType: String
 

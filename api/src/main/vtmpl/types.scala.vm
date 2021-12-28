@@ -2815,8 +2815,13 @@ object BSONElement extends BSONElementLowPriority {
     new DefaultElement(name, value)
 
   /** Returns an empty [[ElementProducer]] */
-  def apply: (String, None.type) => ElementProducer =
-    { (_, _) => ElementProducer.Empty }
+#if( $scalaVersion.indexOf("2.") == 0 )
+  val apply: (String, None.type) => ElementProducer =
+    (_, _) => ElementProducer.Empty
+#else
+  def apply(_name: String, _value: None.type): ElementProducer =
+    ElementProducer.Empty
+#end
 
   private final class DefaultElement(
     val name: String,
@@ -2890,6 +2895,8 @@ object ElementProducer extends ElementProducerLowPriority1 {
 
     private val underlying = Seq.empty[BSONElement]
     @inline def generate() = underlying
+
+    override val toString = "ElementProducer.Empty"
   }
 
   private[bson] def apply(elements: Iterable[BSONElement]): ElementProducer =
