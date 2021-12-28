@@ -40,7 +40,7 @@ EOF
 }
 
 SCALA_MODULES="api:reactivemongo-bson-api specs2:reactivemongo-bson-specs2 msb-compat:reactivemongo-bson-msb-compat geo:reactivemongo-bson-geo monocle:reactivemongo-bson-monocle"
-SCALA_VERSIONS="2.10 2.11 2.12 2.13"
+SCALA_VERSIONS="2.10 2.11 2.12 2.13 3.1.2-RC1-bin-20211222-c94b333-NIGHTLY"
 BASES=""
 
 QUALIFIER=""
@@ -52,6 +52,8 @@ if [ `expr index "$VERSION" '-'` -gt 0 ]; then
 fi
 
 for V in $SCALA_VERSIONS; do
+  MV=`echo "$V" | sed -e 's/^3.*/3/'`
+
   for M in $SCALA_MODULES; do
     B=`echo "$M" | cut -d ':' -f 1`
     SDS="$B/target/shaded/scala-$V $B/target/noshaded/scala-$V"
@@ -64,12 +66,12 @@ for V in $SCALA_VERSIONS; do
 
         if [ `echo "$SCALA_DIR" | grep noshaded | wc -l` -ne 0 ]; then
           if [ ! -z $QUALIFIER ]; then
-            BASES="$BASES $SCALA_DIR/$N"_"$V-$WO_QUALIFIER-noshaded-"`echo "$VERSION" | cut -d '-' -f 2`
+            BASES="$BASES $SCALA_DIR/$N"_"$MV-$WO_QUALIFIER-noshaded-"`echo "$VERSION" | cut -d '-' -f 2`
           else
-            BASES="$BASES $SCALA_DIR/$N"_"$V-$VERSION-noshaded"
+            BASES="$BASES $SCALA_DIR/$N"_"$MV-$VERSION-noshaded"
           fi
         else
-          BASES="$BASES $SCALA_DIR/$N"_$V-$VERSION
+          BASES="$BASES $SCALA_DIR/$N"_$MV-$VERSION
         fi
       fi
     done
