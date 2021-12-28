@@ -11,7 +11,7 @@ object TestMacros:
   def testKnownSubtypesMacro[T: Type](using q: Quotes): Expr[List[String]] = {
     import q.reflect.*
 
-    val helper = new MacroImpl.QuotesHelper {
+    val helper = new QuotesHelper {
       type Q = q.type
       val quotes = q
     }
@@ -29,7 +29,7 @@ object TestMacros:
   def testProductElementsMacro[T: Type](using q: Quotes): Expr[List[String]] = {
     import q.reflect.*
 
-    val helper = new MacroImpl.QuotesHelper {
+    val helper = new QuotesHelper {
       type Q = q.type
       val quotes = q
     }
@@ -75,7 +75,7 @@ object TestMacros:
     ): Expr[String] = {
     import q.reflect.*
 
-    val helper = new MacroImpl.QuotesHelper {
+    val helper = new QuotesHelper {
       type Q = q.type
       val quotes = q
     }
@@ -112,7 +112,7 @@ object TestMacros:
     ): Expr[String] = {
     import q.reflect.*
 
-    val helper = new MacroImpl.QuotesHelper {
+    val helper = new QuotesHelper {
       type Q = q.type
       val quotes = q
     }

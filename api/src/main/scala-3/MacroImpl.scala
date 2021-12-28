@@ -20,12 +20,6 @@ import exceptions.{
 }
 
 // TODO: Enum
-/* TODO: Double config
-// Reader
-[info]     |{
-[info]     |  val config: reactivemongo.api.bson.MacroConfiguration = reactivemongo.api.bson.MacroConfiguration.default[Opts](reactivemongo.api.bson.MacroOptions.ValueOf.optionsDefault)
-[info]     |  val `config₂`: reactivemongo.api.bson.MacroConfiguration = reactivemongo.api.bson.MacroConfiguration.default[Opts](reactivemongo.api.bson.MacroOptions.ValueOf.optionsDefault)
- */
 private[api] object MacroImpl:
   import Macros.Annotations,
   Annotations.{ DefaultValue, Ignore, Key, Writer, Flatten, NoneAsNull, Reader }
@@ -135,7 +129,7 @@ private[api] object MacroImpl:
 
       }
 
-      //TODO: helper.debug(s"// Value reader\n${reader.show}")
+      helper.debug(s"// Value reader\n${reader.show}")
 
       reader
     }
@@ -530,23 +524,20 @@ private[api] object MacroImpl:
 
     ensureFindType[A]
 
-    val whelper = createWriterHelper[A, Opts](config)
-    val rhelper = createReaderHelper[A, Opts](config)
-
-    // TODO: HandlerHelper that mix MacroHelpers with WriterHelpers with ReaderHelpers to avoid instanciated both separately
+    val helper = createHandlerHelper[A, Opts](config)
 
     '{
       val writer = withSelfDocWriter {
         (forwardBSONWriter: BSONDocumentWriter[A]) =>
           { (macroVal: A) =>
-            ${ whelper.writeBody('{ macroVal }, '{ forwardBSONWriter }) }
+            ${ helper.writeBody('{ macroVal }, '{ forwardBSONWriter }) }
           }
       }
 
       val reader = withSelfDocReader {
         (forwardBSONReader: BSONDocumentReader[A]) =>
           { (macroVal: BSONDocument) =>
-            ${ rhelper.readBody('{ macroVal }, '{ forwardBSONReader }) }
+            ${ helper.readBody('{ macroVal }, '{ forwardBSONReader }) }
           }
       }
 
@@ -569,6 +560,94 @@ private[api] object MacroImpl:
         report.errorAndAbort("Fails to resolve a MacroConfiguration instance")
     }
   }
+
+  // ---
+
+  private def createHandlerHelper[A, O <: MacroOptions](
+      config: Expr[MacroConfiguration]
+    )(using
+      _quotes: Quotes,
+      ot: Type[O],
+      at: Type[A],
+      dwt: Type[BSONDocumentWriter],
+      drt: Type[BSONDocumentReader],
+      dvat: Type[DefaultValue],
+      rat: Type[Reader],
+      wat: Type[Writer],
+      wt: Type[BSONWriter],
+      rt: Type[BSONReader],
+      it: Type[Ignore],
+      kt: Type[Key],
+      flt: Type[Flatten],
+      nant: Type[NoneAsNull],
+      dit: Type[MacroOptions.DisableWarnings],
+      vt: Type[MacroOptions.Verbose]
+    ) = new HandlerHelper[A](config)
+    with MacroTopHelpers[A]
+    with WriterHelpers[A]
+    with ReaderHelpers[A] {
+    protected type Opts = O
+    type Q = _quotes.type
+    val quotes = _quotes
+
+    import quotes.reflect.*
+
+    val docReaderType = drt
+    val docWriterType = dwt
+    val writerAnnotationTpe = wat
+    val readerAnnotationTpe = rat
+    val readerType = rt
+    val writerType = wt
+    val defaultValueAnnotationTpe = dvat
+    val flattenType = flt
+    val noneAsNullType = nant
+    val ignoreType = it
+    val keyType = kt
+    val disableWarningsTpe = dit
+    val verboseTpe = vt
+
+    val aTpe = at
+    val aTpeRepr = TypeRepr.of[A](using at)
+
+    val optsTpe = ot
+    val optsTpr = TypeRepr.of[Opts](using optsTpe)
+  }
+
+  private abstract class HandlerHelper[A](
+      val config: Expr[MacroConfiguration])
+      extends ImplicitResolver[A]
+      with QuotesHelper {
+    self: MacroHelpers[A] with WriterHelpers[A] with ReaderHelpers[A] =>
+
+    val macroCfgInit = config
+
+    import quotes.reflect.*
+
+    def writeBody(
+        macroVal: Expr[A],
+        forwardExpr: Expr[BSONDocumentWriter[A]]
+      ): Expr[TryResult[BSONDocument]] = {
+      val writer = documentWriter(macroVal, forwardExpr)
+
+      // TODO
+      //debug(s"// Writer\n${writer.show}")
+
+      writer
+    }
+
+    def readBody(
+        macroVal: Expr[BSONDocument],
+        forwardExpr: Expr[BSONDocumentReader[A]]
+      ): Expr[TryResult[A]] = {
+      val reader = documentReader(macroVal, forwardExpr)
+
+      debug(s"// Reader\n${reader.show}")
+
+      reader
+    }
+  }
+
+  // ---
 
   private def createReaderHelper[A, O <: MacroOptions](
       config: Expr[MacroConfiguration]
@@ -632,70 +711,6 @@ private[api] object MacroImpl:
     }
   }
 
-  private def createWriterHelper[A, O <: MacroOptions](
-      config: Expr[MacroConfiguration]
-    )(using
-      _quotes: Quotes,
-      ot: Type[O],
-      at: Type[A],
-      dwt: Type[BSONDocumentWriter],
-      wat: Type[Writer],
-      wt: Type[BSONWriter],
-      it: Type[Ignore],
-      kt: Type[Key],
-      flt: Type[Flatten],
-      nant: Type[NoneAsNull],
-      dit: Type[MacroOptions.DisableWarnings],
-      vt: Type[MacroOptions.Verbose]
-    ) =
-    new WriterHelper[A](config) with MacroTopHelpers[A] with WriterHelpers[A] {
-      protected type Opts = O
-      type Q = _quotes.type
-      val quotes = _quotes
-
-      import quotes.reflect.*
-
-      val docWriterType = dwt
-      val writerAnnotationTpe = wat
-      val writerType = wt
-      val ignoreType = it
-      val keyType = kt
-      val flattenType = flt
-      val noneAsNullType = nant
-      val disableWarningsTpe = dit
-      val verboseTpe = vt
-
-      val aTpe = at
-      val aTpeRepr = TypeRepr.of[A](using at)
-
-      val optsTpe = ot
-      val optsTpr = TypeRepr.of[Opts](using optsTpe)
-    }
-
-  private abstract class WriterHelper[A](
-      val config: Expr[MacroConfiguration])
-      extends ImplicitResolver[A]
-      with QuotesHelper {
-    self: MacroHelpers[A] with WriterHelpers[A] =>
-
-    val macroCfgInit = config
-
-    import quotes.reflect.*
-
-    def writeBody(
-        macroVal: Expr[A],
-        forwardExpr: Expr[BSONDocumentWriter[A]]
-      ): Expr[TryResult[BSONDocument]] = {
-      val writer = documentWriter(macroVal, forwardExpr)
-
-      //debug(s"// Writer\n${writer.show}")
-
-      writer
-    }
-  }
-
-  // ---
-
   sealed trait ReaderHelpers[A] {
     self: MacroHelpers[A] with ImplicitResolver[A] with QuotesHelper =>
 
@@ -717,7 +732,7 @@ private[api] object MacroImpl:
 
     protected def flattenType: Type[Flatten]
 
-    protected final lazy val flattenRepr: TypeRepr =
+    protected final lazy val readerFlattenRepr: TypeRepr =
       TypeRepr.of(using flattenType)
 
     private final lazy val readerAnnotationRepr: TypeRepr =
@@ -761,7 +776,6 @@ private[api] object MacroImpl:
             }
 
             val resolve = resolver[BSONDocumentReader, A](
-              Map.empty,
               forwardExpr,
               debug
             )(docReaderType)
@@ -793,7 +807,6 @@ private[api] object MacroImpl:
         val discriminatedSubTypes: Option[Expr[TryResult[A]]] =
           subTypes.map { (types, exhaustive) =>
             val resolve = resolver[BSONDocumentReader, A](
-              Map.empty,
               forwardExpr,
               debug
             )(docReaderType)
@@ -885,7 +898,7 @@ private[api] object MacroImpl:
               val body: Expr[TryResult[t]] =
                 givenReader[t](macroVal, typ)(resolve).getOrElse {
                   if (hasOption[MacroOptions.AutomaticMaterialization]) {
-                    val subHelper = createSubHelper[T](tpe, tpr)
+                    val subHelper = createSubReaderHelper[T](tpe, tpr)
 
                     // No existing implicit, but can fallback to automatic mat
                     subHelper.readBodyConstruct[t](
@@ -1044,10 +1057,7 @@ private[api] object MacroImpl:
       }
 
       val types = tprElements.map(_._2)
-
-      val resolve =
-        resolver[BSONReader, T](Map.empty, forwardExpr, debug)(readerType)
-
+      val resolve = resolver[BSONReader, T](forwardExpr, debug)(readerType)
       val compCls = tpr.typeSymbol.companionClass
 
       val (optional, required) = tprElements.zipWithIndex.view.map {
@@ -1343,7 +1353,7 @@ private[api] object MacroImpl:
         ptpr: TypeRepr,
         reader: Expr[BSONReader[T]]
       ): Boolean = {
-      if (param.annotations.exists(_.tpe =:= flattenRepr)) {
+      if (param.annotations.exists(_.tpe =:= readerFlattenRepr)) {
         if (reader.asTerm.symbol.name.toString == "forwardBSONReader") {
           report.errorAndAbort(
             s"Cannot flatten reader for '${prettyType(tpr)}.${param.name}': recursive type"
@@ -1413,7 +1423,7 @@ private[api] object MacroImpl:
               }
 
               case tt @ '[at] => {
-                val subHelper = createSubHelper[at](tt, lt)
+                val subHelper = createSubReaderHelper[at](tt, lt)
 
                 // Expr[BSONDocument => TryResult[at]]
                 val tryRead = '{
@@ -1432,7 +1442,6 @@ private[api] object MacroImpl:
                   subReader.readTry(_: BSONDocument)
                 }
 
-                // TODO: Common with previous leafWriter Expr
                 '{
                   given leafReader: BSONDocumentReader[at] =
                     BSONDocumentReader.from[at](${ tryRead })
@@ -1446,7 +1455,7 @@ private[api] object MacroImpl:
       }
     }
 
-    private def createSubHelper[T](tt: Type[T], tpr: TypeRepr) =
+    private def createSubReaderHelper[T](tt: Type[T], tpr: TypeRepr) =
       new MacroHelpers[T]
         with ReaderHelpers[T]
         with ImplicitResolver[T]
@@ -1473,6 +1482,71 @@ private[api] object MacroImpl:
         val disableWarningsTpe = self.disableWarningsTpe
         val verboseTpe = self.verboseTpe
       }
+  }
+
+  // ---
+
+  private def createWriterHelper[A, O <: MacroOptions](
+      config: Expr[MacroConfiguration]
+    )(using
+      _quotes: Quotes,
+      ot: Type[O],
+      at: Type[A],
+      dwt: Type[BSONDocumentWriter],
+      wat: Type[Writer],
+      wt: Type[BSONWriter],
+      it: Type[Ignore],
+      kt: Type[Key],
+      flt: Type[Flatten],
+      nant: Type[NoneAsNull],
+      dit: Type[MacroOptions.DisableWarnings],
+      vt: Type[MacroOptions.Verbose]
+    ) =
+    new WriterHelper[A](config) with MacroTopHelpers[A] with WriterHelpers[A] {
+      protected type Opts = O
+      type Q = _quotes.type
+      val quotes = _quotes
+
+      import quotes.reflect.*
+
+      val docWriterType = dwt
+      val writerAnnotationTpe = wat
+      val writerType = wt
+      val ignoreType = it
+      val keyType = kt
+      val flattenType = flt
+      val noneAsNullType = nant
+      val disableWarningsTpe = dit
+      val verboseTpe = vt
+
+      val aTpe = at
+      val aTpeRepr = TypeRepr.of[A](using at)
+
+      val optsTpe = ot
+      val optsTpr = TypeRepr.of[Opts](using optsTpe)
+    }
+
+  private abstract class WriterHelper[A](
+      val config: Expr[MacroConfiguration])
+      extends ImplicitResolver[A]
+      with QuotesHelper {
+    self: MacroHelpers[A] with WriterHelpers[A] =>
+
+    val macroCfgInit = config
+
+    import quotes.reflect.*
+
+    def writeBody(
+        macroVal: Expr[A],
+        forwardExpr: Expr[BSONDocumentWriter[A]]
+      ): Expr[TryResult[BSONDocument]] = {
+      val writer = documentWriter(macroVal, forwardExpr)
+
+      // TODO
+      //debug(s"// Writer\n${writer.show}")
+
+      writer
+    }
   }
 
   sealed trait WriterHelpers[A] {
@@ -1526,7 +1600,6 @@ private[api] object MacroImpl:
           }
 
           val resolve = resolver[BSONDocumentWriter, A](
-            Map.empty,
             forwardExpr,
             debug
           )(docWriterType)
@@ -1557,7 +1630,6 @@ private[api] object MacroImpl:
       val discriminatedSubTypes: Option[Expr[TryResult[BSONDocument]]] =
         subTypes.map { (types, exhaustive) =>
           val resolve = resolver[BSONDocumentWriter, A](
-            Map.empty,
             forwardExpr,
             debug
           )(docWriterType)
@@ -1621,7 +1693,7 @@ private[api] object MacroImpl:
         tpe: Type[T]
       ): CaseDef = {
 
-      val subHelper = createSubHelper[T](tpe, tpr)
+      val subHelper = createSubWriterHelper[T](tpe, tpr)
 
       val bind =
         Symbol.newBind(
@@ -1763,7 +1835,7 @@ private[api] object MacroImpl:
 
     protected def flattenType: Type[Flatten]
 
-    protected final lazy val flattenRepr: TypeRepr =
+    protected final lazy val writerFlattenRepr: TypeRepr =
       TypeRepr.of(using flattenType)
 
     protected def noneAsNullType: Type[NoneAsNull]
@@ -1799,9 +1871,7 @@ private[api] object MacroImpl:
         singletonWriter[T]
       } else {
         val types = tprElements.map(_._2)
-
-        val resolve =
-          resolver[BSONWriter, T](Map.empty, forwardExpr, debug)(writerType)
+        val resolve = resolver[BSONWriter, T](forwardExpr, debug)(writerType)
 
         val (optional, required) = tprElements.zipWithIndex.view.filterNot {
           case ((sym, _), _) => ignoreField(sym)
@@ -2059,12 +2129,11 @@ private[api] object MacroImpl:
               Block(fields.map(_.asTerm).toList, resExpr.asTerm)
 
             if (values.isEmpty && extra.isEmpty) {
-              // TODO: Remove error as no field at all?
-              //writer.asExprOf[TryResult[BSONDocument]]
-
-              report.errorAndAbort(
+              debug(
                 s"No field found: class ${prettyType(TypeRepr.of[T](using tpe))}"
               )
+
+              '{ TrySuccess(BSONDocument.empty) }
             } else {
               Block(tupled.asTerm :: Nil, writer)
                 .asExprOf[TryResult[BSONDocument]]
@@ -2084,7 +2153,7 @@ private[api] object MacroImpl:
         ptpr: TypeRepr,
         writer: Expr[BSONWriter[T]]
       ): Boolean = {
-      if (param.annotations.exists(_.tpe =:= flattenRepr)) {
+      if (param.annotations.exists(_.tpe =:= writerFlattenRepr)) {
         if (writer.asTerm.symbol.name.toString == "forwardBSONWriter") {
           report.errorAndAbort(
             s"Cannot flatten writer for '${prettyType(tpr)}.${param.name}': recursive type"
@@ -2152,7 +2221,7 @@ private[api] object MacroImpl:
               }
 
               case tt @ '[at] => {
-                val subHelper = createSubHelper[at](tt, lt)
+                val subHelper = createSubWriterHelper[at](tt, lt)
 
                 // Expr[at => TryResult[BSONDocument]]
                 val tryWrite = '{
@@ -2171,7 +2240,6 @@ private[api] object MacroImpl:
                   subWriter.writeTry(_: at)
                 }
 
-                // TODO: Common with previous leafWriter Expr
                 '{
                   given leafWriter: BSONWriter[at] =
                     BSONWriter.from[at](${ tryWrite })
@@ -2185,7 +2253,7 @@ private[api] object MacroImpl:
       }
     }
 
-    private def createSubHelper[T](tt: Type[T], tpr: TypeRepr) =
+    private def createSubWriterHelper[T](tt: Type[T], tpr: TypeRepr) =
       new MacroHelpers[T]
         with WriterHelpers[T]
         with ImplicitResolver[T]
@@ -2234,831 +2302,6 @@ private[api] object MacroImpl:
             s"Fails to resolve ClassTag[${prettyType(TypeRepr.of(using tpe))}]"
           )
       }
-  }
-
-  sealed trait MacroHelpers[A] extends OptionSupport with MacroLogging {
-    _i: ImplicitResolver[A] with QuotesHelper =>
-
-    type Q <: Quotes
-    protected val quotes: Q
-
-    import quotes.reflect.*
-
-    // format: off
-    protected given q: Q = quotes
-    // format: on
-
-    protected[api] def aTpe: Type[A]
-    protected[api] def aTpeRepr: TypeRepr
-    protected given aType: Type[A] = aTpe
-
-    // --- Shared trees and types
-
-    protected final lazy val optionTpe: TypeRepr = TypeRepr.of[Option[_]]
-
-    protected final lazy val tryTpe: TypeRepr = TypeRepr.of[TryResult[_]]
-
-    protected lazy val bsonDocTpe = TypeRepr.of[BSONDocument]
-
-    protected lazy val bsonValTpe = TypeRepr.of[BSONValue]
-
-    protected def keyType: Type[Key]
-
-    protected final lazy val keyRepr: TypeRepr = TypeRepr.of(using keyType)
-
-    protected def ignoreType: Type[Ignore]
-
-    protected final lazy val ignoreRepr: TypeRepr =
-      TypeRepr.of(using ignoreType)
-
-    protected final lazy val transientRepr: TypeRepr = TypeRepr.of[transient]
-
-    // --- Macro configuration helpers ---
-
-    protected def macroCfgInit: Expr[MacroConfiguration]
-
-    protected def withMacroCfg[T: Type](
-        body: Expr[MacroConfiguration] => Expr[T]
-      ): Expr[T] = '{
-      val config: MacroConfiguration = ${ macroCfgInit }
-      ${ body('config) }
-    }
-
-    // --- Case classes helpers ---
-
-    @inline protected final def isClass(tpr: TypeRepr): Boolean = {
-      lazy val tpeFlags = tpr.typeSymbol.flags
-
-      !tpeFlags.is(Flags.Trait) && !tpeFlags.is(Flags.Abstract) &&
-      !tpeFlags.is(Flags.Module)
-    }
-
-    /**
-     * @param param the parameter/field symbol
-     */
-    protected final def fieldKey(param: Symbol): String =
-      param.getAnnotation(keyRepr.typeSymbol).collect {
-        case Apply(_, List(Literal(StringConstant(value)))) => value
-      } getOrElse param.name.toString
-
-    protected final def ignoreField(param: Symbol): Boolean =
-      param.annotations.exists { ann =>
-        ann.tpe =:= ignoreRepr || ann.tpe =:= transientRepr
-      }
-
-    /**
-     * Returns the name of the BSON field according the field key
-     * (either the Scala property name or the value of the `@Key` annotation).
-     */
-    protected final lazy val fieldName: Function2[Expr[MacroConfiguration], String, Expr[String]] = {
-      (cfg, nme) => '{ ${ cfg }.fieldNaming(${ Expr(nme) }) }
-    }
-
-    // --- Union helpers ---
-
-    protected final lazy val subTypes: Option[(List[TypeRepr], /* exhaustive: */ Boolean)] = {
-      lazy val subClasses = knownSubclasses(aTpeRepr)
-
-      val restricted = parseRestrictedSubTypes
-
-      restricted match {
-        case None =>
-          subClasses.map(_ -> true)
-
-        case Some(types) =>
-          subClasses match {
-            case Some(classes) => {
-              val exhaustive = types.size == classes.size
-
-              Some(types -> exhaustive)
-            }
-
-            case None =>
-              Some(types -> false)
-          }
-      }
-    }
-
-    protected def unionTypes = Option.empty[List[TypeRepr]]
-
-    protected def parseRestrictedSubTypes = Option.empty[List[TypeRepr]]
-
-    // --- Type helpers ---
-
-    @inline protected final def isOptionalType(tpr: TypeRepr): Boolean =
-      tpr <:< optionTpe
-
-    @annotation.tailrec
-    protected final def leafType(tpr: TypeRepr): TypeRepr = tpr match {
-      case AppliedType(_, a :: _) =>
-        leafType(a)
-
-      case _ =>
-        tpr
-    }
-
-    /* Some(A) for Option[A] else None */
-    protected object OptionTypeParameter {
-
-      def unapply(tpr: TypeRepr): Option[TypeRepr] = {
-        if (isOptionalType(tpr)) {
-          tpr match {
-            case AppliedType(_, args) =>
-              args.headOption
-
-            case _ =>
-              None
-          }
-        } else None
-      }
-    }
-  }
-
-  sealed trait MacroTopHelpers[A] extends MacroHelpers[A] {
-    _i: ImplicitResolver[A] with QuotesHelper =>
-
-    import quotes.reflect.*
-
-    private lazy val unionOptionTpe = TypeRepr.of[MacroOptions.UnionType]
-    private lazy val unionTpe = TypeRepr.of[MacroOptions.\/]
-
-    protected override def unionTypes: Option[List[TypeRepr]] = {
-      @annotation.tailrec
-      def parse(in: List[TypeRepr], out: List[TypeRepr]): List[TypeRepr] =
-        in.headOption match {
-          case Some(OrType(a, b)) =>
-            parse(a :: b :: in.tail, out)
-
-          case Some(o) if isClass(o) =>
-            parse(in.tail, o :: out)
-
-          case Some(_) =>
-            List.empty
-
-          case _ =>
-            out.reverse
-        }
-
-      aTpeRepr.dealias match {
-        case union @ OrType(a, b) =>
-          Some(parse(a :: b :: Nil, Nil))
-
-        case _ =>
-          None
-      }
-    }
-
-    protected override def parseRestrictedSubTypes: Option[List[TypeRepr]] = {
-      @annotation.tailrec
-      def parseTypes(
-          types: List[TypeRepr],
-          found: List[TypeRepr]
-        ): List[TypeRepr] =
-        types match {
-          case AppliedType(t, List(a, b)) :: rem if (t <:< unionTpe) =>
-            parseTypes(a :: b :: rem, found)
-
-          case (app @ AppliedType(_, _)) :: _ =>
-            report.errorAndAbort(
-              s"Union type parameters expected: ${prettyType(app)}"
-            )
-
-          case typ :: rem if (typ <:< aTpeRepr) =>
-            parseTypes(rem, typ :: found)
-
-          case _ :: rem =>
-            parseTypes(rem, found)
-
-          case _ => found
-        }
-
-      @annotation.tailrec
-      def tree(in: List[TypeRepr]): Option[TypeRepr] = in.headOption match {
-        case Some(AppliedType(t, lst)) if t <:< unionOptionTpe =>
-          lst.headOption
-
-        case Some(Refinement(parent, _, _)) if parent <:< unionOptionTpe =>
-          parent match {
-            case AppliedType(_, args) => args.headOption
-            case _                    => None
-          }
-
-        case Some(and: AndType) =>
-          tree(and.left :: and.right :: in.tail)
-
-        case Some(t) =>
-          tree(in.tail)
-
-        case None =>
-          Option.empty[TypeRepr]
-      }
-
-      tree(List(optsTpr)).flatMap { t =>
-        val types = parseTypes(List(t), Nil)
-
-        if (types.isEmpty) None else Some(types)
-      }
-    }
-  }
-
-  sealed trait MacroLogging { _self: OptionSupport =>
-    type Q <: Quotes
-    protected val quotes: Q
-
-    import quotes.reflect.*
-
-    protected given disableWarningsTpe: Type[MacroOptions.DisableWarnings]
-
-    protected given verboseTpe: Type[MacroOptions.Verbose]
-
-    // --- Context helpers ---
-
-    /* Prints a compilation warning, if allowed. */
-    final lazy val warn: String => Unit = {
-      if (hasOption[MacroOptions.DisableWarnings]) { (_: String) => () }
-      else {
-        report.warning(_: String)
-      }
-    }
-
-    /* Prints debug entry, if allowed. */
-    final lazy val debug: String => Unit = {
-      if (!hasOption[MacroOptions.Verbose]) { (_: String) => () }
-      else {
-        report.info(_: String)
-      }
-    }
-  }
-
-  sealed trait OptionSupport {
-    type Q <: Quotes
-    protected val quotes: Q
-
-    import quotes.reflect.*
-
-    // format: off
-    private given q: Q = quotes
-
-    protected type Opts <: MacroOptions
-
-    /* Type of compile-time options; See [[MacroOptions]] */
-    protected def optsTpe: Type[Opts]
-    protected def optsTpr: TypeRepr
-
-    @inline protected final def hasOption[O: Type]: Boolean =
-      optsTpr <:< TypeRepr.of[O]
-  }
-
-  sealed trait ImplicitResolver[A] {
-    protected val quotes: Quotes
-
-    import quotes.reflect.*
-
-    // format: off
-    private given q: Quotes = quotes
-
-    //protected given aTpe: Type[A]
-    // format: on
-
-    protected val aTpeRepr: TypeRepr
-
-    import Macros.Placeholder
-
-    // The placeholder type
-    protected final lazy val PlaceholderType: TypeRepr =
-      TypeRepr.of[Placeholder]
-
-    /**
-     * Refactor the input types, by replacing any type matching the `filter`,
-     * by the given `replacement`.
-     */
-    @annotation.tailrec
-    private def refactor(
-        boundTypes: Map[String, TypeRepr]
-      )(in: List[TypeRepr],
-        base: (TypeRepr, /*Type*/ Symbol),
-        out: List[TypeRepr],
-        tail: List[
-          (List[TypeRepr], (TypeRepr, /*Type*/ Symbol), List[TypeRepr])
-        ],
-        filter: TypeRepr => Boolean,
-        replacement: TypeRepr,
-        altered: Boolean
-      ): (TypeRepr, Boolean) = in match {
-      case tpe :: ts => {
-        boundTypes.getOrElse(tpe.typeSymbol.fullName, tpe) match {
-          case t if filter(t) =>
-            refactor(boundTypes)(
-              ts,
-              base,
-              (replacement :: out),
-              tail,
-              filter,
-              replacement,
-              true
-            )
-
-          case AppliedType(t, as) if as.nonEmpty =>
-            refactor(boundTypes)(
-              as,
-              t -> t.typeSymbol,
-              List.empty,
-              (ts, base, out) :: tail,
-              filter,
-              replacement,
-              altered
-            )
-
-          case t =>
-            refactor(boundTypes)(
-              ts,
-              base,
-              (t :: out),
-              tail,
-              filter,
-              replacement,
-              altered
-            )
-        }
-      }
-
-      case _ => {
-        val tpe = base._1.appliedTo(out.reverse)
-
-        tail match {
-          case (x, y, more) :: ts =>
-            refactor(boundTypes)(
-              x,
-              y,
-              (tpe :: more),
-              ts,
-              filter,
-              replacement,
-              altered
-            )
-
-          case _ => tpe -> altered
-        }
-      }
-    }
-
-    /**
-     * Replaces any reference to the type itself by the Placeholder type.
-     * @return the normalized type + whether any self reference has been found
-     */
-    private def normalized(
-        boundTypes: Map[String, TypeRepr]
-      )(tpe: TypeRepr
-      ): (TypeRepr, Boolean) =
-      boundTypes.getOrElse(tpe.typeSymbol.fullName, tpe) match {
-        case t if (t =:= aTpeRepr) => PlaceholderType -> true
-
-        case AppliedType(t, args) if args.nonEmpty =>
-          refactor(boundTypes)(
-            args,
-            t -> t.typeSymbol,
-            List.empty,
-            List.empty,
-            _ =:= aTpeRepr,
-            PlaceholderType,
-            false
-          )
-
-        case t => t -> false
-      }
-
-    /* Restores reference to the type itself when Placeholder is found. */
-    private def denormalized(
-        boundTypes: Map[String, TypeRepr]
-      )(ptype: TypeRepr
-      ): TypeRepr = ptype match {
-      case t if (t =:= PlaceholderType) =>
-        aTpeRepr
-
-      case AppliedType(_, args) if args.nonEmpty =>
-        refactor(boundTypes)(
-          args,
-          ptype -> ptype.typeSymbol,
-          List.empty,
-          List.empty,
-          _ == PlaceholderType,
-          aTpeRepr,
-          false
-        )._1
-
-      case _ => ptype
-    }
-
-    private val PlaceholderHandlerName =
-      "reactivemongo.api.bson.Macros.Placeholder.Handler"
-
-    /**
-     * @param tc the type representation of the typeclass
-     * @param forwardExpr the `Expr` that forward to the materialized instance itself
-     */
-    private class ImplicitTransformer[T](
-        boundTypes: Map[String, TypeRepr], // TODO: Remove?
-        forwardExpr: Expr[T])
-        extends TreeMap {
-      private val denorm = denormalized(boundTypes) _
-
-      override def transformTree(tree: Tree)(owner: Symbol): Tree = tree match {
-        case tt: TypeTree =>
-          super.transformTree(TypeTree.of(using denorm(tt.tpe).asType))(owner)
-
-        case id @ Ident(_) if (id.show == PlaceholderHandlerName) =>
-          forwardExpr.asTerm
-
-        case _ => super.transformTree(tree)(owner)
-      }
-    }
-
-    private def createImplicit[M[_]](
-        debug: String => Unit,
-        boundTypes: Map[String, TypeRepr]
-      )(tc: Type[M],
-        ptype: TypeRepr,
-        tx: TreeMap
-      ): Option[Implicit] = {
-      val pt = ptype.asType
-      val (ntpe, selfRef) = normalized(boundTypes)(ptype)
-      val ptpe = boundTypes.getOrElse(ntpe.typeSymbol.fullName, ntpe)
-
-      // infers given
-      val neededGivenType = TypeRepr.of[M](using tc).appliedTo(ptpe)
-
-      val neededGiven: Option[Term] = Implicits.search(neededGivenType) match {
-        case suc: ImplicitSearchSuccess => {
-          if (!selfRef) {
-            Some(suc.tree)
-          } else {
-            tx.transformTree(suc.tree)(suc.tree.symbol) match {
-              case t: Term => Some(t)
-              case _       => Option.empty[Term]
-            }
-          }
-        }
-
-        case _ =>
-          Option.empty[Term]
-      }
-
-      debug {
-        val show: Option[String] =
-          try {
-            neededGiven.map(_.show)
-          } catch {
-            case e: MatchError /* Dotty bug */ =>
-              neededGiven.map(_.symbol.fullName)
-          }
-
-        s"// Resolve given ${prettyType(TypeRepr.of(using tc))} for ${prettyType(ntpe)} as ${prettyType(
-          neededGivenType
-        )} (self? ${selfRef}) = ${show.mkString}"
-      }
-
-      neededGiven.map(_ -> selfRef)
-    }
-
-    protected def resolver[M[_], T](
-        boundTypes: Map[String, TypeRepr], // TODO: Remove
-        forwardExpr: Expr[M[T]],
-        debug: String => Unit
-      )(tc: Type[M]
-      ): TypeRepr => Option[Implicit] = {
-      val tx =
-        new ImplicitTransformer[M[T]](boundTypes, forwardExpr)
-
-      createImplicit(debug, boundTypes)(tc, _: TypeRepr, tx)
-    }
-
-    private def fullName(sym: Symbol): String =
-      sym.fullName.replaceAll("(\\.package\\$|\\$|scala\\.Predef\\$\\.)", "")
-
-    // To print the implicit types in the compiler messages
-    protected final def prettyType(t: TypeRepr): String = t match {
-      case _ if (t <:< TypeRepr.of[EmptyTuple]) =>
-        "EmptyTuple"
-
-      case AppliedType(ty, a :: b :: Nil) if (ty <:< TypeRepr.of[*:]) =>
-        s"${prettyType(a)} *: ${prettyType(b)}"
-
-      case AppliedType(_, args) =>
-        fullName(t.typeSymbol) + args.map(prettyType).mkString("[", ", ", "]")
-
-      case OrType(a, b) =>
-        s"${prettyType(a)} | ${prettyType(b)}"
-
-      case _ =>
-        fullName(t.typeSymbol)
-    }
-
-    type Implicit = (Term, Boolean)
-  }
-
-  trait QuotesHelper {
-    protected type Q <: Quotes
-
-    protected val quotes: Q
-
-    import quotes.reflect.*
-
-    // format: off
-    private given q: Q = quotes
-    // format: on
-
-    protected final lazy val anyValTpe: TypeRepr = TypeRepr.of[AnyVal]
-
-    /**
-     * Recursively find the sub-classes of `tpr`.
-     *
-     * Sub-abstract types are not listed, but their own sub-types are examined;
-     * e.g. for trait `Foo`
-     *
-     * {{{
-     * sealed trait Foo
-     * case class Bar(name: String) extends Foo
-     * sealed trait SubFoo extends Foo
-     * case class Lorem() extends SubFoo
-     * }}}
-     *
-     * Class `Lorem` is listed through `SubFoo`,
-     * but `SubFoo` itself is not returned.
-     */
-    final def knownSubclasses(tpr: TypeRepr): Option[List[TypeRepr]] =
-      tpr.classSymbol.flatMap { cls =>
-        @annotation.tailrec
-        def subclasses(
-            children: List[Tree],
-            out: List[TypeRepr]
-          ): List[TypeRepr] = {
-          val childTpr = children.headOption.collect {
-            case tpd: Typed =>
-              tpd.tpt.tpe
-
-            case vd: ValDef =>
-              vd.tpt.tpe
-
-            case cd: ClassDef =>
-              cd.constructor.returnTpt.tpe
-
-          }
-
-          childTpr match {
-            case Some(child) => {
-              val tpeSym = child.typeSymbol
-
-              if (
-                (tpeSym.flags.is(Flags.Abstract) &&
-                  tpeSym.flags.is(Flags.Sealed) &&
-                  !(child <:< anyValTpe)) ||
-                (tpeSym.flags.is(Flags.Sealed) &&
-                  tpeSym.flags.is(Flags.Trait))
-              ) {
-                // Ignore sub-trait itself, but check the sub-sub-classes
-                subclasses(tpeSym.children.map(_.tree) ::: children.tail, out)
-              } else {
-                subclasses(children.tail, child :: out)
-              }
-            }
-
-            case _ =>
-              out.reverse
-          }
-        }
-
-        val types = subclasses(cls.children.map(_.tree), Nil)
-
-        if (types.isEmpty) None else Some(types)
-      }
-
-    @annotation.tailrec
-    private def withElems[U <: Product](
-        tupled: Expr[U],
-        fields: List[(Symbol, TypeRepr, Symbol)],
-        prepared: List[Tuple2[String, (Ref => Term) => Term]]
-      ): Map[String, (Ref => Term) => Term] = fields match {
-      case (sym, t, f) :: tail => {
-        val elem = ValDef.let(
-          Symbol.spliceOwner,
-          s"tuple${f.name}",
-          Typed(tupled.asTerm.select(f), Inferred(t))
-        )
-
-        withElems(tupled, tail, (sym.name -> elem) :: prepared)
-      }
-
-      case _ => prepared.reverse.toMap
-    }
-
-    /**
-     * @param tupled the tupled term
-     * @param tupleTpe the tuple type
-     * @param decls the field declarations
-     */
-    def withFields[U <: Product](
-        tupled: Expr[U],
-        tupleTpe: TypeRepr,
-        decls: List[(Symbol, TypeRepr)],
-        debug: String => Unit
-      ): Map[String, (Term => Term) => Term] = {
-      val fields = decls.zipWithIndex.flatMap {
-        case ((sym, t), i) =>
-          val field = tupleTpe.typeSymbol.declaredMethod(s"_${i + 1}")
-
-          field.map { meth =>
-            debug(
-              s"// Field: ${sym.owner.owner.fullName}.${sym.name}, type = ${t.typeSymbol.fullName}, annotations = [${sym.annotations
-                .map(_.show) mkString ", "}]"
-            )
-
-            Tuple3(sym, t, meth)
-          }
-      }
-
-      withElems[U](tupled, fields, List.empty)
-    }
-
-    /**
-     * @tparam T the class type
-     * @tparam U the type of the product corresponding to class `T`
-     * @tparam R the result type (from the field operation)
-     *
-     * @param tpr the type for which a `ProductOf` is provided
-     * @param toProduct the function to convert the input value as product `U`
-     * @param types the types of the elements (fields)
-     *
-     * @return The tuple type + `{ v: Term => { tuple: Ref => ... } }`
-     * with `v` a term of type `tpe`, and `tuple` the product created from.
-     */
-    def withTuple[T, U <: Product, R: Type](
-        tpr: TypeRepr,
-        toProduct: Expr[T => U],
-        types: List[TypeRepr]
-      )(using
-        Type[T],
-        Type[U]
-      ): Tuple2[TypeRepr, Expr[T] => (Expr[U] => Expr[R]) => Expr[R]] = {
-      val unappliedTupleTpr: TypeRepr = {
-        if (types.isEmpty) {
-          TypeRepr.of[EmptyTuple]
-        } else {
-          TypeRepr.typeConstructorOf(Class.forName(s"scala.Tuple${types.size}"))
-        }
-      }
-
-      val tupleTpr = unappliedTupleTpr.appliedTo(types)
-
-      tupleTpr -> {
-        (in: Expr[T]) =>
-          { (f: (Expr[U] => Expr[R])) =>
-            '{
-              val tuple: U = ${ toProduct }($in)
-              ${ f('{ tuple }) }
-            }
-          }
-      }
-    }
-
-    /**
-     * Returns the elements type for `product`.
-     *
-     * @param owner the type representation for `T`
-     */
-    def productElements[T, U <: Product](
-        owner: TypeRepr,
-        pof: Expr[ProductOf[T]]
-      ): TryResult[List[(Symbol, TypeRepr)]] = { // TODO: Remove Symbol?
-
-      @annotation.tailrec
-      def elementTypes(
-          max: Int,
-          tpes: List[TypeRepr],
-          ts: List[TypeRepr]
-        ): List[TypeRepr] = tpes.headOption match {
-        case Some(AppliedType(ty, a :: b :: Nil))
-            if (ty <:< TypeRepr.of[*:] && max > 0) =>
-          elementTypes(max - 1, b :: tpes.tail, a :: ts)
-
-        case Some(AppliedType(ty, as))
-            if (ty <:< TypeRepr.of[Tuple] && as.size <= max) =>
-          elementTypes(max - as.size, as ::: tpes.tail, ts)
-
-        case Some(t) if (t =:= TypeRepr.of[EmptyTuple]) =>
-          elementTypes(max, tpes.tail, ts)
-
-        case Some(TypeBounds(t, _)) =>
-          elementTypes(max, t :: tpes.tail, ts)
-
-        case Some(t) =>
-          elementTypes(max, tpes.tail, t :: ts)
-
-        case _ =>
-          ts.reverse
-      }
-
-      val ownerSym = owner.typeSymbol
-      val paramss = ownerSym.primaryConstructor.paramSymss.flatten.map { s =>
-        s.name -> s
-      }.toMap
-
-      def prepare(
-          elmLabels: TypeRepr,
-          elmTypes: TypeRepr
-        ): List[(Symbol, TypeRepr)] = {
-        val names =
-          elementTypes(Int.MaxValue, List(elmLabels), List.empty).collect {
-            case ConstantType(StringConstant(n)) => n
-          }
-
-        lazyZip(
-          names,
-          elementTypes(names.size, List(elmTypes), List.empty)
-        ).map {
-          case (n, t) =>
-            val csym = paramss.get(n)
-            def fsym =
-              Option(ownerSym declaredField n).filterNot(_ == Symbol.noSymbol)
-
-            val psym: Symbol = csym
-              .orElse(fsym)
-              .orElse {
-                ownerSym.declaredMethod(n).headOption
-              }
-              .getOrElse(
-                Symbol.newVal(
-                  ownerSym,
-                  n,
-                  t,
-                  Flags.EmptyFlags,
-                  Symbol.noSymbol
-                )
-              )
-
-            psym -> t
-        }.toList
-      }
-
-      val elements: Option[List[(Symbol, TypeRepr)]] = pof.asTerm.tpe match {
-        case Refinement(
-              Refinement(_, _, TypeBounds(t1 @ AppliedType(tycon1, _), _)),
-              _,
-              TypeBounds(t2 @ AppliedType(tycon2, _), _)
-            )
-            if (tycon1 <:< TypeRepr.of[Product] && tycon2 <:< TypeRepr
-              .of[Product]) =>
-          // TODO: Merge cases ?
-          Option(prepare(t2, t1))
-
-        case Refinement(
-              ref @ Refinement(_, _, TypeBounds(t1 @ TermRef(_, _), _)),
-              _,
-              TypeBounds(t2 @ TermRef(_, _), _)
-            ) if {
-              val emptyTupTpe = TypeRepr.of[EmptyTuple]
-              (Ref.term(t1).tpe <:< emptyTupTpe && Ref
-                .term(t2)
-                .tpe <:< emptyTupTpe)
-            } =>
-          None
-
-        case pofTpe =>
-          pofTpe.dealias.typeSymbol.tree match {
-            case ClassDef(_, _, _, _, members) =>
-              members.collect {
-                case TypeDef(
-                      n @ ("MirroredElemTypes" | "MirroredElemLabels"),
-                      tt: TypeTree
-                    ) if (tt.tpe <:< TypeRepr.of[Product]) =>
-                  n -> tt.tpe
-              }.sortBy(_._1) match {
-                case (_, elmLabels) :: (_, elmTypes) :: Nil =>
-                  Option(prepare(elmLabels, elmTypes))
-
-                case _ =>
-                  Some(List.empty[(Symbol, TypeRepr)])
-              }
-
-            case _ =>
-              Some(List.empty[(Symbol, TypeRepr)])
-          }
-      }
-
-      elements match {
-        case Some(ls) if (elements.isEmpty) =>
-          TryFailure(
-            new IllegalArgumentException(
-              s"Ill-typed ProductOf[${owner.typeSymbol.fullName}]: Fails to resolve element types and labels (bad refinement?)"
-            )
-          )
-
-        case Some(ls) =>
-          TrySuccess(ls)
-
-        case _ =>
-          TrySuccess(List.empty[(Symbol, TypeRepr)])
-      }
-    }
   }
 
   private inline def trySeq[T](in: List[TryResult[T]]): TryResult[Seq[T]] = {
