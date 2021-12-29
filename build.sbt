@@ -59,6 +59,13 @@ val spireLaws = Def.setting[ModuleID] {
 
 ThisBuild / libraryDependencies ++= specsDeps.value.map(_ % Test)
 
+lazy val apiFilter: Seq[(File, String)] => Seq[(File, String)] = {
+  (_: Seq[(File, String)]).filter {
+    case (file, name) =>
+      name.indexOf("com/github/ghik/silencer") == -1
+  }
+}
+
 lazy val api = (project in file("api"))
   .enablePlugins(VelocityPlugin)
   .settings(
@@ -93,7 +100,9 @@ lazy val api = (project in file("api"))
           fmt("reactivemongo.api.bson.BSONIdentityLowPriorityHandlers#BSONValueIdentity.readOpt"),
           fmt("reactivemongo.api.bson.BSONIdentityLowPriorityHandlers#BSONValueIdentity.readTry")
         )
-      }
+      },
+      Compile / packageBin / mappings ~= apiFilter,
+      Compile / packageSrc / mappings ~= apiFilter
     )
   )
 

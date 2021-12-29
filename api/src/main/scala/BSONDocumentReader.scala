@@ -34,7 +34,6 @@ trait BSONDocumentReader[T] extends BSONReader[T] { self =>
   final override def afterRead[U](f: T => U): BSONDocumentReader[U] =
     new BSONDocumentReader.MappedReader[T, U](self, f)
 
-  // TODO: => Try[Doc]
   def beforeRead(f: BSONDocument => BSONDocument): BSONDocumentReader[T] =
     BSONDocumentReader.from[T] { doc => self.readDocument(f(doc)) }
 

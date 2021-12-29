@@ -629,8 +629,7 @@ private[api] object MacroImpl:
       ): Expr[TryResult[BSONDocument]] = {
       val writer = documentWriter(macroVal, forwardExpr)
 
-      // TODO
-      //debug(s"// Writer\n${writer.show}")
+      debug(s"// Writer\n${writer}") // TODO: .show
 
       writer
     }
@@ -1542,8 +1541,7 @@ private[api] object MacroImpl:
       ): Expr[TryResult[BSONDocument]] = {
       val writer = documentWriter(macroVal, forwardExpr)
 
-      // TODO
-      //debug(s"// Writer\n${writer.show}")
+      debug(s"// Writer\n${writer}") // TODO: .show
 
       writer
     }

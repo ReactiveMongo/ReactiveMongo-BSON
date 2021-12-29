@@ -2,8 +2,6 @@ package reactivemongo.api
 
 import scala.math.Ordering
 
-// TODO: relocate handler
-
 /**
  * BSON main API
  *
