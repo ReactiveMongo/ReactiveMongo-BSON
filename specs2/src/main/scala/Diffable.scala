@@ -51,20 +51,22 @@ private final class DiffableValue[T <: BSONValue] extends Diffable[T] {
       PrimitiveIdentical(actual)
     } else if (actual == nullValue || expected == nullValue) {
       PrimitiveDifference(actual, expected)
-    } else (actual, expected) match {
-      case (actualDoc: BSONDocument, expectedDoc: BSONDocument) =>
-        DiffableDocument.diff(actualDoc, expectedDoc)
+    } else
+      (actual, expected) match {
+        case (actualDoc: BSONDocument, expectedDoc: BSONDocument) =>
+          DiffableDocument.diff(actualDoc, expectedDoc)
 
-      case (actualArr: BSONArray, expectedArr: BSONArray) =>
-        DiffableArray.diff(actualArr, expectedArr)
+        case (actualArr: BSONArray, expectedArr: BSONArray) =>
+          DiffableArray.diff(actualArr, expectedArr)
 
-      case _ =>
-        Diffable.fallbackDiffable.diff(actual, expected)
-    }
+        case _ =>
+          Diffable.fallbackDiffable.diff(actual, expected)
+      }
   }
 }
 
 private object DiffableDocument extends Diffable[BSONDocument] {
+
   def diff(actual: BSONDocument, expected: BSONDocument): ComparisonResult = {
     if (actual == null && expected == null) {
       PrimitiveIdentical(actual)
@@ -104,16 +106,18 @@ private object DiffableDocument extends Diffable[BSONDocument] {
         same = same.result(),
         changed = changed.result(),
         added = added.result(),
-        removed = removed.result())
+        removed = removed.result()
+      )
     }
   }
 }
 
 private final class DocumentDifference(
-  same: Seq[BSONElement],
-  changed: Seq[(String, ComparisonResult)],
-  added: Seq[BSONElement],
-  removed: Seq[BSONElement]) extends UnorderedCollectionDifferent(same, changed, added, removed) {
+    same: Seq[BSONElement],
+    changed: Seq[(String, ComparisonResult)],
+    added: Seq[BSONElement],
+    removed: Seq[BSONElement])
+    extends UnorderedCollectionDifferent(same, changed, added, removed) {
   val className = "BSONDocument"
 
   def renderElement(indent: String)(element: BSONElement): String =
@@ -125,6 +129,7 @@ private final class DocumentDifference(
 }
 
 private object DiffableArray extends Diffable[BSONArray] {
+
   def diff(actual: BSONArray, expected: BSONArray): ComparisonResult = {
     if (actual == null && expected == null) {
       PrimitiveIdentical(actual)
@@ -151,16 +156,22 @@ private object DiffableArray extends Diffable[BSONArray] {
       new ArrayDifference(
         same = s,
         added = a,
-        removed = expectedValues.diff(a).diff(s))
+        removed = expectedValues.diff(a).diff(s)
+      )
     }
   }
 }
 
 private final class ArrayDifference(
-  same: Seq[BSONValue],
-  added: Seq[BSONValue],
-  removed: Seq[BSONValue]) extends UnorderedCollectionDifferent(
-  same, Seq.empty[BSONValue], added, removed) {
+    same: Seq[BSONValue],
+    added: Seq[BSONValue],
+    removed: Seq[BSONValue])
+    extends UnorderedCollectionDifferent(
+      same,
+      Seq.empty[BSONValue],
+      added,
+      removed
+    ) {
 
   val className = "BSONArray"
 

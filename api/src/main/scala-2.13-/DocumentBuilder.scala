@@ -3,7 +3,7 @@ package reactivemongo.api.bson
 import scala.collection.mutable.{ Builder => MBuilder }
 
 private[bson] final class DocumentBuilder
-  extends MBuilder[ElementProducer, BSONDocument] {
+    extends MBuilder[ElementProducer, BSONDocument] {
 
   private val elms = Seq.newBuilder[BSONElement]
   private val fs = Map.newBuilder[String, BSONValue]
@@ -36,4 +36,3 @@ private[bson] final class DocumentBuilder
   def result(): BSONDocument =
     BSONDocument(elms.result(), fs.result())
 }
-

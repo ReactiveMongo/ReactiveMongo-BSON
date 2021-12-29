@@ -27,26 +27,53 @@ import reactivemongo.api.bson.{
 
 import org.specs2.specification.core.Fragment
 
-import org.bson.{ BsonArray, BsonBinary, BsonBinarySubType, BsonBoolean, BsonDateTime, BsonDecimal128, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonJavaScript, BsonJavaScriptWithScope, BsonMaxKey, BsonMinKey, BsonNull, BsonObjectId, BsonRegularExpression, BsonString, BsonSymbol, BsonTimestamp, BsonUndefined, BsonValue }
+import org.bson.{
+  BsonArray,
+  BsonBinary,
+  BsonBinarySubType,
+  BsonBoolean,
+  BsonDateTime,
+  BsonDecimal128,
+  BsonDocument,
+  BsonDouble,
+  BsonInt32,
+  BsonInt64,
+  BsonJavaScript,
+  BsonJavaScriptWithScope,
+  BsonMaxKey,
+  BsonMinKey,
+  BsonNull,
+  BsonObjectId,
+  BsonRegularExpression,
+  BsonString,
+  BsonSymbol,
+  BsonTimestamp,
+  BsonUndefined,
+  BsonValue
+}
 import org.bson.types.Decimal128
 
 final class ValueConverterSpec
-  extends org.specs2.mutable.Specification with ConverterFixtures {
+    extends org.specs2.mutable.Specification
+    with ConverterFixtures {
 
-  "Value converters" title
+  "Value converters".title
 
   import reactivemongo.api.bson.msb._
 
   "Scalar value converters" should {
     "support binary subtype" >> {
-      Fragment.foreach(Seq[(BsonBinarySubType, Subtype)](
-        BsonBinarySubType.BINARY -> Subtype.GenericBinarySubtype,
-        BsonBinarySubType.FUNCTION -> Subtype.FunctionSubtype,
-        BsonBinarySubType.OLD_BINARY -> Subtype.OldBinarySubtype,
-        BsonBinarySubType.UUID_LEGACY -> Subtype.OldUuidSubtype,
-        BsonBinarySubType.UUID_STANDARD -> Subtype.UuidSubtype,
-        BsonBinarySubType.MD5 -> Subtype.Md5Subtype,
-        BsonBinarySubType.USER_DEFINED -> Subtype.UserDefinedSubtype)) {
+      Fragment.foreach(
+        Seq[(BsonBinarySubType, Subtype)](
+          BsonBinarySubType.BINARY -> Subtype.GenericBinarySubtype,
+          BsonBinarySubType.FUNCTION -> Subtype.FunctionSubtype,
+          BsonBinarySubType.OLD_BINARY -> Subtype.OldBinarySubtype,
+          BsonBinarySubType.UUID_LEGACY -> Subtype.OldUuidSubtype,
+          BsonBinarySubType.UUID_STANDARD -> Subtype.UuidSubtype,
+          BsonBinarySubType.MD5 -> Subtype.Md5Subtype,
+          BsonBinarySubType.USER_DEFINED -> Subtype.UserDefinedSubtype
+        )
+      ) {
         case (l, n) =>
           s"from org.bson $l" in {
             implicitly[Subtype](l) must_=== n
@@ -61,11 +88,18 @@ final class ValueConverterSpec
     "support binary" >> {
       val bytes = "Test".getBytes("UTF-8")
 
-      Fragment.foreach(Seq[(BsonBinary, BSONBinary)](
-        new BsonBinary(
-          BsonBinarySubType.UUID_STANDARD, uuidBytes) -> BSONBinary(uuid),
-        new BsonBinary(BsonBinarySubType.BINARY, bytes) -> BSONBinary(
-          bytes, Subtype.GenericBinarySubtype))) {
+      Fragment.foreach(
+        Seq[(BsonBinary, BSONBinary)](
+          new BsonBinary(
+            BsonBinarySubType.UUID_STANDARD,
+            uuidBytes
+          ) -> BSONBinary(uuid),
+          new BsonBinary(BsonBinarySubType.BINARY, bytes) -> BSONBinary(
+            bytes,
+            Subtype.GenericBinarySubtype
+          )
+        )
+      ) {
         case (l, n) =>
           s"from org.bson $l" in {
             implicitly[BSONBinary](l) must_=== n
@@ -99,13 +133,15 @@ final class ValueConverterSpec
 
     "support decimal" >> {
       "from org.bson" in {
-        implicitly[BSONDecimal](new BsonDecimal128(
-          Decimal128.POSITIVE_INFINITY)) must_=== BSONDecimal.PositiveInf
+        implicitly[BSONDecimal](
+          new BsonDecimal128(Decimal128.POSITIVE_INFINITY)
+        ) must_=== BSONDecimal.PositiveInf
       }
 
       "to org.bson" in {
-        implicitly[BsonDecimal128](BSONDecimal.PositiveInf) must_=== (
-          new BsonDecimal128(Decimal128.POSITIVE_INFINITY))
+        implicitly[BsonDecimal128](
+          BSONDecimal.PositiveInf
+        ) must_=== (new BsonDecimal128(Decimal128.POSITIVE_INFINITY))
       }
     }
 
@@ -136,12 +172,14 @@ final class ValueConverterSpec
 
       "from org.bson" in {
         implicitly[BSONJavaScript](
-          new BsonJavaScript(raw)) must_=== BSONJavaScript(raw)
+          new BsonJavaScript(raw)
+        ) must_=== BSONJavaScript(raw)
       }
 
       "to org.bson" in {
         implicitly[BsonJavaScript](
-          BSONJavaScript(raw)) must_=== new BsonJavaScript(raw)
+          BSONJavaScript(raw)
+        ) must_=== new BsonJavaScript(raw)
       }
     }
 
@@ -154,14 +192,14 @@ final class ValueConverterSpec
 
       "from org.bson" in {
         implicitly[BSONJavaScriptWS](
-          new BsonJavaScriptWithScope(raw, scope)) must_=== BSONJavaScriptWS(
-            raw, BSONDocument("lorem" -> "ipsum"))
+          new BsonJavaScriptWithScope(raw, scope)
+        ) must_=== BSONJavaScriptWS(raw, BSONDocument("lorem" -> "ipsum"))
       }
 
       "to org.bson" in {
-        implicitly[BsonJavaScriptWithScope](BSONJavaScriptWS(
-          raw, BSONDocument(
-          "lorem" -> "ipsum"))) must_=== new BsonJavaScriptWithScope(raw, scope)
+        implicitly[BsonJavaScriptWithScope](
+          BSONJavaScriptWS(raw, BSONDocument("lorem" -> "ipsum"))
+        ) must_=== new BsonJavaScriptWithScope(raw, scope)
       }
     }
 

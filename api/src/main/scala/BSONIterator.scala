@@ -1,7 +1,12 @@
 package reactivemongo.api.bson
 
 private[bson] object BSONIterator {
-  def pretty(i: Int, it: Iterable[BSONElement], f: String => String = { name => s"'${name}': " }): String = {
+
+  def pretty(
+      i: Int,
+      it: Iterable[BSONElement],
+      f: String => String = { name => s"'${name}': " }
+    ): String = {
     val indent = (0 to i).map { _ => "  " }.mkString("")
 
     it.collect {
@@ -24,11 +29,12 @@ private[bson] object BSONIterator {
     "{\n" + pretty(0, it) + "\n}"
 
   private def pretty(
-    i: Int,
-    indent: String,
-    name: String,
-    value: BSONValue,
-    f: String => String): String = {
+      i: Int,
+      indent: String,
+      name: String,
+      value: BSONValue,
+      f: String => String
+    ): String = {
 
     val prefix = s"${indent}${f(name)}"
 
@@ -66,13 +72,16 @@ private[bson] object BSONIterator {
       case id: BSONObjectID =>
         s"${prefix}${BSONObjectID pretty id}"
 
+      case re: BSONRegex =>
+        s"${prefix}${BSONRegex pretty re}"
+
       case ts: BSONTimestamp =>
         s"${prefix}${BSONTimestamp pretty ts}"
 
-      case BSONNull => s"${prefix}${BSONNull.pretty}"
+      case BSONNull      => s"${prefix}${BSONNull.pretty}"
       case BSONUndefined => s"${prefix}${BSONUndefined.pretty}"
-      case BSONMinKey => s"${prefix}${BSONMinKey.pretty}"
-      case BSONMaxKey => s"${prefix}${BSONMaxKey.pretty}"
+      case BSONMinKey    => s"${prefix}${BSONMinKey.pretty}"
+      case BSONMaxKey    => s"${prefix}${BSONMaxKey.pretty}"
 
       case _ =>
         s"${prefix}$value"

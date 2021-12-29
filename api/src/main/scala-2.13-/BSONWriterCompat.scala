@@ -5,6 +5,7 @@ import scala.language.higherKinds
 import scala.util.Try
 
 private[bson] trait BSONWriterCompat { self: BSONWriter.type =>
+
   /**
    * '''EXPERIMENTAL:''' (API may change without notice)
    *
@@ -23,9 +24,10 @@ private[bson] trait BSONWriterCompat { self: BSONWriter.type =>
    * }}}
    */
   def iterable[T, M[_]](
-    write: T => Try[BSONValue])(
-    implicit
-    it: M[T] <:< Iterable[T]): BSONWriter[M[T]] = from[M[T]] { values =>
+      write: T => Try[BSONValue]
+    )(implicit
+      it: M[T] <:< Iterable[T]
+    ): BSONWriter[M[T]] = from[M[T]] { values =>
     trySeq[T, BSONValue, IndexedSeq](it(values))(write).map(BSONArray.apply)
   }
 }

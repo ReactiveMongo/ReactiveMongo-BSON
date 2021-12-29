@@ -1,7 +1,7 @@
 import reactivemongo.api.bson.{ BSONString, FieldNaming, TypeNaming }
 
 final class NamingSpec extends org.specs2.mutable.Specification {
-  "Naming" title
+  "Naming".title
 
   "Naming for property fooBar" should {
     "be preserved with Identity" in {
@@ -19,8 +19,9 @@ final class NamingSpec extends org.specs2.mutable.Specification {
 
   "Naming for type BSONString" should {
     "be full name" in {
-      TypeNaming.FullName(classOf[BSONString]) must_=== (
-        "reactivemongo.api.bson.BSONString")
+      TypeNaming.FullName(
+        classOf[BSONString]
+      ) must_=== ("reactivemongo.api.bson.BSONString")
     }
 
     "be simple name" in {

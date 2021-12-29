@@ -93,7 +93,7 @@ import reactivemongo.api.bson.BSONDocument
 import reactivemongo.api.bson.specs2._
 
 final class MySpec extends org.specs2.mutable.Specification {
-  "Foo" title
+  "Foo".title
 
   "Bar" should {
     "lorem" in {

@@ -15,7 +15,11 @@ import org.bson.codecs.configuration.CodecRegistry
  * See [[msb$]] and [[HandlerConverters]]
  */
 object HandlerConverters extends HandlerConverters {
-  private[reactivemongo] def encode[T](value: T, enc: Encoder[T]): Try[BsonValue] = {
+
+  private[reactivemongo] def encode[T](
+      value: T,
+      enc: Encoder[T]
+    ): Try[BsonValue] = {
     val container = new BsonDocument
     val writer = new BsonDocumentWriter(container)
 
@@ -33,7 +37,10 @@ object HandlerConverters extends HandlerConverters {
     }
   }
 
-  private[reactivemongo] def decode[T](bson: BsonValue, dec: Decoder[T]): Try[T] = {
+  private[reactivemongo] def decode[T](
+      bson: BsonValue,
+      dec: Decoder[T]
+    ): Try[T] = {
     val container = new BsonDocument("_conv", bson)
     val reader = new BsonDocumentReader(container)
 
@@ -67,6 +74,7 @@ object HandlerConverters extends HandlerConverters {
  * }}}
  */
 trait HandlerConverters extends LowPriorityHandlerConverters1 {
+
   implicit object DefaultCodecRegistry extends CodecRegistry {
     val BsonArrayClass = classOf[BsonArray].getName
     val BsonBinaryClass = classOf[BsonBinary].getName
@@ -96,30 +104,30 @@ trait HandlerConverters extends LowPriorityHandlerConverters1 {
 
     def get[T](clazz: Class[T]): Codec[T] = {
       val c: Codec[_] = clazz.getName match {
-        case BsonArrayClass => new BsonArrayCodec
-        case BsonBinaryClass => new BsonBinaryCodec
-        case BsonBooleanClass => new BsonBooleanCodec
-        case BsonDateTimeClass => new BsonDateTimeCodec
-        case BsonDocumentClass => new BsonDocumentCodec
+        case BsonArrayClass      => new BsonArrayCodec
+        case BsonBinaryClass     => new BsonBinaryCodec
+        case BsonBooleanClass    => new BsonBooleanCodec
+        case BsonDateTimeClass   => new BsonDateTimeCodec
+        case BsonDocumentClass   => new BsonDocumentCodec
         case BsonDecimal128Class => new BsonDecimal128Codec
-        case BsonDoubleClass => new BsonDoubleCodec
-        case BsonInt32Class => new BsonInt32Codec
-        case BsonInt64Class => new BsonInt64Codec
+        case BsonDoubleClass     => new BsonDoubleCodec
+        case BsonInt32Class      => new BsonInt32Codec
+        case BsonInt64Class      => new BsonInt64Codec
         case BsonJavaScriptClass => new BsonJavaScriptCodec
 
         case BsonJavaScriptWithScopeClass =>
           new BsonJavaScriptWithScopeCodec(new BsonDocumentCodec)
 
-        case BsonMaxKeyClass => new BsonMaxKeyCodec
-        case BsonMinKeyClass => new BsonMinKeyCodec
-        case BsonNullClass => new BsonNullCodec
+        case BsonMaxKeyClass   => new BsonMaxKeyCodec
+        case BsonMinKeyClass   => new BsonMinKeyCodec
+        case BsonNullClass     => new BsonNullCodec
         case BsonObjectIdClass => new BsonObjectIdCodec
 
         case BsonRegularExpressionClass =>
           new BsonRegularExpressionCodec
 
-        case BsonStringClass => new BsonStringCodec
-        case BsonSymbolClass => new BsonSymbolCodec
+        case BsonStringClass    => new BsonStringCodec
+        case BsonSymbolClass    => new BsonSymbolCodec
         case BsonTimestampClass => new BsonTimestampCodec
 
         case _ => new BsonUndefinedCodec
@@ -135,20 +143,30 @@ trait HandlerConverters extends LowPriorityHandlerConverters1 {
   implicit final def toHandler[T](h: Codec[T]): BSONHandler[T] =
     BSONHandler.provided[T](toReader(h), toWriter(h))
 
-  implicit final def fromHandler[T](h: BSONHandler[T])(implicit tt: ClassTag[T], cr: CodecRegistry): Codec[T] = new DefaultCodec[T](fromReader[T](h)(cr), fromWriter[T](h), cr, tt)
+  implicit final def fromHandler[T](
+      h: BSONHandler[T]
+    )(implicit
+      tt: ClassTag[T],
+      cr: CodecRegistry
+    ): Codec[T] =
+    new DefaultCodec[T](fromReader[T](h)(cr), fromWriter[T](h), cr, tt)
 
   private final class DefaultCodec[T](
-    val bsonReader: BSONReader[T],
-    val bsonWriter: BSONWriter[T],
-    val codecReg: CodecRegistry,
-    val encoderClassTag: ClassTag[T]) extends Codec[T] with BSONEncoder[T] with BSONDecoder[T] {
+      val bsonReader: BSONReader[T],
+      val bsonWriter: BSONWriter[T],
+      val codecReg: CodecRegistry,
+      val encoderClassTag: ClassTag[T])
+      extends Codec[T]
+      with BSONEncoder[T]
+      with BSONDecoder[T] {
+
     @inline override def hashCode: Int =
       (encoderClassTag -> bsonReader).hashCode
   }
 }
 
 private[bson] sealed trait LowPriorityHandlerConverters1 {
-  _: HandlerConverters =>
+  _self: HandlerConverters =>
 
   implicit final def toWriter[T](enc: Encoder[T]): BSONWriter[T] =
     BSONWriter.from[T] { v =>
@@ -162,17 +180,27 @@ private[bson] sealed trait LowPriorityHandlerConverters1 {
       HandlerConverters.decode(v, dec)
     }
 
-  implicit final def fromWriter[T](w: BSONWriter[T])(implicit tt: ClassTag[T]): Encoder[T] = new DefaultEncoder(w, tt)
+  implicit final def fromWriter[T](
+      w: BSONWriter[T]
+    )(implicit
+      tt: ClassTag[T]
+    ): Encoder[T] = new DefaultEncoder(w, tt)
 
   private final class DefaultEncoder[T](
-    val bsonWriter: BSONWriter[T],
-    val encoderClassTag: ClassTag[T]) extends BSONEncoder[T]
+      val bsonWriter: BSONWriter[T],
+      val encoderClassTag: ClassTag[T])
+      extends BSONEncoder[T]
 
-  implicit final def fromReader[T](r: BSONReader[T])(implicit cr: CodecRegistry): Decoder[T] = new DefaultDecoder[T](r, cr)
+  implicit final def fromReader[T](
+      r: BSONReader[T]
+    )(implicit
+      cr: CodecRegistry
+    ): Decoder[T] = new DefaultDecoder[T](r, cr)
 
   private final class DefaultDecoder[T](
-    val bsonReader: BSONReader[T],
-    val codecReg: CodecRegistry) extends BSONDecoder[T]
+      val bsonReader: BSONReader[T],
+      val codecReg: CodecRegistry)
+      extends BSONDecoder[T]
 }
 
 private[msb] sealed trait BSONEncoder[T] extends Encoder[T] with Serializable {
@@ -183,7 +211,7 @@ private[msb] sealed trait BSONEncoder[T] extends Encoder[T] with Serializable {
 
   def encode(writer: BsonWriter, value: T, ctx: EncoderContext): Unit = {
     val bsonValue: BsonValue = bsonWriter.writeTry(value) match {
-      case Success(bson) => ValueConverters.fromValue(bson)
+      case Success(bson)  => ValueConverters.fromValue(bson)
       case Failure(cause) => throw cause
     }
 
@@ -213,7 +241,8 @@ private[msb] sealed trait BSONDecoder[T] extends Decoder[T] {
     val v: BSONValue = resolved match {
       case BsonType.ARRAY =>
         ValueConverters.toArray(
-          codecReg.get(classOf[BsonArray]).decode(reader, ctx))
+          codecReg.get(classOf[BsonArray]).decode(reader, ctx)
+        )
 
       case BsonType.BINARY =>
         ValueConverters.toBinary(reader.readBinaryData())
@@ -229,7 +258,8 @@ private[msb] sealed trait BSONDecoder[T] extends Decoder[T] {
 
       case BsonType.DOCUMENT =>
         ValueConverters.toDocument(
-          codecReg.get(classOf[BsonDocument]).decode(reader, ctx))
+          codecReg.get(classOf[BsonDocument]).decode(reader, ctx)
+        )
 
       case BsonType.DOUBLE =>
         BSONDouble(reader.readDouble())
@@ -245,8 +275,8 @@ private[msb] sealed trait BSONDecoder[T] extends Decoder[T] {
 
       case BsonType.JAVASCRIPT_WITH_SCOPE =>
         ValueConverters.toJavaScriptWS(
-          codecReg.get(classOf[BsonJavaScriptWithScope]).
-            decode(reader, ctx))
+          codecReg.get(classOf[BsonJavaScriptWithScope]).decode(reader, ctx)
+        )
 
       case BsonType.MAX_KEY => {
         reader.readMaxKey()
@@ -286,7 +316,7 @@ private[msb] sealed trait BSONDecoder[T] extends Decoder[T] {
 
     bsonReader.readTry(v) match {
       case Success(result) => result
-      case Failure(cause) => throw cause
+      case Failure(cause)  => throw cause
     }
   }
 

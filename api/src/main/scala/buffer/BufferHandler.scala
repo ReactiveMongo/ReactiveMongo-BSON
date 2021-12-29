@@ -8,29 +8,30 @@ import scala.collection.mutable.{ Map => MMap }
 import reactivemongo.api.bson._
 
 private[reactivemongo] trait BufferHandler {
+
   def serialize(bson: BSONValue, buffer: WritableBuffer): WritableBuffer =
     bson match {
-      case BSONDouble(v) => buffer writeDouble v
-      case BSONString(v) => buffer writeBsonString v
-      case doc: BSONDocument => writeDocument(doc, buffer)
-      case BSONArray(vs) => writeArray(vs, buffer)
-      case v: BSONBinary => writeBinary(v, buffer)
-      case oid: BSONObjectID => writeObjectID(oid, buffer)
-      case BSONBoolean(v) => buffer writeByte (if (v) 1 else 0)
+      case BSONDouble(v)      => buffer writeDouble v
+      case BSONString(v)      => buffer writeBsonString v
+      case doc: BSONDocument  => writeDocument(doc, buffer)
+      case BSONArray(vs)      => writeArray(vs, buffer)
+      case v: BSONBinary      => writeBinary(v, buffer)
+      case oid: BSONObjectID  => writeObjectID(oid, buffer)
+      case BSONBoolean(v)     => buffer writeByte (if (v) 1 else 0)
       case BSONDateTime(time) => buffer writeLong time
-      case v: BSONRegex => writeRegex(v, buffer)
-      case BSONJavaScript(v) => buffer writeBsonString v
-      case BSONSymbol(name) => buffer writeBsonString name
+      case v: BSONRegex       => writeRegex(v, buffer)
+      case BSONJavaScript(v)  => buffer writeBsonString v
+      case BSONSymbol(name)   => buffer writeBsonString name
 
       case BSONJavaScriptWS(v, s) => {
         buffer writeBsonString v
         writeDocument(s, buffer)
       }
 
-      case BSONInteger(v) => buffer writeInt v
+      case BSONInteger(v)      => buffer writeInt v
       case BSONTimestamp(time) => buffer writeLong time
-      case BSONLong(v) => buffer writeLong v
-      case dec: BSONDecimal => writeDecimal(dec, buffer)
+      case BSONLong(v)         => buffer writeLong v
+      case dec: BSONDecimal    => writeDecimal(dec, buffer)
 
       case _ =>
         // Constant values: null, minKey, maxKey, undefined
@@ -38,7 +39,7 @@ private[reactivemongo] trait BufferHandler {
     }
 
   private[bson] def deserialize(buffer: ReadableBuffer): Try[BSONValue] =
-    Try(readValue(buffer, code = buffer.readByte()))
+    Try(readValue(buffer, code = buffer.readByte().toInt))
 
   def writeArray(vs: IndexedSeq[BSONValue], buffer: WritableBuffer) = {
     val szBefore = buffer.size()
@@ -60,8 +61,9 @@ private[reactivemongo] trait BufferHandler {
   }
 
   def writeDocument(
-    document: BSONDocument,
-    buffer: WritableBuffer): WritableBuffer = {
+      document: BSONDocument,
+      buffer: WritableBuffer
+    ): WritableBuffer = {
     val szBefore = buffer.size()
 
     buffer.writeInt(0) // initial (unknown:0) document size
@@ -108,7 +110,7 @@ private[reactivemongo] trait BufferHandler {
         // Last is 0 (see writeArray#write_1)
         buffer.skipUntil(_ == (0x0: Byte)) // C string delimiter
 
-        builder += readValue(buffer, code)
+        builder += readValue(buffer, code.toInt)
 
         makeSeq()
       } else builder.result()
@@ -118,9 +120,10 @@ private[reactivemongo] trait BufferHandler {
   }
 
   @inline def writeBinary(binary: BSONBinary, buffer: WritableBuffer) =
-    buffer.writeInt(binary.value.readable()).
-      writeByte(binary.subtype.value).
-      writeBytes(binary.value.duplicate())
+    buffer
+      .writeInt(binary.value.readable())
+      .writeByte(binary.subtype.value)
+      .writeBytes(binary.value.duplicate())
 
   private[bson] def readBinary(buffer: ReadableBuffer): BSONBinary = {
     val readable = buffer.readInt()
@@ -182,14 +185,16 @@ private[reactivemongo] trait BufferHandler {
   }
 
   @inline def writeDecimal(
-    decimal: BSONDecimal, buffer: WritableBuffer) =
+      decimal: BSONDecimal,
+      buffer: WritableBuffer
+    ) =
     buffer.writeLong(decimal.low).writeLong(decimal.high)
 
   private[bson] def readDecimal(buffer: ReadableBuffer): BSONDecimal = {
     BSONDecimal(low = buffer.readLong(), high = buffer.readLong())
   }
 
-  private[bson] def readValue(buffer: ReadableBuffer, code: Byte): BSONValue = {
+  private[bson] def readValue(buffer: ReadableBuffer, code: Int): BSONValue = {
     if (buffer.readable() > 0) {
       (code: @annotation.switch) match {
         case 0x01 => readDouble(buffer)
@@ -205,25 +210,27 @@ private[reactivemongo] trait BufferHandler {
         case 0x11 => readTimestamp(buffer)
         case 0x12 => readLong(buffer)
         case 0x13 => readDecimal(buffer)
-        case 0x0A => BSONNull
-        case 0x0B => readRegex(buffer)
-        case 0x0D => readJavaScript(buffer)
-        case 0x0E => readSymbol(buffer)
-        case 0x0F => readJavaScriptWS(buffer)
-        case 0xFF => BSONMinKey
-        case 0x7F => BSONMaxKey
+        case 0x0a => BSONNull
+        case 0x0b => readRegex(buffer)
+        case 0x0d => readJavaScript(buffer)
+        case 0x0e => readSymbol(buffer)
+        case 0x0f => readJavaScriptWS(buffer)
+        case 0xff => BSONMinKey
+        case 0x7f => BSONMaxKey
 
         case _ =>
           throw new IllegalArgumentException(s"invalid type code: $code")
       }
     } else {
       throw new NoSuchElementException(
-        "buffer can not be read, end of buffer reached")
+        "buffer can not be read, end of buffer reached"
+      )
     }
   }
 }
 
-private[reactivemongo] trait PlainBufferHandler { _: BufferHandler =>
+private[reactivemongo] trait PlainBufferHandler { self: BufferHandler =>
+
   private[bson] def readDocument(buffer: ReadableBuffer): BSONDocument = {
     val _ = buffer.readInt() // length
 
@@ -240,7 +247,7 @@ private[reactivemongo] trait PlainBufferHandler { _: BufferHandler =>
         // Last is 0 (see readDocument#write_1)
 
         val name = buffer.readCString()
-        val v = readValue(buffer, code)
+        val v = readValue(buffer, code.toInt)
 
         elms += BSONElement(name, v)
         fields.put(name, v)
@@ -255,7 +262,8 @@ private[reactivemongo] trait PlainBufferHandler { _: BufferHandler =>
   }
 }
 
-private[reactivemongo] trait StrictBufferHandler { _: BufferHandler =>
+private[reactivemongo] trait StrictBufferHandler { self: BufferHandler =>
+
   private[bson] def readDocument(buffer: ReadableBuffer): BSONDocument = {
     val _ = buffer.readInt() // length
 
@@ -271,7 +279,7 @@ private[reactivemongo] trait StrictBufferHandler { _: BufferHandler =>
         // Last is 0 (see readDocument#write_1)
 
         val name = buffer.readCString()
-        val v = readValue(buffer, code)
+        val v = readValue(buffer, code.toInt)
 
         fields.put(name, v)
 

@@ -11,12 +11,17 @@ object Publish extends AutoPlugin {
 
   override def projectSettings = Seq(
     licenses := Seq(
-      "Apache 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+      "Apache 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
+    ),
     publishMavenStyle := true,
     Test / publishArtifact := false,
     publishTo := Some(repoUrl).map(repoName at _),
-    credentials += Credentials(repoName, env("PUBLISH_REPO_ID"),
-      env("PUBLISH_USER"), env("PUBLISH_PASS")),
+    credentials += Credentials(
+      repoName,
+      env("PUBLISH_REPO_ID"),
+      env("PUBLISH_USER"),
+      env("PUBLISH_PASS")
+    ),
     pomIncludeRepository := { _ => false },
     pomPostProcess := {
       val ver = scalaBinaryVersion.value
@@ -35,8 +40,7 @@ object Publish extends AutoPlugin {
     },
     homepage := Some(url("http://reactivemongo.org")),
     autoAPIMappings := true,
-    pomExtra := (
-      <scm>
+    pomExtra := (<scm>
         <url>git://github.com/ReactiveMongo/ReactiveMongo-BSON.git</url>
           <connection>scm:git://github.com/ReactiveMongo/ReactiveMongo-BSON.git</connection>
           </scm>

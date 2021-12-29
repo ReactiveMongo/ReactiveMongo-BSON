@@ -5,6 +5,7 @@ import scala.util.{ Failure, Try }
 import scala.collection.Factory
 
 private[bson] trait BSONReaderCompat { self: BSONReader.type =>
+
   /**
    * '''EXPERIMENTAL:''' (API may change without notice)
    *
@@ -12,26 +13,31 @@ private[bson] trait BSONReaderCompat { self: BSONReader.type =>
    * and applying the given safe `read` function to each element value.
    *
    * {{{
-   * import reactivemongo.api.bson.{ BSONReader, Macros }
+   * import reactivemongo.api.bson.BSONReader
    *
    * case class Element(str: String, v: Int)
    *
-   * val elementHandler = Macros.handler[Element]
+   * def elementReader: BSONReader[Element] = ???
    *
    * val setReader: BSONReader[Set[Element]] =
-   *   BSONReader.iterable[Element, Set](elementHandler readTry _)
+   *   BSONReader.iterable[Element, Set](elementReader readTry _)
    * }}}
    */
-  def iterable[T, M[_]](read: BSONValue => Try[T])(
-    implicit
-    cbf: Factory[T, M[T]]): BSONReader[M[T]] = {
+  def iterable[T, M[_]](
+      read: BSONValue => Try[T]
+    )(implicit
+      cbf: Factory[T, M[T]]
+    ): BSONReader[M[T]] = {
 
     from[M[T]] {
       case BSONArray(values) =>
         trySeq[BSONValue, T, M](values)(read)
 
-      case bson => Failure(exceptions.TypeDoesNotMatchException(
-        "BSONArray", bson.getClass.getSimpleName))
+      case bson =>
+        Failure(
+          exceptions
+            .TypeDoesNotMatchException("BSONArray", bson.getClass.getSimpleName)
+        )
     }
   }
 }

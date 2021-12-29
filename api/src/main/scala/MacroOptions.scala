@@ -20,6 +20,7 @@ sealed trait MacroOptions
  * [[MacroOptions]] factories & utilities.
  */
 object MacroOptions {
+
   /**
    * The default options that are implied if invoking "non-Opts" method.
    * All other options extend this.
@@ -152,6 +153,7 @@ object MacroOptions {
   }
 
   private[bson] sealed trait LowPriorityValueOfImplicits {
+
     /**
      * Low priority implicit used when some explicit MacroOptions
      * instance is passed.

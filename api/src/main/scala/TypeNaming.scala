@@ -11,7 +11,7 @@ package reactivemongo.api.bson
  * val cfg2 = MacroConfiguration(typeNaming = TypeNaming.FullName)
  *
  * val cfg3 = MacroConfiguration(
- *   typeNaming = TypeNaming { cls: Class[_] =>
+ *   typeNaming = TypeNaming { (cls: Class[_]) =>
  *     "_" + cls.getSimpleName
  *   })
  * }}}
@@ -19,6 +19,7 @@ package reactivemongo.api.bson
  * @see [[MacroConfiguration]]
  */
 trait TypeNaming extends (Class[_] => String) {
+
   /**
    * Returns the name for the given type.
    *
@@ -58,12 +59,14 @@ object TypeNaming {
    * The package naming must be stable (or would require data migrations).
    */
   object FullName extends TypeNaming {
+
     def apply(tpe: Class[_]): String =
       tpe.getName.split(separators).mkString(".")
   }
 
   /** Uses the class simple name (e.g. `String`). */
   object SimpleName extends TypeNaming {
+
     def apply(tpe: Class[_]): String =
       // Do not use getSimpleName, as buggy with some scala/jvm combination
       tpe.getName.split(separators).lastOption.mkString
@@ -76,7 +79,7 @@ object TypeNaming {
    * import reactivemongo.api.bson.{ MacroConfiguration, TypeNaming }
    *
    * val configWithCustomNaming = MacroConfiguration(
-   *   typeNaming = TypeNaming { cls: Class[_] =>
+   *   typeNaming = TypeNaming { (cls: Class[_]) =>
    *     "custom:" + cls.getSimpleName
    *   })
    * }}}

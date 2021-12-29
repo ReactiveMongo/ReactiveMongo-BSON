@@ -6,7 +6,10 @@ import scala.collection.JavaConverters.{
 }
 
 private[msb] object JavaConverters {
-  @inline def iterableAsScalaIterable[A](i: java.lang.Iterable[A]): Iterable[A] = toIterable(i)
+
+  @inline def iterableAsScalaIterable[A](
+      i: java.lang.Iterable[A]
+    ): Iterable[A] = toIterable(i)
 
   @inline def seqAsJavaList[A](seq: Seq[A]): java.util.List[A] = toJavaList(seq)
 }

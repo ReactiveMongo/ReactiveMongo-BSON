@@ -1,48 +1,54 @@
 package reactivemongo.api.bson
 
 final class BSONObjectIDSpec extends org.specs2.mutable.Specification {
-  "BSONObjectID" title
+  "BSONObjectID".title
 
   "Object ID" should {
     "equal when created with string" in {
       val objectID = BSONObjectID.generate()
 
-      BSONObjectID.parse(objectID.stringify).
-        aka("parsed from string") must beSuccessfulTry[BSONObjectID].like {
-          case sameObjectID =>
-            objectID.byteArray must_=== sameObjectID.byteArray and {
-              BSONObjectID.parse(objectID.byteArray).
-                aka("parsed from bytes") must beSuccessfulTry(objectID)
-            } and {
-              sameObjectID.time must_=== objectID.time
-            }
-        }
+      BSONObjectID
+        .parse(objectID.stringify)
+        .aka("parsed from string") must beSuccessfulTry[BSONObjectID].like {
+        case sameObjectID =>
+          objectID.byteArray must_=== sameObjectID.byteArray and {
+            BSONObjectID
+              .parse(objectID.byteArray)
+              .aka("parsed from bytes") must beSuccessfulTry(objectID)
+          } and {
+            sameObjectID.time must_=== objectID.time
+          }
+      }
     }
 
     "equal another instance of BSONObjectID with the same value" in {
       val objectID = BSONObjectID.generate()
 
-      BSONObjectID.parse(objectID.stringify).
-        aka("parsed") must beSuccessfulTry[BSONObjectID].like {
-          case sameObjectID => sameObjectID must_=== objectID and {
+      BSONObjectID
+        .parse(objectID.stringify)
+        .aka("parsed") must beSuccessfulTry[BSONObjectID].like {
+        case sameObjectID =>
+          sameObjectID must_=== objectID and {
             sameObjectID.time must_=== objectID.time
           }
-        }
+      }
     }
 
     "not equal another newly generated instance of BSONObjectID" in {
       val objectID = BSONObjectID.generate()
 
-      BSONObjectID.parse(BSONObjectID.generate().stringify).
-        aka("parsed") must beSuccessfulTry[BSONObjectID].like {
-          case nextObjectID => objectID must not(beTypedEqualTo(nextObjectID))
-        }
+      BSONObjectID
+        .parse(BSONObjectID.generate().stringify)
+        .aka("parsed") must beSuccessfulTry[BSONObjectID].like {
+        case nextObjectID => objectID must not(beTypedEqualTo(nextObjectID))
+      }
     }
 
     "fail gracefully for illegal 24 character strings" in {
       val shouldFail = List.fill(24)("z").mkString("")
 
-      BSONObjectID.parse(shouldFail) must beAFailedTry[BSONObjectID].withThrowable[IllegalArgumentException]
+      BSONObjectID.parse(shouldFail) must beAFailedTry[BSONObjectID]
+        .withThrowable[IllegalArgumentException]
     }
   }
 

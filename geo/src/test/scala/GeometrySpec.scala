@@ -1,13 +1,14 @@
 import reactivemongo.api.bson._
 
 final class GeometrySpec extends org.specs2.mutable.Specification {
-  "Geometry" title
+  "Geometry".title
 
   "Point" should {
     // { type: "Point", coordinates: [ 40, 5 ] }
     val bson = BSONDocument(
       "type" -> "Point",
-      "coordinates" -> BSONArray(BSONDouble(40D), BSONDouble(5D)))
+      "coordinates" -> BSONArray(BSONDouble(40D), BSONDouble(5D))
+    )
 
     val point = GeoPoint(40, 5)
 
@@ -42,11 +43,12 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
       "type" -> "LineString",
       "coordinates" -> BSONArray(
         BSONArray(BSONDouble(40), BSONDouble(5)),
-        BSONArray(BSONDouble(41), BSONDouble(6))))
+        BSONArray(BSONDouble(41), BSONDouble(6))
+      )
+    )
 
-    val lineString = GeoLineString(
-      GeoPosition(40D, 5D, None),
-      GeoPosition(41D, 6D))
+    val lineString =
+      GeoLineString(GeoPosition(40D, 5D, None), GeoPosition(41D, 6D))
 
     "have expected coordinates" in {
       lineString.coordinates._1 must_=== GeoPosition(40D, 5D, None) and {
@@ -62,7 +64,8 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
       lineString must_=== GeoLineString(
         _1 = GeoPosition(40D, 5D, None),
         _2 = GeoPosition(41D, 6D),
-        more = Seq.empty[GeoPosition])
+        more = Seq.empty[GeoPosition]
+      )
     }
 
     val moreLens = monocle.field[BSONArray]("coordinates")
@@ -107,11 +110,17 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
 
     "as a minimal one" >> {
       val bson = BSONArray(
-        BSONArray(0D, 0D), BSONArray(3D, 6D), BSONArray(6D, 1D),
-        BSONArray(0D, 0D))
+        BSONArray(0D, 0D),
+        BSONArray(3D, 6D),
+        BSONArray(6D, 1D),
+        BSONArray(0D, 0D)
+      )
 
       val ring = GeoLinearRing(
-        GeoPosition(0D, 0D), GeoPosition(3D, 6D), GeoPosition(6D, 1D))
+        GeoPosition(0D, 0D),
+        GeoPosition(3D, 6D),
+        GeoPosition(6D, 1D)
+      )
 
       "have expected coordinates" in {
         ring._1 must_=== GeoPosition(0D, 0D) and {
@@ -130,13 +139,20 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
 
     "as a medium one" >> {
       val bson = BSONArray(
-        BSONArray(0D, 0D), BSONArray(3D, 6D), BSONArray(6D, 1D),
-        /* more:*/ BSONArray(7.1D, 0.5D), BSONArray(8D, 2D),
-        BSONArray(0D, 0D))
+        BSONArray(0D, 0D),
+        BSONArray(3D, 6D),
+        BSONArray(6D, 1D),
+        /* more:*/ BSONArray(7.1D, 0.5D),
+        BSONArray(8D, 2D),
+        BSONArray(0D, 0D)
+      )
 
       val ring = GeoLinearRing(
-        GeoPosition(0D, 0D), GeoPosition(3D, 6D), GeoPosition(6D, 1D),
-        more = Seq(GeoPosition(7.1D, 0.5D), GeoPosition(8D, 2D)))
+        GeoPosition(0D, 0D),
+        GeoPosition(3D, 6D),
+        GeoPosition(6D, 1D),
+        more = Seq(GeoPosition(7.1D, 0.5D), GeoPosition(8D, 2D))
+      )
 
       "have expected coordinates" in {
         ring._1 must_=== GeoPosition(0D, 0D) and {
@@ -146,8 +162,9 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
         } and {
           ring._3 must_=== GeoPosition(6D, 1D)
         } and {
-          ring.more must contain(exactly(
-            GeoPosition(7.1D, 0.5D), GeoPosition(8D, 2D)).inOrder)
+          ring.more must contain(
+            exactly(GeoPosition(7.1D, 0.5D), GeoPosition(8D, 2D)).inOrder
+          )
         }
       }
 
@@ -179,11 +196,19 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
       "type" -> "Polygon",
       "coordinates" -> BSONArray(
         /*exterior:*/ BSONArray(
-          BSONArray(0D, 0D), BSONArray(3D, 6D), BSONArray(6D, 1D),
-          BSONArray(0D, 0D))))
+          BSONArray(0D, 0D),
+          BSONArray(3D, 6D),
+          BSONArray(6D, 1D),
+          BSONArray(0D, 0D)
+        )
+      )
+    )
 
     val exterior = GeoLinearRing(
-      GeoPosition(0D, 0D), GeoPosition(3D, 6D), GeoPosition(6D, 1D))
+      GeoPosition(0D, 0D),
+      GeoPosition(3D, 6D),
+      GeoPosition(6D, 1D)
+    )
 
     val singleRingPolygon = GeoPolygon(exterior)
 
@@ -214,11 +239,17 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
        } */
 
       val interiorRing = GeoLinearRing(
-        GeoPosition(2D, 2D), GeoPosition(3D, 3D), GeoPosition(4D, 2D))
+        GeoPosition(2D, 2D),
+        GeoPosition(3D, 3D),
+        GeoPosition(4D, 2D)
+      )
 
       val interiorBson = BSONArray(
-        BSONArray(2D, 2D), BSONArray(3D, 3D), BSONArray(4D, 2D),
-        BSONArray(2D, 2D))
+        BSONArray(2D, 2D),
+        BSONArray(3D, 3D),
+        BSONArray(4D, 2D),
+        BSONArray(2D, 2D)
+      )
 
       val polygon = singleRingPolygon ++ interiorRing
       val bson = {
@@ -255,13 +286,18 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
         BSONArray(-73.9580D, 40.8003D),
         BSONArray(-73.9498D, 40.7968D),
         BSONArray(-73.9737D, 40.7648D),
-        BSONArray(-73.9814D, 40.7681D)))
+        BSONArray(-73.9814D, 40.7681D)
+      )
+    )
 
-    val multiPoint = GeoMultiPoint(Seq(
-      GeoPosition(-73.9580D, 40.8003D),
-      GeoPosition(-73.9498D, 40.7968D),
-      GeoPosition(-73.9737D, 40.7648D),
-      GeoPosition(-73.9814D, 40.7681D)))
+    val multiPoint = GeoMultiPoint(
+      Seq(
+        GeoPosition(-73.9580D, 40.8003D),
+        GeoPosition(-73.9498D, 40.7968D),
+        GeoPosition(-73.9737D, 40.7648D),
+        GeoPosition(-73.9814D, 40.7681D)
+      )
+    )
 
     "be written to BSON" in {
       val w = implicitly[BSONDocumentWriter[GeoMultiPoint]]
@@ -291,30 +327,43 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
       "coordinates" -> BSONArray(
         BSONArray(
           BSONArray(-73.96943D, 40.78519D),
-          BSONArray(-73.96082D, 40.78095D)),
+          BSONArray(-73.96082D, 40.78095D)
+        ),
         BSONArray(
           BSONArray(-73.96415D, 40.79229D),
-          BSONArray(-73.95544D, 40.78854D)),
+          BSONArray(-73.95544D, 40.78854D)
+        ),
         BSONArray(
           BSONArray(-73.97162D, 40.78205D),
-          BSONArray(-73.96374D, 40.77715D)),
+          BSONArray(-73.96374D, 40.77715D)
+        ),
         BSONArray(
           BSONArray(-73.97880D, 40.77247D),
-          BSONArray(-73.97036D, 40.76811D))))
+          BSONArray(-73.97036D, 40.76811D)
+        )
+      )
+    )
 
-    val multiLineString = GeoMultiLineString(Seq(
-      GeoLineString(
-        GeoPosition(-73.96943D, 40.78519D),
-        GeoPosition(-73.96082D, 40.78095D)),
-      GeoLineString(
-        GeoPosition(-73.96415D, 40.79229D),
-        GeoPosition(-73.95544D, 40.78854D)),
-      GeoLineString(
-        GeoPosition(-73.97162D, 40.78205D),
-        GeoPosition(-73.96374D, 40.77715D)),
-      GeoLineString(
-        GeoPosition(-73.97880D, 40.77247D),
-        GeoPosition(-73.97036D, 40.76811D))))
+    val multiLineString = GeoMultiLineString(
+      Seq(
+        GeoLineString(
+          GeoPosition(-73.96943D, 40.78519D),
+          GeoPosition(-73.96082D, 40.78095D)
+        ),
+        GeoLineString(
+          GeoPosition(-73.96415D, 40.79229D),
+          GeoPosition(-73.95544D, 40.78854D)
+        ),
+        GeoLineString(
+          GeoPosition(-73.97162D, 40.78205D),
+          GeoPosition(-73.96374D, 40.77715D)
+        ),
+        GeoLineString(
+          GeoPosition(-73.97880D, 40.77247D),
+          GeoPosition(-73.97036D, 40.76811D)
+        )
+      )
+    )
 
     "be written to BSON" in {
       val w = implicitly[BSONDocumentWriter[GeoMultiLineString]]
@@ -340,28 +389,45 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
     val bson = BSONDocument(
       "type" -> "MultiPolygon",
       "coordinates" -> BSONArray(
-        BSONArray(BSONArray(
-          BSONArray(-73.958D, 40.8003D),
-          BSONArray(-73.9498D, 40.7968D),
-          BSONArray(-73.9737D, 40.7648D),
-          BSONArray(-73.9814D, 40.7681D),
-          BSONArray(-73.958D, 40.8003D))),
-        BSONArray(BSONArray(
-          BSONArray(-73.958D, 40.8003D),
-          BSONArray(-73.9498D, 40.7968D),
-          BSONArray(-73.9737D, 40.7648D),
-          BSONArray(-73.958D, 40.8003D)))))
+        BSONArray(
+          BSONArray(
+            BSONArray(-73.958D, 40.8003D),
+            BSONArray(-73.9498D, 40.7968D),
+            BSONArray(-73.9737D, 40.7648D),
+            BSONArray(-73.9814D, 40.7681D),
+            BSONArray(-73.958D, 40.8003D)
+          )
+        ),
+        BSONArray(
+          BSONArray(
+            BSONArray(-73.958D, 40.8003D),
+            BSONArray(-73.9498D, 40.7968D),
+            BSONArray(-73.9737D, 40.7648D),
+            BSONArray(-73.958D, 40.8003D)
+          )
+        )
+      )
+    )
 
-    val multiPolygon = GeoMultiPolygon(Seq(
-      GeoPolygon(GeoLinearRing(
-        GeoPosition(-73.958D, 40.8003D),
-        GeoPosition(-73.9498D, 40.7968D),
-        GeoPosition(-73.9737D, 40.7648D),
-        Seq(GeoPosition(-73.9814D, 40.7681D)))),
-      GeoPolygon(GeoLinearRing(
-        GeoPosition(-73.958D, 40.8003D),
-        GeoPosition(-73.9498D, 40.7968D),
-        GeoPosition(-73.9737D, 40.7648D)))))
+    val multiPolygon = GeoMultiPolygon(
+      Seq(
+        GeoPolygon(
+          GeoLinearRing(
+            GeoPosition(-73.958D, 40.8003D),
+            GeoPosition(-73.9498D, 40.7968D),
+            GeoPosition(-73.9737D, 40.7648D),
+            Seq(GeoPosition(-73.9814D, 40.7681D))
+          )
+        ),
+        GeoPolygon(
+          GeoLinearRing(
+            GeoPosition(-73.958D, 40.8003D),
+            GeoPosition(-73.9498D, 40.7968D),
+            GeoPosition(-73.9737D, 40.7648D)
+          )
+        )
+      )
+    )
 
     "be written to BSON" in {
       val w = implicitly[BSONDocumentWriter[GeoMultiPolygon]]
@@ -410,42 +476,65 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
             BSONArray(-73.9580D, 40.8003D),
             BSONArray(-73.9498D, 40.7968D),
             BSONArray(-73.9737D, 40.7648D),
-            BSONArray(-73.9814D, 40.7681D))),
+            BSONArray(-73.9814D, 40.7681D)
+          )
+        ),
         BSONDocument(
           "type" -> "MultiLineString",
           "coordinates" -> BSONArray(
             BSONArray(
               BSONArray(-73.96943D, 40.78519D),
-              BSONArray(-73.96082D, 40.78095D)),
+              BSONArray(-73.96082D, 40.78095D)
+            ),
             BSONArray(
               BSONArray(-73.96415D, 40.79229D),
-              BSONArray(-73.95544D, 40.78854D)),
+              BSONArray(-73.95544D, 40.78854D)
+            ),
             BSONArray(
               BSONArray(-73.97162D, 40.78205D),
-              BSONArray(-73.96374D, 40.77715D)),
+              BSONArray(-73.96374D, 40.77715D)
+            ),
             BSONArray(
               BSONArray(-73.97880D, 40.77247D),
-              BSONArray(-73.97036D, 40.76811D))))))
+              BSONArray(-73.97036D, 40.76811D)
+            )
+          )
+        )
+      )
+    )
 
-    val geocol = GeoGeometryCollection(Seq(
-      GeoMultiPoint(Seq(
-        GeoPosition(-73.9580D, 40.8003D),
-        GeoPosition(-73.9498D, 40.7968D),
-        GeoPosition(-73.9737D, 40.7648D),
-        GeoPosition(-73.9814D, 40.7681D))),
-      GeoMultiLineString(Seq(
-        GeoLineString(
-          GeoPosition(-73.96943D, 40.78519D),
-          GeoPosition(-73.96082, 40.78095)),
-        GeoLineString(
-          GeoPosition(-73.96415D, 40.79229D),
-          GeoPosition(-73.95544D, 40.78854D)),
-        GeoLineString(
-          GeoPosition(-73.97162D, 40.78205D),
-          GeoPosition(-73.96374D, 40.77715D)),
-        GeoLineString(
-          GeoPosition(-73.97880D, 40.77247D),
-          GeoPosition(-73.97036D, 40.76811D))))))
+    val geocol = GeoGeometryCollection(
+      Seq(
+        GeoMultiPoint(
+          Seq(
+            GeoPosition(-73.9580D, 40.8003D),
+            GeoPosition(-73.9498D, 40.7968D),
+            GeoPosition(-73.9737D, 40.7648D),
+            GeoPosition(-73.9814D, 40.7681D)
+          )
+        ),
+        GeoMultiLineString(
+          Seq(
+            GeoLineString(
+              GeoPosition(-73.96943D, 40.78519D),
+              GeoPosition(-73.96082, 40.78095)
+            ),
+            GeoLineString(
+              GeoPosition(-73.96415D, 40.79229D),
+              GeoPosition(-73.95544D, 40.78854D)
+            ),
+            GeoLineString(
+              GeoPosition(-73.97162D, 40.78205D),
+              GeoPosition(-73.96374D, 40.77715D)
+            ),
+            GeoLineString(
+              GeoPosition(-73.97880D, 40.77247D),
+              GeoPosition(-73.97036D, 40.76811D)
+            )
+          )
+        )
+      )
+    )
 
     "be written to BSON" in {
       val w = implicitly[BSONDocumentWriter[GeoGeometryCollection]]

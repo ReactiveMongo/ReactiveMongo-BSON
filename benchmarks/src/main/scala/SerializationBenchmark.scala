@@ -21,8 +21,10 @@ sealed trait SerializationBenchmark {
       value = v
 
       written = DefaultBufferHandler.serialize(
-        v, buffer = WritableBuffer.empty.
-        writeBsonString("field").writeByte(value.code))
+        v,
+        buffer =
+          WritableBuffer.empty.writeBsonString("field").writeByte(value.code)
+      )
 
     }
 
@@ -51,6 +53,7 @@ sealed trait SerializationBenchmark {
 
 @State(Scope.Benchmark)
 class BSONBooleanSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonBoolFixtures)
 
@@ -58,6 +61,7 @@ class BSONBooleanSerializationBenchmark extends SerializationBenchmark {
 
 @State(Scope.Benchmark)
 class BSONDateTimeSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonDateTimeFixtures)
 
@@ -65,6 +69,7 @@ class BSONDateTimeSerializationBenchmark extends SerializationBenchmark {
 
 @State(Scope.Benchmark)
 class BSONDecimalSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonDecimalFixtures)
 
@@ -72,6 +77,7 @@ class BSONDecimalSerializationBenchmark extends SerializationBenchmark {
 
 @State(Scope.Benchmark)
 class BSONDocumentSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonDocFixtures)
 
@@ -79,6 +85,7 @@ class BSONDocumentSerializationBenchmark extends SerializationBenchmark {
 
 @State(Scope.Benchmark)
 class BSONDoubleSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonDoubleFixtures)
 
@@ -86,54 +93,63 @@ class BSONDoubleSerializationBenchmark extends SerializationBenchmark {
 
 @State(Scope.Benchmark)
 class BSONIntegerSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonIntFixtures)
 }
 
 @State(Scope.Benchmark)
 class BSONLongSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonLongFixtures)
 }
 
 @State(Scope.Benchmark)
 class BSONStringSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonStrFixtures)
 }
 
 @State(Scope.Benchmark)
 class BSONObjectIDSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonOidFixtures)
 }
 
 @State(Scope.Benchmark)
 class BSONJavascriptSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonJSFixtures)
 }
 
 @State(Scope.Benchmark)
 class BSONJavascriptWsSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonJSWsFixtures)
 }
 
 @State(Scope.Benchmark)
 class BSONTimestampSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonTsFixtures)
 }
 
 @State(Scope.Benchmark)
 class BSONBinarySerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonBinFixtures)
 }
 
 @State(Scope.Benchmark)
 class BSONRegexSerializationBenchmark extends SerializationBenchmark {
+
   @Setup(Level.Iteration)
   def setup(): Unit = setupSerialization(BSONValueFixtures.bsonRegexFixtures)
 }

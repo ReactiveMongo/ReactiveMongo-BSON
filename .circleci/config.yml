@@ -6,7 +6,7 @@ commands:
     parameters:
       sbt_version:
         type: string
-        default: "1.5.5"
+        default: "1.6.0"
     steps:
       - restore_cache:
           keys:
@@ -137,11 +137,30 @@ jobs:
     working_directory: ~/repo
 
     environment:
-      SCALA_VERSION: 2.13.6
+      SCALA_VERSION: 2.13.7
     
     steps:
       - checkout
       - setup_sbt
+      - build_n_tests
+      - collect_test_reports
+      - store_test_results:
+          path: test-reports
+
+  scala31_jdk11:
+    docker:
+      - image: circleci/openjdk:11-jdk
+
+    working_directory: ~/repo
+    
+    steps:
+      - checkout
+      - setup_sbt
+      - run:
+          name: 'Enforce Dotty version'
+          command: |
+              export SCALA_VERSION=`sbt 'show api/crossScalaVersions' | grep '* 3.' | sed -e 's/^.*3\./3./'`
+              echo "Dotty version: $SCALA_VERSION"
       - build_n_tests
       - collect_test_reports
       - store_test_results:
@@ -182,6 +201,7 @@ workflows:
       - scala211_jdk11
       - scala212_jdk8
       - scala213_jdk10
+      - scala31_jdk11
 
       - publish_snapshots:
           filters:
@@ -192,6 +212,7 @@ workflows:
             - scala211_jdk11
             - scala212_jdk8
             - scala213_jdk10
+            - scala31_jdk11
 
       - trigger_dependent_builds:
           filters:

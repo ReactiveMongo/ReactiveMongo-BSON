@@ -11,6 +11,7 @@ import org.openjdk.jmh.annotations._
 
 @State(Scope.Benchmark)
 class BSONArrayBenchmark {
+
   val values: Seq[BSONArray] =
     BSONValueFixtures.bsonArrayFixtures.filterNot(_.isEmpty)
 
@@ -145,12 +146,16 @@ class BSONArrayBenchmark {
 
   @Benchmark
   def writeFromList() = {
-    assert(collectionWriter[BSONValue, IndexedSeq[BSONValue]].
-      writeTry(smallSet.values).isSuccess)
+    assert(
+      collectionWriter[BSONValue, IndexedSeq[BSONValue]]
+        .writeTry(smallSet.values)
+        .isSuccess
+    )
   }
 }
 
 object BSONArrayBenchmark {
+
   private[bson] def bigArray() = {
     val s = List.newBuilder[BSONValue]
     def randomValues() = Random.shuffle(BSONValueFixtures.bsonValueFixtures)

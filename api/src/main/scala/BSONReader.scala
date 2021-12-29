@@ -65,7 +65,7 @@ trait BSONReader[T] { self =>
    * def fromBSON[T](bson: BSONValue)(
    *   implicit r: BSONReader[T], n: Numeric[T]): Try[Int] = {
    *   val r2: BSONReader[Int] = r.afterRead { v => n.toInt(v) + 1 }
-   *  r2.readTry(bson)
+   *   r2.readTry(bson)
    * }
    * }}}
    *
@@ -129,7 +129,8 @@ trait BSONReader[T] { self =>
 }
 
 /** [[BSONReader]] factories */
-object BSONReader extends BSONReaderCompat {
+object BSONReader extends BSONReaderCompat with BSONReaderInstances {
+
   /**
    * Creates a [[BSONReader]] based on the given `read` function.
    *
@@ -264,10 +265,11 @@ object BSONReader extends BSONReaderCompat {
    */
   def tuple2[A: BSONReader, B: BSONReader]: BSONReader[(A, B)] =
     from[(A, B)] {
-      case BSONArray(v1 +: v2 +: _) => for {
-        _1 <- v1.asTry[A]
-        _2 <- v2.asTry[B]
-      } yield Tuple2(_1, _2)
+      case BSONArray(v1 +: v2 +: _) =>
+        for {
+          _1 <- v1.asTry[A]
+          _2 <- v2.asTry[B]
+        } yield Tuple2(_1, _2)
 
       case bson =>
         Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
@@ -279,12 +281,17 @@ object BSONReader extends BSONReaderCompat {
    *
    * @see [[tuple2]]
    */
-  def tuple3[A: BSONReader, B: BSONReader, C: BSONReader]: BSONReader[(A, B, C)] = from[(A, B, C)] {
-    case BSONArray(v1 +: v2 +: v3 +: _) => for {
-      _1 <- v1.asTry[A]
-      _2 <- v2.asTry[B]
-      _3 <- v3.asTry[C]
-    } yield Tuple3(_1, _2, _3)
+  def tuple3[
+      A: BSONReader,
+      B: BSONReader,
+      C: BSONReader
+    ]: BSONReader[(A, B, C)] = from[(A, B, C)] {
+    case BSONArray(v1 +: v2 +: v3 +: _) =>
+      for {
+        _1 <- v1.asTry[A]
+        _2 <- v2.asTry[B]
+        _3 <- v3.asTry[C]
+      } yield Tuple3(_1, _2, _3)
 
     case bson =>
       Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
@@ -296,13 +303,19 @@ object BSONReader extends BSONReaderCompat {
    *
    * @see [[tuple2]]
    */
-  def tuple4[A: BSONReader, B: BSONReader, C: BSONReader, D: BSONReader]: BSONReader[(A, B, C, D)] = from[(A, B, C, D)] {
-    case BSONArray(v1 +: v2 +: v3 +: v4 +: _) => for {
-      _1 <- v1.asTry[A]
-      _2 <- v2.asTry[B]
-      _3 <- v3.asTry[C]
-      _4 <- v4.asTry[D]
-    } yield Tuple4(_1, _2, _3, _4)
+  def tuple4[
+      A: BSONReader,
+      B: BSONReader,
+      C: BSONReader,
+      D: BSONReader
+    ]: BSONReader[(A, B, C, D)] = from[(A, B, C, D)] {
+    case BSONArray(v1 +: v2 +: v3 +: v4 +: _) =>
+      for {
+        _1 <- v1.asTry[A]
+        _2 <- v2.asTry[B]
+        _3 <- v3.asTry[C]
+        _4 <- v4.asTry[D]
+      } yield Tuple4(_1, _2, _3, _4)
 
     case bson =>
       Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
@@ -314,14 +327,21 @@ object BSONReader extends BSONReaderCompat {
    *
    * @see [[tuple2]]
    */
-  def tuple5[A: BSONReader, B: BSONReader, C: BSONReader, D: BSONReader, E: BSONReader]: BSONReader[(A, B, C, D, E)] = from[(A, B, C, D, E)] {
-    case BSONArray(v1 +: v2 +: v3 +: v4 +: v5 +: _) => for {
-      _1 <- v1.asTry[A]
-      _2 <- v2.asTry[B]
-      _3 <- v3.asTry[C]
-      _4 <- v4.asTry[D]
-      _5 <- v5.asTry[E]
-    } yield Tuple5(_1, _2, _3, _4, _5)
+  def tuple5[
+      A: BSONReader,
+      B: BSONReader,
+      C: BSONReader,
+      D: BSONReader,
+      E: BSONReader
+    ]: BSONReader[(A, B, C, D, E)] = from[(A, B, C, D, E)] {
+    case BSONArray(v1 +: v2 +: v3 +: v4 +: v5 +: _) =>
+      for {
+        _1 <- v1.asTry[A]
+        _2 <- v2.asTry[B]
+        _3 <- v3.asTry[C]
+        _4 <- v4.asTry[D]
+        _5 <- v5.asTry[E]
+      } yield Tuple5(_1, _2, _3, _4, _5)
 
     case bson =>
       Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
@@ -330,12 +350,15 @@ object BSONReader extends BSONReaderCompat {
   // ---
 
   private[bson] class DefaultReader[T](
-    read: BSONValue => Try[T]) extends BSONReader[T] {
+      read: BSONValue => Try[T])
+      extends BSONReader[T] {
     def readTry(bson: BSONValue): Try[T] = read(bson)
   }
 
   private[bson] class OptionalReader[T](
-    read: BSONValue => Option[T]) extends BSONReader[T] {
+      read: BSONValue => Option[T])
+      extends BSONReader[T] {
+
     def readTry(bson: BSONValue): Try[T] = Try(read(bson)).flatMap {
       case Some(result) => Success(result)
 
@@ -350,27 +373,31 @@ object BSONReader extends BSONReaderCompat {
   }
 
   private[bson] class FunctionalReader[T](
-    read: BSONValue => T) extends BSONReader[T] {
+      read: BSONValue => T)
+      extends BSONReader[T] {
     def readTry(bson: BSONValue): Try[T] = Try(read(bson))
 
-    override def readOpt(bson: BSONValue): Option[T] = try {
-      Some(read(bson))
-    } catch {
-      case NonFatal(_) =>
-        None
-    }
+    override def readOpt(bson: BSONValue): Option[T] =
+      try {
+        Some(read(bson))
+      } catch {
+        case NonFatal(_) =>
+          None
+      }
 
-    override def readOrElse(bson: BSONValue, default: => T): T = try {
-      read(bson)
-    } catch {
-      case NonFatal(_) =>
-        default
-    }
+    override def readOrElse(bson: BSONValue, default: => T): T =
+      try {
+        read(bson)
+      } catch {
+        case NonFatal(_) =>
+          default
+      }
   }
 
   private[bson] class MappedReader[T, U](
-    parent: BSONReader[T],
-    to: T => U) extends BSONReader[U] {
+      parent: BSONReader[T],
+      to: T => U)
+      extends BSONReader[U] {
     def readTry(bson: BSONValue): Try[U] = parent.readTry(bson).map(to)
   }
 }

@@ -1,3 +1,13 @@
+## -*- mode: scala -*-
+#if( $scalaVersion.indexOf("2.") == 0 )
+#set ( $modifiers = "implicit" )
+#set ( $singletonModifiers = "implicit " )
+#set ( $internalModifiers = "" )
+#else
+#set ( $modifiers = "private[bson]" )
+#set ( $singletonModifiers = "" )
+#set ( $internalModifiers = "private[bson]" )
+#end
 package reactivemongo.api.bson
 
 import java.util.{ Locale, UUID }
@@ -16,7 +26,7 @@ import exceptions.TypeDoesNotMatchException
 private[bson] trait DefaultBSONHandlers
   extends LowPriority1BSONHandlers with BSONIdentityHandlers {
 
-  implicit object BSONIntegerHandler
+  ${singletonModifiers}object BSONIntegerHandler
     extends BSONHandler[Int] with SafeBSONWriter[Int] {
 
     @inline def readTry(bson: BSONValue): Try[Int] = bson.asInt
@@ -24,7 +34,7 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(int: Int) = BSONInteger(int)
   }
 
-  implicit object BSONLongHandler
+  ${singletonModifiers}object BSONLongHandler
     extends BSONHandler[Long] with SafeBSONWriter[Long] {
 
     @inline def readTry(bson: BSONValue): Try[Long] = bson.asLong
@@ -32,7 +42,7 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(long: Long) = BSONLong(long)
   }
 
-  implicit object BSONDoubleHandler
+  ${singletonModifiers}object BSONDoubleHandler
     extends BSONHandler[Double] with SafeBSONWriter[Double] {
 
     @inline def readTry(bson: BSONValue): Try[Double] = bson.toDouble
@@ -40,14 +50,14 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(double: Double) = BSONDouble(double)
   }
 
-  implicit object BSONDecimalHandler extends BSONHandler[BigDecimal] {
+  ${singletonModifiers}object BSONDecimalHandler extends BSONHandler[BigDecimal] {
     @inline def readTry(bson: BSONValue): Try[BigDecimal] = bson.asDecimal
 
     @inline def writeTry(value: BigDecimal): Try[BSONDecimal] =
       BSONDecimal.fromBigDecimal(value)
   }
 
-  implicit object BSONFloatHandler
+  ${singletonModifiers}object BSONFloatHandler
     extends BSONHandler[Float] with SafeBSONWriter[Float] {
 
     @inline def readTry(bson: BSONValue): Try[Float] = bson.toFloat
@@ -55,7 +65,7 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(float: Float) = BSONDouble(float.toDouble)
   }
 
-  implicit object BSONStringHandler
+  ${singletonModifiers}object BSONStringHandler
     extends BSONHandler[String] with SafeBSONWriter[String] {
 
     @inline def readTry(bson: BSONValue): Try[String] = bson.asString
@@ -63,7 +73,7 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(string: String) = BSONString(string)
   }
 
-  implicit object BSONBooleanHandler
+  ${singletonModifiers}object BSONBooleanHandler
     extends BSONHandler[Boolean] with SafeBSONWriter[Boolean] {
 
     @inline def readTry(bson: BSONValue): Try[Boolean] = bson.asBoolean
@@ -71,7 +81,7 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(boolean: Boolean) = BSONBoolean(boolean)
   }
 
-  implicit object BSONBinaryHandler
+  ${singletonModifiers}object BSONBinaryHandler
     extends BSONHandler[Array[Byte]] with SafeBSONWriter[Array[Byte]] {
 
     def readTry(bson: BSONValue): Try[Array[Byte]] = bson match {
@@ -98,7 +108,7 @@ private[bson] trait DefaultBSONHandlers
       BSONBinary(xs, Subtype.GenericBinarySubtype)
   }
 
-  implicit object BSONDateTimeHandler
+  ${singletonModifiers}object BSONDateTimeHandler
     extends BSONHandler[Instant] with SafeBSONWriter[Instant] {
 
     @inline def readTry(bson: BSONValue): Try[Instant] = bson.asDateTime
@@ -106,7 +116,7 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(date: Instant) = BSONDateTime(date.toEpochMilli)
   }
 
-  implicit object BSONLocalTimeHandler
+  ${singletonModifiers}object BSONLocalTimeHandler
     extends BSONHandler[LocalTime] with SafeBSONWriter[LocalTime] {
 
     @inline def readTry(bson: BSONValue): Try[LocalTime] =
@@ -115,7 +125,7 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(date: LocalTime) = BSONLong(date.toNanoOfDay)
   }
 
-  private final class BSONLocalDateTimeHandler(zone: ZoneId)
+  ${internalModifiers} final class BSONLocalDateTimeHandler(zone: ZoneId)
     extends BSONHandler[LocalDateTime] with SafeBSONWriter[LocalDateTime] {
 
     @inline def readTry(bson: BSONValue): Try[LocalDateTime] =
@@ -133,12 +143,14 @@ private[bson] trait DefaultBSONHandlers
    * Returns a BSON handler for `java.time.LocalDateTime`,
    * considering the specified time `zone`.
    */
-  @inline def bsonLocalDateTimeHandler(zone: ZoneId): BSONHandler[LocalDateTime] = new BSONLocalDateTimeHandler(zone)
+  @inline ${internalModifiers} def bsonLocalDateTimeHandler(
+    zone: ZoneId): BSONHandler[LocalDateTime] =
+    new BSONLocalDateTimeHandler(zone)
 
-  implicit val bsonLocalDateTimeHandler: BSONHandler[LocalDateTime] =
+  ${singletonModifiers}val bsonLocalDateTimeHandler: BSONHandler[LocalDateTime] =
     new BSONLocalDateTimeHandler(ZoneId.systemDefault)
 
-  private final class BSONLocalDateHandler(zone: ZoneId)
+  ${internalModifiers} final class BSONLocalDateHandler(zone: ZoneId)
     extends BSONHandler[LocalDate] with SafeBSONWriter[LocalDate] {
 
     @inline def readTry(bson: BSONValue): Try[LocalDate] =
@@ -156,12 +168,12 @@ private[bson] trait DefaultBSONHandlers
    * Returns a BSON handler for `java.time.LocalDate`,
    * considering the specified time `zone`.
    */
-  @inline def bsonLocalDateHandler(zone: ZoneId): BSONHandler[LocalDate] = new BSONLocalDateHandler(zone)
+  @inline ${internalModifiers} def bsonLocalDateHandler(zone: ZoneId): BSONHandler[LocalDate] = new BSONLocalDateHandler(zone)
 
-  implicit val bsonLocalDateHandler: BSONHandler[LocalDate] =
+  ${singletonModifiers}val bsonLocalDateHandler: BSONHandler[LocalDate] =
     new BSONLocalDateHandler(ZoneId.systemDefault)
 
-  implicit object BSONURLHandler
+  ${singletonModifiers}object BSONURLHandler
     extends BSONHandler[URL] with SafeBSONWriter[URL] {
 
     def readTry(bson: BSONValue): Try[URL] = bson match {
@@ -185,7 +197,7 @@ private[bson] trait DefaultBSONHandlers
     def safeWrite(url: URL) = BSONString(url.toString)
   }
 
-  private final class BSONOffsetDateTimeHandler(zone: ZoneId)
+  ${internalModifiers} final class BSONOffsetDateTimeHandler(zone: ZoneId)
     extends BSONHandler[OffsetDateTime] with SafeBSONWriter[OffsetDateTime] {
 
     @inline def readTry(bson: BSONValue): Try[OffsetDateTime] =
@@ -199,12 +211,13 @@ private[bson] trait DefaultBSONHandlers
    * Returns a BSON handler for `java.time.OffsetDateTime`,
    * considering the specified time `zone`.
    */
-  @inline def bsonOffsetDateTimeHandler(zone: ZoneId): BSONHandler[OffsetDateTime] = new BSONOffsetDateTimeHandler(zone)
+  @inline ${internalModifiers} def bsonOffsetDateTimeHandler(
+    zone: ZoneId): BSONHandler[OffsetDateTime] =
+    new BSONOffsetDateTimeHandler(zone)
 
-  implicit val bsonOffsetDateTimeHandler: BSONHandler[OffsetDateTime] =
-    new BSONOffsetDateTimeHandler(ZoneId.systemDefault)
+  ${singletonModifiers}val bsonOffsetDateTimeHandler: BSONHandler[OffsetDateTime] = new BSONOffsetDateTimeHandler(ZoneId.systemDefault)
 
-  private final class BSONZonedDateTimeHandler(zone: ZoneId)
+  ${internalModifiers} final class BSONZonedDateTimeHandler(zone: ZoneId)
     extends BSONHandler[ZonedDateTime] with SafeBSONWriter[ZonedDateTime] {
 
     @inline def readTry(bson: BSONValue): Try[ZonedDateTime] =
@@ -218,12 +231,14 @@ private[bson] trait DefaultBSONHandlers
    * Returns a BSON handler for `java.time.ZonedDateTime`,
    * considering the specified time `zone`.
    */
-  @inline def bsonZonedDateTimeHandler(zone: ZoneId): BSONHandler[ZonedDateTime] = new BSONZonedDateTimeHandler(zone)
+  @inline ${internalModifiers} def bsonZonedDateTimeHandler(
+    zone: ZoneId): BSONHandler[ZonedDateTime] =
+    new BSONZonedDateTimeHandler(zone)
 
-  implicit val bsonZonedDateTimeHandler: BSONHandler[ZonedDateTime] =
+  ${singletonModifiers}val bsonZonedDateTimeHandler: BSONHandler[ZonedDateTime] =
     new BSONZonedDateTimeHandler(ZoneId.systemDefault)
 
-  implicit object BSONURIHandler
+  ${singletonModifiers}object BSONURIHandler
     extends BSONHandler[URI] with SafeBSONWriter[URI] {
 
     def readTry(bson: BSONValue): Try[URI] = bson match {
@@ -236,7 +251,7 @@ private[bson] trait DefaultBSONHandlers
     def safeWrite(url: URI) = BSONString(url.toString)
   }
 
-  implicit object BSONUUIDHandler
+  ${singletonModifiers}object BSONUUIDHandler
     extends BSONHandler[UUID] with SafeBSONWriter[UUID] {
 
     def readTry(bson: BSONValue): Try[UUID] = bson match {
@@ -256,7 +271,7 @@ private[bson] trait DefaultBSONHandlers
     def safeWrite(uuid: UUID) = BSONString(uuid.toString)
   }
 
-  implicit object BSONLocaleHandler
+  ${singletonModifiers}object BSONLocaleHandler
     extends BSONHandler[Locale] with SafeBSONWriter[Locale] {
 
     def readTry(bson: BSONValue): Try[Locale] = bson match {
@@ -273,13 +288,12 @@ private[bson] trait DefaultBSONHandlers
 @SuppressWarnings(Array("TryGet"))
 @com.github.ghik.silencer.silent("Unused import") // higherKinds: 2.13+
 private[bson] trait LowPriority1BSONHandlers
-  extends LowPriorityBSONHandlersCompat
-  with LowPriority2BSONHandlers { _: DefaultBSONHandlers =>
+  extends LowPriority2BSONHandlers { self: DefaultBSONHandlers =>
 
   import scala.language.higherKinds
 
   // Collections Handlers
-  private class BSONArrayCollectionWriter[T, Repr](implicit ev: Repr => Iterable[T], writer: BSONWriter[T]) extends BSONWriter[Repr] {
+  protected class BSONArrayCollectionWriter[T, Repr](implicit ev: Repr => Iterable[T], writer: BSONWriter[T]) extends BSONWriter[Repr] {
     def writeTry(repr: Repr): Try[BSONArray] = {
       val builder = IndexedSeq.newBuilder[BSONValue]
 
@@ -298,12 +312,9 @@ private[bson] trait LowPriority1BSONHandlers
           case _ => Success(builder.result())
         }
 
-      write(repr).map { BSONArray(_) }
+      write(ev(repr)).map { BSONArray(_) }
     }
   }
-
-  @com.github.ghik.silencer.silent
-  implicit def collectionWriter[T, Repr <% Iterable[T]](implicit writer: BSONWriter[T], notOption: Repr ¬ Option[T]): BSONWriter[Repr] = new BSONArrayCollectionWriter[T, Repr]
 
   protected abstract class BSONArrayCollectionReader[M[_], T]
     extends BSONReader[M[T]] {
@@ -338,7 +349,43 @@ private[bson] trait LowPriority1BSONHandlers
     }
   }
 
-  implicit def mapReader[V](implicit valueReader: BSONReader[V]): BSONDocumentReader[Map[String, V]] =
+#if( $scalaVersion.indexOf("2.") == 0 && $scalaBinaryVersion != "2.13" )
+  import scala.collection.generic.CanBuildFrom
+
+  ${modifiers} final def collectionReader[M[_], T](
+    implicit
+    cbf: CanBuildFrom[M[_], T, M[T]],
+    reader: BSONReader[T]): BSONReader[M[T]] = {
+    @inline def r = reader
+    new BSONArrayCollectionReader[M, T] {
+      val reader = r
+      def builder() = cbf()
+    }
+  }
+#else
+  import scala.collection.Factory
+
+  implicit final def collectionReader[M[_], T](
+    implicit
+    f: Factory[T, M[T]],
+    reader: BSONReader[T]): BSONReader[M[T]] = {
+    @inline def r = reader
+    new BSONArrayCollectionReader[M, T] {
+      val reader = r
+      def builder() = f.newBuilder
+    }
+  }
+#end
+
+#if( $scalaVersion.indexOf("2.") == 0 )
+  @com.github.ghik.silencer.silent
+  implicit def collectionWriter[T, Repr](implicit ev: Repr => Iterable[T], writer: BSONWriter[T], notOption: Repr ¬ Option[T]): BSONWriter[Repr] = new BSONArrayCollectionWriter[T, Repr]
+#else
+  @com.github.ghik.silencer.silent
+  given collectionWriter[T, Repr <: Iterable[T]](using BSONWriter[T], Repr ¬ Option[T]): BSONWriter[Repr] = new BSONArrayCollectionWriter[T, Repr]
+#end
+
+  ${modifiers} def mapReader[V](implicit valueReader: BSONReader[V]): BSONDocumentReader[Map[String, V]] =
     new BSONDocumentReader[Map[String, V]] {
       def readDocument(doc: BSONDocument): Try[Map[String, V]] = Try {
         mapValues(doc.fields) { v =>
@@ -347,12 +394,12 @@ private[bson] trait LowPriority1BSONHandlers
       }
     }
 
-  implicit def mapSafeWriter[V](implicit valueWriter: BSONWriter[V] with SafeBSONWriter[V]): BSONDocumentWriter[Map[String, V]] = new BSONDocumentWriter[Map[String, V]] {
+  ${modifiers} def mapSafeWriter[V](implicit valueWriter: BSONWriter[V] with SafeBSONWriter[V]): BSONDocumentWriter[Map[String, V]] = new BSONDocumentWriter[Map[String, V]] {
     def writeTry(inputMap: Map[String, V]): Try[BSONDocument] =
       Success(BSONDocument(mapValues(inputMap)(valueWriter.safeWrite)))
   }
 
-  implicit def bsonMapWriter[V <: BSONValue]: BSONDocumentWriter[Map[String, V]] = new BSONDocumentWriter[Map[String, V]] {
+  ${modifiers} def bsonMapWriter[V <: BSONValue]: BSONDocumentWriter[Map[String, V]] = new BSONDocumentWriter[Map[String, V]] {
     def writeTry(inputMap: Map[String, V]): Try[BSONDocument] =
       Success(BSONDocument(inputMap))
   }
@@ -360,9 +407,9 @@ private[bson] trait LowPriority1BSONHandlers
 
 @SuppressWarnings(Array("TryGet"))
 private[bson] trait LowPriority2BSONHandlers
-  extends LowPriority3BSONHandlers { _: DefaultBSONHandlers =>
+  extends LowPriority3BSONHandlers { self: DefaultBSONHandlers =>
 
-  implicit def mapKeyReader[K, V](implicit keyReader: KeyReader[K], valueReader: BSONReader[V]): BSONDocumentReader[Map[K, V]] =
+  ${modifiers} def mapKeyReader[K, V](implicit keyReader: KeyReader[K], valueReader: BSONReader[V]): BSONDocumentReader[Map[K, V]] =
     new BSONDocumentReader[Map[K, V]] {
       def readDocument(doc: BSONDocument): Try[Map[K, V]] = Try {
         doc.fields.map {
@@ -372,7 +419,7 @@ private[bson] trait LowPriority2BSONHandlers
       }
     }
 
-  implicit def mapWriter[V](implicit valueWriter: BSONWriter[V]): BSONDocumentWriter[Map[String, V]] = new BSONDocumentWriter[Map[String, V]] {
+  ${modifiers} def mapWriter[V](implicit valueWriter: BSONWriter[V]): BSONDocumentWriter[Map[String, V]] = new BSONDocumentWriter[Map[String, V]] {
     def writeTry(inputMap: Map[String, V]): Try[BSONDocument] = Try {
       val m = Seq.newBuilder[BSONElement]
 
@@ -388,9 +435,9 @@ private[bson] trait LowPriority2BSONHandlers
 
 @SuppressWarnings(Array("TryGet"))
 private[bson] trait LowPriority3BSONHandlers
-  extends LowPriority4BSONHandlers { _: DefaultBSONHandlers =>
+  extends LowPriority4BSONHandlers { self: DefaultBSONHandlers =>
 
-  implicit def mapKeySafeWriter[K, V](
+  ${modifiers} def mapKeySafeWriter[K, V](
     implicit
     keyWriter: KeyWriter[K] with SafeKeyWriter[K],
     valueWriter: BSONWriter[V] with SafeBSONWriter[V]): BSONDocumentWriter[Map[K, V]] =
@@ -407,7 +454,7 @@ private[bson] trait LowPriority3BSONHandlers
       }
     }
 
-  implicit def bsonMapKeyWriter[K, V <: BSONValue](
+  ${modifiers} def bsonMapKeyWriter[K, V <: BSONValue](
     implicit
     keyWriter: KeyWriter[K]): BSONDocumentWriter[Map[K, V]] =
     new BSONDocumentWriter[Map[K, V]] {
@@ -425,8 +472,8 @@ private[bson] trait LowPriority3BSONHandlers
 }
 
 @SuppressWarnings(Array("TryGet"))
-private[bson] trait LowPriority4BSONHandlers { _: DefaultBSONHandlers =>
-  implicit def mapKeyWriter[K, V](
+private[bson] trait LowPriority4BSONHandlers { self: DefaultBSONHandlers =>
+  ${modifiers} def mapKeyWriter[K, V](
     implicit
     keyWriter: KeyWriter[K],
     valueWriter: BSONWriter[V]): BSONDocumentWriter[Map[K, V]] =

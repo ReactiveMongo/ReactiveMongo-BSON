@@ -8,6 +8,7 @@ import GeoPosition.safeWriter.{ safeWrite => writePos }
  * GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#overview geometry]] object
  */
 sealed trait GeoGeometry {
+
   /** The type of coordinates (depends on the type of geometry). */
   private[bson] type C
 
@@ -23,11 +24,14 @@ sealed trait GeoGeometry {
  * Geometry utilities
  */
 object GeoGeometry {
+
   implicit val handler: BSONDocumentHandler[GeoGeometry] = {
     implicit val cfg: MacroConfiguration = MacroConfiguration(
       discriminator = "type",
-      typeNaming = TypeNaming(
-        TypeNaming.SimpleName.andThen { (_: String).stripPrefix("Geo") }))
+      typeNaming = TypeNaming(TypeNaming.SimpleName.andThen {
+        (_: String).stripPrefix("Geo")
+      })
+    )
 
     Macros.handler[GeoGeometry]
   }
@@ -35,7 +39,8 @@ object GeoGeometry {
   // ---
 
   private[bson] def reader[G <: GeoGeometry](
-    readCoordinates: BSONValue => Try[G]): BSONDocumentReader[G] =
+      readCoordinates: BSONValue => Try[G]
+    ): BSONDocumentReader[G] =
     BSONDocumentReader.from[G] { doc =>
       doc.get("coordinates") match {
         case Some(coords) =>
@@ -47,18 +52,22 @@ object GeoGeometry {
     }
 
   private[bson] def writer[G <: GeoGeometry](
-    writeCoordinates: G => BSONValue): BSONDocumentWriter[G] with SafeBSONDocumentWriter[G] = BSONDocumentWriter.safe[G] { geometry =>
-    BSONDocument(
-      "type" -> geometry.`type`,
-      "coordinates" -> writeCoordinates(geometry))
-  }
+      writeCoordinates: G => BSONValue
+    ): BSONDocumentWriter[G] with SafeBSONDocumentWriter[G] =
+    BSONDocumentWriter.safe[G] { geometry =>
+      BSONDocument(
+        "type" -> geometry.`type`,
+        "coordinates" -> writeCoordinates(geometry)
+      )
+    }
 }
 
 /**
  * GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#point Point]]
  */
 final class GeoPoint private[api] (
-  val coordinates: GeoPosition) extends GeoGeometry {
+    val coordinates: GeoPosition)
+    extends GeoGeometry {
   type C = GeoPosition
 
   @inline def `type` = GeoPoint.`type`
@@ -94,7 +103,11 @@ object GeoPoint {
    * Convenient factory (See [[GeoPosition]];
    * equivalent to `GeoPoint(GeoPosition(_1, _2, elevation))`).
    */
-  @inline def apply(_1: Double, _2: Double, elevation: Option[Double]): GeoPoint = GeoPoint(GeoPosition(_1, _2, elevation))
+  @inline def apply(
+      _1: Double,
+      _2: Double,
+      elevation: Option[Double]
+    ): GeoPoint = GeoPoint(GeoPosition(_1, _2, elevation))
 
   /**
    * Extracts the point coordinates.
@@ -121,24 +134,27 @@ object GeoPoint {
         Success(GeoPoint(pos))
 
       case bson =>
-        Failure(exceptions.TypeDoesNotMatchException(
-          "<position>", bson.getClass.getSimpleName))
+        Failure(
+          exceptions.TypeDoesNotMatchException(
+            "<position>",
+            bson.getClass.getSimpleName
+          )
+        )
 
     }
 
   implicit val writer: BSONDocumentWriter[GeoPoint] =
-    GeoGeometry.writer[GeoPoint] { point =>
-      writePos(point.coordinates)
-    }
+    GeoGeometry.writer[GeoPoint] { point => writePos(point.coordinates) }
 }
 
 /**
  * GeoJSON [[https://tools.ietf.org/html/rfc7946#section-3.1.4 LineString]]
  */
 final class GeoLineString private[api] (
-  val _1: GeoPosition,
-  val _2: GeoPosition,
-  val more: Seq[GeoPosition]) extends GeoGeometry {
+    val _1: GeoPosition,
+    val _2: GeoPosition,
+    val more: Seq[GeoPosition])
+    extends GeoGeometry {
   type C = Tuple3[GeoPosition, GeoPosition, Seq[GeoPosition]]
   @inline def `type` = GeoLineString.`type`
 
@@ -179,9 +195,10 @@ object GeoLineString {
 
   /** Creates a new line string. */
   def apply(
-    _1: GeoPosition,
-    _2: GeoPosition,
-    more: Seq[GeoPosition]): GeoLineString = new GeoLineString(_1, _2, more)
+      _1: GeoPosition,
+      _2: GeoPosition,
+      more: Seq[GeoPosition]
+    ): GeoLineString = new GeoLineString(_1, _2, more)
 
   /**
    * Convenient factory
@@ -191,21 +208,22 @@ object GeoLineString {
     GeoLineString(_1, _2, Seq.empty)
 
   /** Extracts the line string coordinates. */
-  def unapply(lineString: GeoLineString): Option[(GeoPosition, GeoPosition, Seq[GeoPosition])] = Option(lineString).map(_.coordinates)
+  def unapply(
+      lineString: GeoLineString
+    ): Option[(GeoPosition, GeoPosition, Seq[GeoPosition])] =
+    Option(lineString).map(_.coordinates)
 
   private[bson] val readCoordinates: BSONValue => Try[GeoLineString] = {
-    case BSONArray(Seq(
-      GeoPosition.BSON(a),
-      GeoPosition.BSON(b),
-      more @ _*)) =>
-      GeoPosition.readSeq(more).map { morePos =>
-        GeoLineString(a, b, morePos)
-      }
+    case BSONArray(Seq(GeoPosition.BSON(a), GeoPosition.BSON(b), more @ _*)) =>
+      GeoPosition.readSeq(more).map { morePos => GeoLineString(a, b, morePos) }
 
     case bson =>
-      Failure(exceptions.TypeDoesNotMatchException(
-        "[ <position>, <position>, ... ]",
-        bson.getClass.getSimpleName))
+      Failure(
+        exceptions.TypeDoesNotMatchException(
+          "[ <position>, <position>, ... ]",
+          bson.getClass.getSimpleName
+        )
+      )
   }
 
   implicit val reader: BSONDocumentReader[GeoLineString] =
@@ -213,7 +231,8 @@ object GeoLineString {
 
   private[bson] val writeCoordinates: GeoLineString => BSONArray = { lineStr =>
     writePos(lineStr._1) +: writePos(lineStr._2) +: BSONArray(
-      lineStr.more.map(writePos))
+      lineStr.more.map(writePos)
+    )
   }
 
   implicit def writer: BSONDocumentWriter[GeoLineString] =
@@ -224,8 +243,9 @@ object GeoLineString {
  * GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#polygon Polygon]]
  */
 final class GeoPolygon private[bson] (
-  val exterior: GeoLinearRing,
-  val interior: Seq[GeoLinearRing]) extends GeoGeometry {
+    val exterior: GeoLinearRing,
+    val interior: Seq[GeoLinearRing])
+    extends GeoGeometry {
   type C = Tuple2[GeoLinearRing, Seq[GeoLinearRing]]
   @inline def `type`: String = GeoPolygon.`type`
 
@@ -246,7 +266,7 @@ final class GeoPolygon private[bson] (
 
   override def equals(that: Any): Boolean = that match {
     case other: GeoPolygon => tupled == other.tupled
-    case _ => false
+    case _                 => false
   }
 
   override lazy val hashCode: Int = tupled.hashCode
@@ -283,7 +303,10 @@ object GeoPolygon {
   /**
    * Extracts the ring properties.
    */
-  def unapply(polygon: GeoPolygon): Option[(GeoLinearRing, Seq[GeoLinearRing])] = Option(polygon).map(_.tupled)
+  def unapply(
+      polygon: GeoPolygon
+    ): Option[(GeoLinearRing, Seq[GeoLinearRing])] =
+    Option(polygon).map(_.tupled)
 
   private[bson] val readCoordinates: BSONValue => Try[GeoPolygon] = {
     case BSONArray(Seq(exterior @ BSONArray(_), interior @ _*)) =>
@@ -293,8 +316,12 @@ object GeoPolygon {
       } yield new GeoPolygon(ex, in)
 
     case bson =>
-      Failure(exceptions.TypeDoesNotMatchException(
-        "[ <lineString>, ... ]", bson.getClass.getSimpleName))
+      Failure(
+        exceptions.TypeDoesNotMatchException(
+          "[ <lineString>, ... ]",
+          bson.getClass.getSimpleName
+        )
+      )
   }
 
   implicit val reader: BSONDocumentReader[GeoPolygon] =
@@ -312,7 +339,8 @@ object GeoPolygon {
 
 /** GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#multipoint MultiPoint]] (collection of [[GeoPosition]]) */
 final class GeoMultiPoint private[api] (
-  val coordinates: Seq[GeoPosition]) extends GeoGeometry {
+    val coordinates: Seq[GeoPosition])
+    extends GeoGeometry {
   type C = Seq[GeoPosition]
 
   val `type`: String = GeoMultiPoint.`type`
@@ -351,8 +379,10 @@ object GeoMultiPoint {
         GeoPosition.readSeq(values).map(GeoMultiPoint(_))
 
       case bson =>
-        Failure(exceptions.TypeDoesNotMatchException(
-          "BSONArray", bson.getClass.getSimpleName))
+        Failure(
+          exceptions
+            .TypeDoesNotMatchException("BSONArray", bson.getClass.getSimpleName)
+        )
 
     }
 
@@ -365,7 +395,8 @@ object GeoMultiPoint {
 
 /** GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#multilinestring MultiLineString]] (collection of [[GeoLineString]]) */
 final class GeoMultiLineString private[api] (
-  val coordinates: Seq[GeoLineString]) extends GeoGeometry {
+    val coordinates: Seq[GeoLineString])
+    extends GeoGeometry {
 
   type C = Seq[GeoLineString]
   @inline def `type`: String = GeoMultiLineString.`type`
@@ -402,16 +433,18 @@ object GeoMultiLineString {
   implicit val reader: BSONDocumentReader[GeoMultiLineString] = {
     @annotation.tailrec
     def go(
-      values: Seq[BSONValue],
-      out: List[GeoLineString]): Try[Seq[GeoLineString]] =
+        values: Seq[BSONValue],
+        out: List[GeoLineString]
+      ): Try[Seq[GeoLineString]] =
       values.headOption match {
-        case Some(v) => GeoLineString.readCoordinates(v) match {
-          case Success(lineString) =>
-            go(values.tail, lineString :: out)
+        case Some(v) =>
+          GeoLineString.readCoordinates(v) match {
+            case Success(lineString) =>
+              go(values.tail, lineString :: out)
 
-          case Failure(cause) =>
-            Failure(cause)
-        }
+            case Failure(cause) =>
+              Failure(cause)
+          }
 
         case _ =>
           Success(out.reverse)
@@ -422,8 +455,12 @@ object GeoMultiLineString {
         go(values, List.empty).map(GeoMultiLineString(_))
 
       case bson =>
-        Failure(exceptions.TypeDoesNotMatchException(
-          "[ <multiLineString>, ... ]", bson.getClass.getSimpleName))
+        Failure(
+          exceptions.TypeDoesNotMatchException(
+            "[ <multiLineString>, ... ]",
+            bson.getClass.getSimpleName
+          )
+        )
     }
   }
 
@@ -436,7 +473,8 @@ object GeoMultiLineString {
 
 /** GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#multipolygon MultiPolygon]] (collection of [[GeoPolygon]]) */
 final class GeoMultiPolygon private[api] (
-  val coordinates: Seq[GeoPolygon]) extends GeoGeometry {
+    val coordinates: Seq[GeoPolygon])
+    extends GeoGeometry {
 
   type C = Seq[GeoPolygon]
   @inline def `type`: String = GeoMultiPolygon.`type`
@@ -472,15 +510,17 @@ object GeoMultiPolygon {
   implicit val reader: BSONDocumentReader[GeoMultiPolygon] = {
     @annotation.tailrec
     def go(
-      values: Seq[BSONValue],
-      out: List[GeoPolygon]): Try[Seq[GeoPolygon]] = values.headOption match {
-      case Some(bson) => GeoPolygon.readCoordinates(bson) match {
-        case Success(polygon) =>
-          go(values.tail, polygon :: out)
+        values: Seq[BSONValue],
+        out: List[GeoPolygon]
+      ): Try[Seq[GeoPolygon]] = values.headOption match {
+      case Some(bson) =>
+        GeoPolygon.readCoordinates(bson) match {
+          case Success(polygon) =>
+            go(values.tail, polygon :: out)
 
-        case Failure(cause) =>
-          Failure(cause)
-      }
+          case Failure(cause) =>
+            Failure(cause)
+        }
 
       case _ =>
         Success(out.reverse)
@@ -491,8 +531,12 @@ object GeoMultiPolygon {
         go(values, List.empty).map(GeoMultiPolygon(_))
 
       case bson =>
-        Failure(exceptions.TypeDoesNotMatchException(
-          "[ <multiPolygon>, ... ]", bson.getClass.getSimpleName))
+        Failure(
+          exceptions.TypeDoesNotMatchException(
+            "[ <multiPolygon>, ... ]",
+            bson.getClass.getSimpleName
+          )
+        )
     }
   }
 

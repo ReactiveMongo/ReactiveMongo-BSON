@@ -40,14 +40,20 @@ private[bson] object Decimal128 {
       for {
         unscaled <- {
           if (exponent < MinExponent || exponent > MaxExponent) {
-            Failure(new IllegalArgumentException(
-              s"Exponent is out of range: $exponent"))
+            Failure(
+              new IllegalArgumentException(
+                s"Exponent is out of range: $exponent"
+              )
+            )
           } else Success(clamped.unscaledValue)
         }
         _ <- {
           if (unscaled.bitLength > MaxBitLength) {
-            Failure[Unit](new IllegalArgumentException(
-              s"Unscaled clamped is out of range: $unscaled"))
+            Failure[Unit](
+              new IllegalArgumentException(
+                s"Unscaled clamped is out of range: $unscaled"
+              )
+            )
           } else Success({})
         }
       } yield {
@@ -100,15 +106,18 @@ private[bson] object Decimal128 {
    * Returns a BigDecimal that is equivalent to this one.
    */
   @throws[ArithmeticException](
-    "if the value is NaN, Infinity, -Infinity, or -0")
+    "if the value is NaN, Infinity, -Infinity, or -0"
+  )
   def toBigDecimal(decimal: BSONDecimal): Try[BigDecimal] = {
     if (decimal.isNaN) {
-      Failure[BigDecimal](new ArithmeticException(
-        "NaN can not be converted to a BigDecimal"))
+      Failure[BigDecimal](
+        new ArithmeticException("NaN can not be converted to a BigDecimal")
+      )
 
     } else if (decimal.isInfinite) {
-      Failure[BigDecimal](new ArithmeticException(
-        "Infinity can not be converted to a BigDecimal"))
+      Failure[BigDecimal](
+        new ArithmeticException("Infinity can not be converted to a BigDecimal")
+      )
 
     } else {
       val bigDecimal: BigDecimal = noNegativeZero(decimal)
@@ -116,8 +125,11 @@ private[bson] object Decimal128 {
       // If the BigDecimal is 0, but the Decimal128 is negative,
       // that means we have -0.
       if (decimal.isNegative && bigDecimal.signum == 0) {
-        Failure[BigDecimal](new ArithmeticException(
-          "Negative zero can not be converted to a BigDecimal"))
+        Failure[BigDecimal](
+          new ArithmeticException(
+            "Negative zero can not be converted to a BigDecimal"
+          )
+        )
       } else {
         Success(bigDecimal)
       }
@@ -131,10 +143,10 @@ private[bson] object Decimal128 {
     val hest = highest(decimal)
     val exponent: Long = {
       if (hest) {
-        ((decimal.high & 0x1FFFE00000000000L)
+        ((decimal.high & 0x1fffe00000000000L)
           >>> 47) - Decimal128.ExponentOffset
       } else {
-        ((decimal.high & 0x7FFF800000000000L)
+        ((decimal.high & 0x7fff800000000000L)
           >>> 49) - Decimal128.ExponentOffset
       }
     }
@@ -149,7 +161,7 @@ private[bson] object Decimal128 {
     }
   }
 
-  /** Returns the binary representation (byte array).*/
+  /** Returns the binary representation (byte array). */
   private def toBytes(decimal: BSONDecimal): Array[Byte] = {
     val bytes = Array.ofDim[Byte](15)
 
@@ -159,9 +171,9 @@ private[bson] object Decimal128 {
       lowBytes(i - 1, mask << 8)
     }
 
-    lowBytes(14, 0x00000000000000FF)
+    lowBytes(14, 0x00000000000000ff)
 
-    highBytes(6, 0x00000000000000FF)
+    highBytes(6, 0x00000000000000ff)
 
     @annotation.tailrec
     def highBytes(i: Int, mask: Long): Unit = if (i >= 1) {
@@ -206,9 +218,7 @@ private[bson] object Decimal128 {
         if (pad >= 0) {
           buffer ++= "0."
 
-          (0 until pad).foreach { _ =>
-            buffer += '0'
-          }
+          (0 until pad).foreach { _ => buffer += '0' }
 
           buffer.appendAll(significand.toArray, 0, significand.length)
         } else {
@@ -251,8 +261,9 @@ private[bson] object Decimal128 {
       if (unscaled equals BigInteger.ZERO) {
         Success(new BigDecimal(unscaled, -MaxExponent))
       } else if (diff + value.precision > 34) {
-        Failure(new NumberFormatException(
-          s"Exponent is out of range: ${value}"))
+        Failure(
+          new NumberFormatException(s"Exponent is out of range: ${value}")
+        )
       } else {
         Try(BigInteger.TEN pow diff).map { multiplier =>
           new BigDecimal(unscaled.multiply(multiplier), scale + diff)
@@ -325,8 +336,7 @@ private[bson] object Decimal128 {
   val MaxBitLength: Int = 113
 
   // Infinity string representations
-  val PositiveInfStrings = Set(
-    "inf", "+inf", "infinity", "+infinity")
+  val PositiveInfStrings = Set("inf", "+inf", "infinity", "+infinity")
 
   val NegativeInfStrings = Set("-inf", "-infinity")
 }

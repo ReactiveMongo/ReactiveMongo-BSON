@@ -4,6 +4,7 @@ import scala.util.Try
 
 /** Utility functions */
 object BSON {
+
   /**
    * Produces a `T` instance of the given BSON value,
    * if there is a corresponding [[BSONReader]] in the implicit scope.
@@ -29,12 +30,20 @@ object BSON {
    * if there is a corresponding [[BSONReader]]
    * in the implicit scope.
    */
-  def readDocument[T](doc: BSONDocument)(implicit reader: BSONDocumentReader[T]): Try[T] = reader.readTry(doc)
+  def readDocument[T](
+      doc: BSONDocument
+    )(implicit
+      reader: BSONDocumentReader[T]
+    ): Try[T] = reader.readTry(doc)
 
   /**
    * Produces a `BSONDocument` of the given `T` instance,
    * if there is an implicit [[BSONWriter]]` in the implicit scope.
    */
-  def writeDocument[T](t: T)(implicit writer: BSONDocumentWriter[T]): Try[BSONDocument] = writer.writeTry(t)
+  def writeDocument[T](
+      t: T
+    )(implicit
+      writer: BSONDocumentWriter[T]
+    ): Try[BSONDocument] = writer.writeTry(t)
 
 }

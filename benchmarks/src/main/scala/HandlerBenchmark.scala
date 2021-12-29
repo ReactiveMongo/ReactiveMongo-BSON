@@ -31,6 +31,7 @@ sealed trait HandlerBenchmark[B <: BSONValue] {
   }
 
   private object Unsupported {
+
     implicit def reader: BSONReader[Unsupported.type] =
       BSONReader[Unsupported.type] { _ => ??? }
   }
@@ -52,9 +53,10 @@ class BSONDateTimeHandlerBenchmark extends HandlerBenchmark[BSONDateTime] {
 
 @State(Scope.Benchmark)
 class BSONDecimalHandlerBenchmark extends HandlerBenchmark[BSONDecimal] {
+
   val values = BSONValueFixtures.bsonDecimalFixtures.filter {
     case BSONDecimal.NegativeZero => false
-    case dec => !dec.isInfinite && !dec.isNaN
+    case dec                      => !dec.isInfinite && !dec.isNaN
   }
 
   lazy val handler = BSONDecimalHandler

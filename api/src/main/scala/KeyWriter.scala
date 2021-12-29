@@ -32,6 +32,7 @@ trait KeyWriter[T] {
 
 /** [[KeyWriter]] factories */
 object KeyWriter extends LowPriorityKeyWriter {
+
   /**
    * Creates a [[KeyWriter]] based on the given `write` function.
    */
@@ -84,23 +85,27 @@ object KeyWriter extends LowPriorityKeyWriter {
   // ---
 
   private class Default[T](
-    write: T => Try[String]) extends KeyWriter[T] {
+      write: T => Try[String])
+      extends KeyWriter[T] {
     def writeTry(key: T): Try[String] = write(key)
   }
 
   private class FunctionalWriter[T](
-    write: T => String) extends KeyWriter[T] {
+      write: T => String)
+      extends KeyWriter[T] {
     def writeTry(key: T): Try[String] = Try(write(key))
   }
 }
 
-private[bson] sealed trait LowPriorityKeyWriter { _: KeyWriter.type =>
+private[bson] sealed trait LowPriorityKeyWriter { self: KeyWriter.type =>
+
   implicit def anyValKeyWriter[T <: AnyVal]: KeyWriter[T] =
     safe[T](_.toString)
 }
 
 private[bson] final class SafeKeyWriter[T](
-  val write: T => String) extends KeyWriter[T] {
+    val write: T => String)
+    extends KeyWriter[T] {
 
   def writeTry(key: T): Try[String] = Success(write(key))
 }
