@@ -95,7 +95,6 @@ lazy val api = (project in file("api"))
 
         val fmt = ProblemFilters.exclude[FinalMethodProblem](_)
 
-
         Seq(
           fmt("reactivemongo.api.bson.BSONIdentityLowPriorityHandlers#BSONValueIdentity.readOpt"),
           fmt("reactivemongo.api.bson.BSONIdentityLowPriorityHandlers#BSONValueIdentity.readTry")

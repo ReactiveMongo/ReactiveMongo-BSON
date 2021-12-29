@@ -226,7 +226,7 @@ private[bson] object Decimal128 {
 
           buffer.appendAll(sarray, 0, -pad)
           buffer += '.'
-          buffer.appendAll(sarray, -pad, exponent.abs) //-pad - exponent)
+          buffer.appendAll(sarray, -pad, exponent.abs) // -pad - exponent)
         }
       }
     } else {

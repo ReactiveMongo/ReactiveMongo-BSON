@@ -36,14 +36,13 @@ object Common extends AutoPlugin {
     Compile / doc / scalacOptions := {
       val opts = (Test / scalacOptions).value ++ Seq(
         "-unchecked",
-        "-deprecation") ++ Opts.doc.title(name.value)
+        "-deprecation"
+      ) ++ Opts.doc.title(name.value)
 
       if (scalaBinaryVersion.value startsWith "3") {
         opts ++ Seq("-skip-by-id=highlightextractor")
       } else {
-        opts ++ Seq(
-          "-skip-packages", "highlightextractor",
-          "-implicits")
+        opts ++ Seq("-skip-packages", "highlightextractor", "-implicits")
       }
     },
     resolvers ++= Seq(
