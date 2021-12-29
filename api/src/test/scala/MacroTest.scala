@@ -63,7 +63,7 @@ object MacroTest extends MacroTestCompat {
   case class OverloadedApply(string: String)
 
   object OverloadedApply {
-    val apply: Int => Unit = _ => (); //println(n)
+    val apply: Int => Unit = _ => (); // println(n)
 
     def apply(seq: Seq[String]): OverloadedApply =
       OverloadedApply(seq mkString " ")
@@ -168,7 +168,7 @@ object MacroTest extends MacroTestCompat {
 
       implicit val bson: Handler[Tree] =
         Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
-      //Macros.handlerOpts[Tree, UnionType[Node \/ Leaf] with Verbose]
+      // Macros.handlerOpts[Tree, UnionType[Node \/ Leaf] with Verbose]
     }
   }
 

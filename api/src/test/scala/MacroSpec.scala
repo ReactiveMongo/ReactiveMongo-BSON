@@ -104,7 +104,7 @@ final class MacroSpec
         .reader[Optional]
         .readTry(
           BSONDocument("name" -> "invalidValueType", "value" -> 4)
-        ) must beFailedTry[Optional] //("BSONInteger")
+        ) must beFailedTry[Optional] // ("BSONInteger")
     }
 
     "support null for optional value" in {
@@ -305,13 +305,13 @@ final class MacroSpec
 
     "case class inside trait with handler outside" in {
       val t = new NestModule {}
-      import t._ //you need Nested in scope because t.Nested won't work
+      import t._ // you need Nested in scope because t.Nested won't work
       val format = Macros.handler[Nested]
       roundtrip(Nested("it works"), format)
     }
 
     "respect compilation options" in {
-      val format = Macros.handlerOpts[Person, MacroOptions.Verbose] //more stuff in compiler log
+      val format = Macros.handlerOpts[Person, MacroOptions.Verbose] // more stuff in compiler log
 
       roundtrip(Person("john", "doe"), format)
     }
@@ -467,7 +467,7 @@ final class MacroSpec
 
     "handle recursive structure" in {
       import TreeModule._
-      //handlers defined at tree module
+      // handlers defined at tree module
       val tree: Tree = Node(Leaf("hi"), Node(Leaf("hello"), Leaf("world")))
       roundtrip(tree, Tree.bson)
     }
