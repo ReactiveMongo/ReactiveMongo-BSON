@@ -15,7 +15,8 @@ import java.time.{
 
 import reactivemongo.api.{ bson => pkg }
 
-private[bson] trait BSONWriterInstances:
+private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
+
   type SafeWriter[T] = BSONWriter[T] & SafeBSONWriter[T]
 
   given intWriter: SafeWriter[Int] = BSONIntegerHandler
@@ -84,8 +85,6 @@ private[bson] trait BSONWriterInstances:
   ): BSONDocumentWriter[Map[K, V]] =
     pkg.mapKeyWriter[K, V]
 
-  given bsonValueIdentityWriter: BSONWriter[BSONValue] = BSONValueIdentity
-
   export pkg.{
     bsonStringWriter,
     bsonSymbolWriter,
@@ -136,3 +135,9 @@ private[bson] trait BSONWriterInstances:
       E: BSONWriter
   ]: BSONWriter[(A, B, C, D, E)] = BSONWriter.tuple5
 end BSONWriterInstances
+
+private[bson] sealed trait BSONWriterInstancesLowPrio {
+  _self: BSONWriterInstances =>
+
+  given bsonValueIdentityWriter: BSONWriter[BSONValue] = BSONValueIdentity
+}
