@@ -66,7 +66,7 @@ ThisBuild / scalacOptions ++= {
       "-Wunused"
     )
   } else {
-    Seq("-Wunused:all", "-language:implicitConversions")
+    Seq("-Ysafe-init", "-Wunused:all", "-language:implicitConversions")
   }
 }
 
