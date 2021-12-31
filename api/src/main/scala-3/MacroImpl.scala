@@ -6,7 +6,6 @@ import scala.util.{
   Try => TryResult
 }
 
-import scala.collection.View
 import scala.collection.mutable.{ Builder => MBuilder }
 
 import scala.deriving.Mirror.ProductOf
@@ -1058,8 +1057,9 @@ private[api] object MacroImpl:
       val types = tprElements.map(_._2)
       val resolve = resolver[BSONReader, T](forwardExpr, debug)(readerType)
       val compCls = tpr.typeSymbol.companionClass
+      val compMod = Ref(tpr.typeSymbol.companionModule)
 
-      val (optional, required) = tprElements.zipWithIndex.view.map {
+      val (optional, required) = tprElements.zipWithIndex.map {
         case ((sym, pt), i) =>
           pt.asType match {
             case '[t] =>
@@ -1077,7 +1077,7 @@ private[api] object MacroImpl:
                   }
                 }
 
-                case a =>
+                case _ =>
                   Seq.empty[Expr[BSONReader[t]]]
               }
 
@@ -1123,7 +1123,7 @@ private[api] object MacroImpl:
                   .headOption
                   .collect {
                     case defaultSym if sym.flags.is(Flags.HasDefault) =>
-                      Ref(defaultSym).asExprOf[t]
+                      compMod.select(defaultSym).asExprOf[t]
                   }
                   .orElse {
                     defaultValueAnns match {
@@ -1142,7 +1142,7 @@ private[api] object MacroImpl:
 
               ReadableProperty(sym, i, pt, default, readerFromAnn)
           }
-      }.partition {
+      }.toSeq.partition {
         case ReadableProperty(_, _, t, _, readerFromAnn) =>
           readerFromAnn.isEmpty && isOptionalType(t)
 
@@ -1192,7 +1192,7 @@ private[api] object MacroImpl:
         }
 
       withIdents[TryResult[T]] { (config, bufErr) =>
-        val reqElmts: View[(Int, Expr[TryResult[_]])] = required.map {
+        val reqElmts: Seq[(Int, Expr[TryResult[_]])] = required.map {
           case ReadableProperty(param, n, pt, Some(default), _)
               if (ignoreField(param)) =>
             pt.asType match {
@@ -1243,7 +1243,7 @@ private[api] object MacroImpl:
           }
         }
 
-        val exElmts: View[(Int, Expr[TryResult[_]])] = optional.map {
+        val exElmts: Seq[(Int, Expr[TryResult[_]])] = optional.map {
           case p @ ReadableProperty(_, _, OptionTypeParameter(it), _, _) =>
             p.copy(_3 = it)
 
@@ -1309,7 +1309,6 @@ private[api] object MacroImpl:
                 type p = Option[i]
 
                 val field = fieldName(config, fieldKey(param))
-
                 val readTry: Expr[TryResult[p]] = {
                   if (mustFlatten(tpr, param, TypeRepr.of[p], reader)) {
                     '{
@@ -1911,7 +1910,7 @@ private[api] object MacroImpl:
 
                 WritableProperty(sym, i, pt, writerFromAnn)
             }
-        }.partition {
+        }.toSeq.partition {
           case WritableProperty(_, _, t, writerFromAnn) =>
             writerFromAnn.isEmpty && isOptionalType(t)
         }
@@ -2023,7 +2022,7 @@ private[api] object MacroImpl:
               }
             }
 
-            val values: View[Expr[Unit]] = required.map {
+            val values: Seq[Expr[Unit]] = required.map {
               case WritableProperty(param, i, pt, writerFromAnn) =>
                 val pname = param.name
 
@@ -2058,7 +2057,7 @@ private[api] object MacroImpl:
                 }
             } // end of required.map
 
-            val extra: View[Expr[Unit]] = optional.collect {
+            val extra: Seq[Expr[Unit]] = optional.collect {
               case WritableProperty(
                     param,
                     i,
@@ -2123,8 +2122,7 @@ private[api] object MacroImpl:
             }
 
             // => TryResult[BSONDocument]
-            def writer =
-              Block(fields.map(_.asTerm).toList, resExpr.asTerm)
+            def writer = Block(fields.map(_.asTerm).toList, resExpr.asTerm)
 
             if (values.isEmpty && extra.isEmpty) {
               debug(

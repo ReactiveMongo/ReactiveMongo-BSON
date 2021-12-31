@@ -1,6 +1,15 @@
 import scala.util.Success
 
-import reactivemongo.api.bson._
+import reactivemongo.api.bson.{
+  document,
+  BSONDocument,
+  BSONDouble,
+  BSONElement,
+  BSONInteger,
+  BSONString,
+  BSONWriter,
+  ElementProducer
+}
 
 final class BSONDocumentSpec extends org.specs2.mutable.Specification {
   "BSONDocument".title
@@ -56,7 +65,8 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
           "foo" -> 1,
           "bar" -> 2D,
           "lorem" -> Option.empty[Long],
-          "ipsum" -> None
+          "ipsum" -> None,
+          "dolor" -> Seq.empty[BSONDocument]
         ).elements must_=== nonEmpty
       } and {
         BSONDocument
@@ -253,6 +263,8 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
   @inline def eqSpec(d: BSONDocument, l: String, expected: BSONDocument) = {
     d must_=== expected
   } and {
+    import reactivemongo.api.bson.nameValueOrdering
+
     d.toMap.toSeq.sorted aka l must_=== d.elements.collect {
       case BSONElement(k, v) => k -> v
     }.toSeq.sorted
