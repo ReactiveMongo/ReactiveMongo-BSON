@@ -72,6 +72,14 @@ lazy val api = (project in file("api"))
     commonSettings ++ Seq(
       name := s"${baseArtifact}-api",
       description := "New BSON API",
+      Compile / compile / scalacOptions ++= {
+        // !! Cannot be set in `compile.sbt`
+        if (scalaBinaryVersion.value == "3") {
+          Seq("-Ysafe-init")
+        } else {
+          Seq.empty
+        }
+      },
       libraryDependencies ++= Seq(
         "org.specs2" %% "specs2-scalacheck" % specsVer,
         "org.specs2" %% "specs2-matcher-extra" % specsVer,

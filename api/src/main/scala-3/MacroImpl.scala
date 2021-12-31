@@ -42,7 +42,7 @@ private[api] object MacroImpl:
       f: BSONDocumentReader[T] => (BSONDocument => TryResult[T])
     ): BSONDocumentReader[T] = {
     new BSONDocumentReader[T] { self =>
-      val underlying = f(self)
+      lazy val underlying = f(self)
       def readDocument(doc: BSONDocument) = underlying(doc)
     }
   }
@@ -153,7 +153,7 @@ private[api] object MacroImpl:
   private inline def withSelfValWriter[T](
       f: BSONWriter[T] => (T => TryResult[BSONValue])
     ): BSONWriter[T] = new BSONWriter[T] { self =>
-    val underlying = f(self)
+    lazy val underlying = f(self)
     def writeTry(v: T) = underlying(v)
   }
 
@@ -475,7 +475,7 @@ private[api] object MacroImpl:
       f: BSONDocumentWriter[T] => (T => TryResult[BSONDocument])
     ): BSONDocumentWriter[T] = {
     new BSONDocumentWriter[T] { self =>
-      val underlying = f(self)
+      lazy val underlying = f(self)
       def writeTry(v: T) = underlying(v)
     }
   }
@@ -1648,7 +1648,7 @@ private[api] object MacroImpl:
 
               case notChild @ '[t] =>
                 report.errorAndAbort(
-                  s"Not child: ${prettyType(TypeRepr.of(using notChild))}"
+                  s"Type ${prettyType(TypeRepr.of(using notChild))} is not a sub-type of ${prettyType(aTpeRepr)}"
                 )
             }
           }

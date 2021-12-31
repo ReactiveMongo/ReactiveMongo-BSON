@@ -76,8 +76,10 @@ Compile / console / scalacOptions ~= {
   )
 }
 
-Test / scalacOptions ~= {
-  _.filterNot(_ == "-Xfatal-warnings")
+Test / compile / scalacOptions ~= {
+  val excluded = Set("-Xfatal-warnings")
+
+  _.filterNot(excluded.contains)
 }
 
 val filteredScalacOpts: Seq[String] => Seq[String] = {
