@@ -6,11 +6,11 @@ import scala.util.Success
  * Macros for generating `BSONReader` and `BSONWriter` at compile time.
  *
  * {{{
- * import reactivemongo.api.bson.Macros
+ * import reactivemongo.api.bson.{ BSONDocumentHandler, Macros }
  *
  * case class Person(name: String, surname: String)
  *
- * implicit val personHandler = Macros.handler[Person]
+ * given personHandler: BSONDocumentHandler[Person] = Macros.handler[Person]
  * }}}
  *
  * @see [[MacroOptions]] for specific options
@@ -87,17 +87,22 @@ object Macros extends MacroAnnotations:
    * The inner value will be directly written as BSON value.
    *
    * {{{
-   * import reactivemongo.api.bson.{ BSONReader, Macros }
+   * object Types:
+   *   opaque type Logarithm = Double
    *
-   * opaque type Logarithm = Double
+   *   object Logarithm {
+   *     def apply(value: Double): Logarithm = value
+   *   }
+   * end Types
    *
-   * object Logarithm {
-   *   def apply(value: Double): Logarithm = value
-   * }
+   * object Usage:
+   *   import reactivemongo.api.bson.{ BSONDouble, BSONReader, Macros }
+   *   import Types.Logarithm
    *
-   * val vreader: BSONReader[Logarithm] = Macros.valueReader[Logarithm]
+   *   val vreader: BSONReader[Logarithm] = Macros.valueReader[Logarithm]
    *
-   * vreader.readTry(BSONDouble(1.2)) // Success(Logarithm(1.2D))
+   *   vreader.readTry(BSONDouble(1.2)) // Success(Logarithm(1.2D))
+   * end Usage
    * }}}
    */
   inline def valueReader[A: OpaqueAlias]: BSONReader[A] =
@@ -144,17 +149,22 @@ object Macros extends MacroAnnotations:
    * The inner value will be directly writen from BSON value.
    *
    * {{{
-   * import reactivemongo.api.bson.{ BSONWriter, Macros }
+   * object Types:
+   *   opaque type Logarithm = Double
    *
-   * opaque type Logarithm = Double
+   *   object Logarithm {
+   *     def apply(value: Double): Logarithm = value
+   *   }
+   * end Types
    *
-   * object Logarithm {
-   *   def apply(value: Double): Logarithm = value
-   * }
+   * object Usage:
+   *   import Types.Logarithm
+   *   import reactivemongo.api.bson.{ BSONWriter, Macros }
    *
-   * val vwriter: BSONWriter[Logarithm] = Macros.valueWriter[Logarithm]
+   *   val vwriter: BSONWriter[Logarithm] = Macros.valueWriter[Logarithm]
    *
-   * vwriter.writeTry(Logarithm(1.2D)) // Success(BSONDouble(1.2))
+   *   vwriter.writeTry(Logarithm(1.2D)) // Success(BSONDouble(1.2))
+   * end Usage
    * }}}
    */
   inline def valueWriter[A: OpaqueAlias]: BSONWriter[A] =
@@ -247,18 +257,23 @@ object Macros extends MacroAnnotations:
    * The inner value will be directly written as BSON value.
    *
    * {{{
-   * import reactivemongo.api.bson.{ BSONHandler, Macros }
+   * object Types:
+   *   opaque type Logarithm = Double
    *
-   * opaque type Logarithm = Double
+   *   object Logarithm {
+   *     def apply(value: Double): Logarithm = value
+   *   }
+   * end Types
    *
-   * object Logarithm {
-   *   def apply(value: Double): Logarithm = value
-   * }
+   * object Usage:
+   *   import reactivemongo.api.bson.{ BSONDouble, BSONHandler, Macros }
+   *   import Types.Logarithm
    *
-   * val vhandler: BSONHandler[Logarithm] = Macros.valueHandler[Logarithm]
+   *   val vhandler: BSONHandler[Logarithm] = Macros.valueHandler[Logarithm]
    *
-   * vhandler.readTry(BSONDouble(1.2)) // Success(Logarithm(1.2D))
-   * vhandler.writeTry(Logarithm(2.34D)) // Success(BSONDouble(2.34D))
+   *   vhandler.readTry(BSONDouble(1.2)) // Success(Logarithm(1.2D))
+   *   vhandler.writeTry(Logarithm(2.34D)) // Success(BSONDouble(2.34D))
+   * end Usage
    * }}}
    */
   inline def valueHandler[A: OpaqueAlias]: BSONHandler[A] =
