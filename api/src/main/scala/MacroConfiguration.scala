@@ -42,8 +42,8 @@ sealed trait MacroConfiguration {
   override def equals(that: Any): Boolean = that match {
     case other: MacroConfiguration =>
       other.fieldNaming == this.fieldNaming &&
-        other.typeNaming == this.typeNaming &&
-        other.discriminator == this.discriminator
+      other.typeNaming == this.typeNaming &&
+      other.discriminator == this.discriminator
 
     case _ =>
       false
