@@ -127,7 +127,7 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
         "reactivemongo.api.bson.TestUnion.UD",
         "reactivemongo.api.bson.TestUnion.UE" // through UTT sub-trait
       )
-    } tag "wip"
+    }
   }
 end QuotesSpec
 
