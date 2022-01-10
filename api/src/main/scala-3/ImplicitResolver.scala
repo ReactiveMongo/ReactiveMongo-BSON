@@ -118,10 +118,10 @@ private[bson] trait ImplicitResolver[A] {
     case t if (t =:= PlaceholderType) =>
       aTpeRepr
 
-    case AppliedType(_, args) if args.nonEmpty =>
+    case AppliedType(base, args) if args.nonEmpty =>
       refactor(
         args,
-        ptype -> ptype.typeSymbol,
+        base -> base.typeSymbol,
         List.empty,
         List.empty,
         _ == PlaceholderType,
@@ -142,18 +142,38 @@ private[bson] trait ImplicitResolver[A] {
   private class ImplicitTransformer[T](forwardExpr: Expr[T]) extends TreeMap {
     private val denorm = denormalized _
 
+    @SuppressWarnings(Array("AsInstanceOf"))
     override def transformTree(tree: Tree)(owner: Symbol): Tree = tree match {
-      case tt: TypeTree =>
-        super.transformTree(TypeTree.of(using denorm(tt.tpe).asType))(owner)
+      case TypeApply(tpt, args) =>
+        TypeApply(
+          transformTree(tpt)(owner).asInstanceOf[Term],
+          args.map(transformTree(_)(owner).asInstanceOf[TypeTree])
+        )
 
-      case id @ Ident(_) if (id.show == PlaceholderHandlerName) =>
+      case t @ (Select(_, _) | Ident(_)) if t.show == PlaceholderHandlerName =>
         forwardExpr.asTerm
 
-      case _ => super.transformTree(tree)(owner)
+      case tt: TypeTree =>
+        super.transformTree(
+          TypeTree.of(using denorm(tt.tpe).asType)
+        )(owner)
+
+      case Apply(fun, args) =>
+        Apply(
+          transformTree(fun)(owner).asInstanceOf[Term],
+          args.map(transformTree(_)(owner).asInstanceOf[Term])
+        )
+
+      case _ =>
+        super.transformTree(tree)(owner)
     }
   }
 
+  /**
+   * @param pending a map of type to `Expr[M[_]]` (as term)
+   */
   private def createImplicit[M[_]](
+      pending: Map[TypeRepr, Term],
       debug: String => Unit
     )(tc: Type[M],
       ptype: TypeRepr,
@@ -166,21 +186,24 @@ private[bson] trait ImplicitResolver[A] {
     // infers given
     val neededGivenType = TypeRepr.of[M](using tc).appliedTo(ptpe)
 
-    val neededGiven: Option[Term] = Implicits.search(neededGivenType) match {
-      case suc: ImplicitSearchSuccess => {
-        if (!selfRef) {
-          Some(suc.tree)
-        } else {
-          tx.transformTree(suc.tree)(suc.tree.symbol) match {
-            case t: Term => Some(t)
-            case _       => Option.empty[Term]
+    val neededGiven: Option[Term] =
+      pending
+        .get(ptpe)
+        .orElse(Implicits.search(neededGivenType) match {
+          case suc: ImplicitSearchSuccess => {
+            if (!selfRef) {
+              Some(suc.tree)
+            } else {
+              tx.transformTree(suc.tree)(suc.tree.symbol) match {
+                case t: Term => Some(t)
+                case _       => Option.empty[Term]
+              }
+            }
           }
-        }
-      }
 
-      case _ =>
-        Option.empty[Term]
-    }
+          case _ =>
+            Option.empty[Term]
+        })
 
     debug {
       val show: Option[String] =
@@ -199,19 +222,23 @@ private[bson] trait ImplicitResolver[A] {
     neededGiven.map(_ -> selfRef)
   }
 
+  /**
+   * @param pending a map of type to `Expr[M[_]]` (as term)
+   */
   protected def resolver[M[_], T](
       forwardExpr: Expr[M[T]],
+      pending: Map[TypeRepr, Term],
       debug: String => Unit
     )(tc: Type[M]
     ): TypeRepr => Option[Implicit] = {
-    val tx =
-      new ImplicitTransformer[M[T]](forwardExpr)
+    val tx = new ImplicitTransformer[M[T]](forwardExpr)
 
-    createImplicit(debug)(tc, _: TypeRepr, tx)
+    createImplicit(pending, debug)(tc, _: TypeRepr, tx)
   }
 
   private def fullName(sym: Symbol): String =
-    sym.fullName.replaceAll("(\\.package\\$|\\$|scala\\.Predef\\$\\.)", "")
+    sym.fullName
+      .replaceAll("(\\.package\\$|\\$|java\\.lang\\.|scala\\.Predef\\$\\.)", "")
 
   // To print the implicit types in the compiler messages
   protected final def prettyType(t: TypeRepr): String = t match {
@@ -227,8 +254,15 @@ private[bson] trait ImplicitResolver[A] {
     case OrType(a, b) =>
       s"${prettyType(a)} | ${prettyType(b)}"
 
-    case _ =>
-      fullName(t.typeSymbol)
+    case _ => {
+      val sym = t.typeSymbol
+
+      if (sym.isTypeParam) {
+        sym.name
+      } else {
+        fullName(sym)
+      }
+    }
   }
 
   type Implicit = (Term, Boolean)

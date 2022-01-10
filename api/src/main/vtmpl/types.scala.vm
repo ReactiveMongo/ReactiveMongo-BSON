@@ -1024,7 +1024,7 @@ object BSONObjectID {
     }
 
     // Check java policies
-    val permitted = try {
+    def permitted = try {
       System.getSecurityManager().
         checkPermission(new NetPermission("getNetworkInformation"))
 

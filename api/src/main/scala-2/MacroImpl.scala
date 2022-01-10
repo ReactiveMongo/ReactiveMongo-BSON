@@ -498,7 +498,7 @@ private[api] class MacroImpl(val c: Context) {
                 symbol = param,
                 name = pname,
                 term = TermName(c.freshName(pname)),
-                tpe = sig,
+                tpe = sig.dealias,
                 default = default,
                 reader = readerFromAnn
               )
@@ -857,11 +857,11 @@ private[api] class MacroImpl(val c: Context) {
               o.substituteTypes(List(st.typeSymbol), List(t))
             }
 
-            Tuple3(sym, i, sig)
+            Tuple3(sym, i, sig.dealias)
           }
 
           case ((sym, i), sig) if !ignoreField(sym) =>
-            Tuple3(sym, i, sig)
+            Tuple3(sym, i, sig.dealias)
 
         }.map {
           case (sym, i, sig) =>
@@ -1208,8 +1208,7 @@ private[api] class MacroImpl(val c: Context) {
             warn(s"Cannot handle class ${cls.fullName}: no case accessor")
             Set.empty
           } else if (cls.typeParams.nonEmpty) {
-            warn(s"Cannot handle class ${cls.fullName}: type parameter not supported")
-            Set.empty
+            abort(s"Generic type ${cls.fullName} is not supported as sub-type of ${aTpe.typeSymbol.name}")
           } else Set(cls.selfType)
 
           allSubclasses(path.tail, subclasses ++ newSub)

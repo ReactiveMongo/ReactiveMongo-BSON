@@ -34,8 +34,10 @@ object MacroTest extends MacroTestCompat {
   case class Person(firstName: String, lastName: String)
   case class Pet(name: String, owner: Person)
 
+  type Dbl = Double
+
   case class Primitives(
-      dbl: Double,
+      dbl: Dbl,
       str: String,
       bl: Boolean,
       int: Int,
@@ -58,7 +60,8 @@ object MacroTest extends MacroTestCompat {
   case class Foo[T](bar: T, lorem: String)
   case class Bar(name: String, next: Option[Bar])
 
-  case class GenSeq[A](items: Seq[A], count: Int)
+  type Items[A] = Seq[A]
+  case class GenSeq[A](items: Items[A], count: Int)
 
   case class OverloadedApply(string: String)
 
@@ -115,6 +118,13 @@ object MacroTest extends MacroTestCompat {
     object DoNotExtendsB
   }
 
+  object InvalidUnion {
+    sealed trait UT
+    case class UA(n: Int) extends UT
+    case class UB[T](n: Int, v: T) extends UT // Generic class not supported
+    object UC extends UT
+  }
+
   trait NestModule {
     case class Nested(name: String)
     val format: Handler[Nested] = Macros.handler[Nested]
@@ -130,17 +140,21 @@ object MacroTest extends MacroTestCompat {
     sealed trait Tree
 
     case class Node(left: Tree, right: Tree) extends Tree
-    implicit val nodeHandler: Handler[Node] = Macros.handler[Node]
 
     case class Leaf(data: String) extends Tree
+  }
+
+  object TreeModuleImplicits {
+    import MacroOptions._
+    import TreeModule._
+
     implicit val leafHandler: Handler[Leaf] = Macros.handler[Leaf]
 
-    object Tree {
-      import MacroOptions._
+    implicit val nodeHandler: Handler[Node] = Macros.handler[Node]
 
-      implicit val bson: Handler[Tree] =
-        Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
-    }
+    implicit val handler: Handler[Tree] =
+      Macros.handlerOpts[Tree, UnionType[Node \/ Leaf]]
+
   }
 
   object TreeCustom {
@@ -230,10 +244,12 @@ object MacroTest extends MacroTestCompat {
 
   // ---
 
+  type MaybeFloat = Option[Float]
+
   case class WithDefaultValues1(
       id: Int,
       title: String = "default1",
-      score: Option[Float] = Some(1.23F),
+      score: MaybeFloat = Some(1.23F),
       range: Range = Range(3, 5))
 
   case class WithDefaultValues2(

@@ -246,7 +246,7 @@ final class MacroSpec
     }
 
     "support auto-materialization for property types (not recommended)" in {
-      val handler = Macros.handlerOpts[ // TODO: Reproducer show error
+      val handler = Macros.handlerOpts[
         Person2,
         MacroOptions.AutomaticMaterialization with MacroOptions.DisableWarnings
       ]
@@ -463,13 +463,114 @@ final class MacroSpec
             .aka("class #2") must beSuccessfulTry(Some("MacroTest.Union.UB2"))
         } and roundtrip(a, format) and roundtrip(b, format)
       }
+
+      "when invalid" >> {
+        import InvalidUnion._
+
+        implicit lazy val ah: BSONDocumentHandler[UA] = Macros.handler
+        @silent implicit def bh[T]: BSONDocumentHandler[UB[T]] = ???
+        implicit lazy val ch: BSONDocumentHandler[UC.type] = Macros.handler
+
+        "without restriction" in {
+          val expectedMsg =
+            "Generic type MacroTest.InvalidUnion\\.UB.* is not supported.*"
+
+          typecheck("Macros.reader[UT]") must failWith(expectedMsg) and {
+            typecheck("Macros.writer[UT]") must failWith(expectedMsg)
+          } and {
+            typecheck("Macros.handler[UT]") must failWith(expectedMsg)
+          }
+        }
+
+        "with restriction" in {
+          import MacroOptions._
+
+          @silent // Unused as dealiased at compile-time
+          type Opts = UnionType[UA \/ UC.type] // Test macro options dealiased
+
+          val reader = Macros.readerOpts[UT, Opts]
+          val writer = Macros.writerOpts[UT, Opts]
+          val handler = Macros.handlerOpts[UT, Opts]
+
+          val adoc = BSONDocument(
+            "n" -> 1,
+            "className" -> "MacroTest.InvalidUnion.UA"
+          )
+
+          val cdoc = BSONDocument("className" -> "MacroTest.InvalidUnion.UC")
+
+          writer.writeTry(UA(1)) must beSuccessfulTry(adoc) and {
+            writer.writeTry(UC) must beSuccessfulTry(cdoc)
+          } and {
+            reader.readTry(adoc) must beSuccessfulTry(UA(1))
+          } and {
+            reader.readTry(cdoc) must beSuccessfulTry[UT](UC)
+          } and {
+            handler.writeTry(UA(1)) must beSuccessfulTry(adoc)
+          } and {
+            handler.writeTry(UC) must beSuccessfulTry(cdoc)
+          } and {
+            handler.readTry(adoc) must beSuccessfulTry(UA(1))
+          } and {
+            handler.readTry(cdoc) must beSuccessfulTry[UT](UC)
+          }
+        }
+      }
     }
 
-    "handle recursive structure" in {
-      import TreeModule._
-      // handlers defined at tree module
+    "handle recursive structure" >> {
+      import TreeModule.{ Node, Leaf, Tree }
+      import MacroOptions._
+
       val tree: Tree = Node(Leaf("hi"), Node(Leaf("hello"), Leaf("world")))
-      roundtrip(tree, Tree.bson)
+
+      "with explicit handlers" in {
+        roundtrip(tree, TreeModuleImplicits.handler)
+      }
+
+      "with recursive auto-materialization" in {
+        val doc = BSONDocument(
+          "className" -> "MacroTest.TreeModule.Node",
+          "left" -> BSONDocument(
+            "className" -> "MacroTest.TreeModule.Leaf",
+            "data" -> "hi"
+          ),
+          "right" -> BSONDocument(
+            "className" -> "MacroTest.TreeModule.Node",
+            "left" -> BSONDocument(
+              "className" -> "MacroTest.TreeModule.Leaf",
+              "data" -> "hello"
+            ),
+            "right" -> BSONDocument(
+              "className" -> "MacroTest.TreeModule.Leaf",
+              "data" -> "world"
+            )
+          )
+        )
+
+        @silent // Unused as dealias
+        type Opts = AutomaticMaterialization with MacroOptions.DisableWarnings
+
+        typecheck("implicitly[BSONDocumentReader[Leaf]]") must failWith(
+          ".*"
+        ) and {
+          typecheck("implicitly[BSONDocumentReader[Node]]") must failWith(".*")
+        } and {
+          val writer = Macros.writerOpts[Tree, Opts]
+
+          writer.writeTry(tree) must beSuccessfulTry(doc)
+        } and {
+          val reader = Macros.readerOpts[Tree, Opts]
+
+          reader.readTry(doc) must beSuccessfulTry(tree)
+        } and {
+          val handler = Macros.handlerOpts[Tree, Opts]
+
+          handler.writeTry(tree) must beSuccessfulTry(doc) and {
+            handler.readTry(doc) must beSuccessfulTry(tree)
+          }
+        }
+      }
     }
 
     "grab an implicit handler for type used in union" in {
