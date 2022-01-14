@@ -86,7 +86,7 @@ lazy val api = (project in file("api"))
         "org.typelevel" %% "discipline-specs2" % "1.1.3",
         spireLaws.value
       ).map(_.cross(CrossVersion.for3Use2_13) % Test),
-      libraryDependencies ++= Seq("org.slf4j" % "slf4j-simple" % "1.7.32"),
+      libraryDependencies ++= Seq("org.slf4j" % "slf4j-simple" % "1.7.33"),
       libraryDependencies ++= {
         if (scalaBinaryVersion.value startsWith "2.") {
           Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
