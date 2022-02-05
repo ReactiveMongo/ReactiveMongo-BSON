@@ -1414,8 +1414,8 @@ private[api] object MacroImpl:
 
             warn(
               s"Materializing ${classOf[BSONReader[_]].getName}[${prettyType(
-                lt
-              )}] for '${prettyType(TypeRepr.of(using tpe))}.$pname': it's recommended to declare it explicitly"
+                  lt
+                )}] for '${prettyType(TypeRepr.of(using tpe))}.$pname': it's recommended to declare it explicitly"
             )
 
             val nme = s"${pname}LeafVal"
@@ -2259,8 +2259,8 @@ private[api] object MacroImpl:
 
             warn(
               s"Materializing ${classOf[BSONWriter[_]].getName}[${prettyType(
-                lt
-              )}] for '${prettyType(TypeRepr.of(using tpe))}.$pname': it's recommended to declare it explicitly"
+                  lt
+                )}] for '${prettyType(TypeRepr.of(using tpe))}.$pname': it's recommended to declare it explicitly"
             )
 
             val nme = s"${pname}LeafVal"

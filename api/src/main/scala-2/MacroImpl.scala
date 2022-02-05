@@ -1291,8 +1291,8 @@ private[api] class MacroImpl(val c: Context) {
           if (alt.tail.nonEmpty) {
             warn(
               s"""Multiple 'unapply' declared on '${tpe.typeSymbol.fullName}': ${alt
-                .map(_.info)
-                .mkString("\n- ", "\n- ", "\n\n")}"""
+                  .map(_.info)
+                  .mkString("\n- ", "\n- ", "\n\n")}"""
             )
           }
 
@@ -1635,8 +1635,8 @@ private[api] class MacroImpl(val c: Context) {
       boundTypes.getOrElse(t.typeSymbol.fullName, t) match {
         case TypeRef(_, base, args) if args.nonEmpty =>
           s"""${base.asType.fullName}[${args
-            .map(prettyType(boundTypes)(_))
-            .mkString(", ")}]"""
+              .map(prettyType(boundTypes)(_))
+              .mkString(", ")}]"""
 
         case t => t.typeSymbol.fullName
       }
