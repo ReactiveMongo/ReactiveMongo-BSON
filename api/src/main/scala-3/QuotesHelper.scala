@@ -122,7 +122,7 @@ private[bson] trait QuotesHelper {
         field.map { meth =>
           debug(
             s"// Field: ${sym.owner.owner.fullName}.${sym.name}, type = ${t.typeSymbol.fullName}, annotations = [${sym.annotations
-              .map(_.show) mkString ", "}]"
+                .map(_.show) mkString ", "}]"
           )
 
           Tuple3(sym, t, meth)
