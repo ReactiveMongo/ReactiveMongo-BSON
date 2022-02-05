@@ -823,8 +823,11 @@ private[api] object MacroImpl:
             type Subtype[U <: A] = U
 
             val cases = types.zipWithIndex.map { (tpr, i) =>
-              if (tpr.typeArgs.nonEmpty) {
-                report.errorAndAbort(s"Generic type ${prettyType(tpr)} is not supported as sub-type of ${prettyType(aTpeRepr)}")
+              tpr match { // TODO: tpr.typeArgs.nonEmpty
+                case AppliedType(_, args) if args.nonEmpty =>
+                  report.errorAndAbort(s"Generic type ${prettyType(tpr)} is not supported as sub-type of ${prettyType(aTpeRepr)}")
+
+                case _ =>
               }
 
               tpr.asType match {
@@ -1679,8 +1682,11 @@ private[api] object MacroImpl:
           type Subtype[U <: A] = U
 
           val cases = types.zipWithIndex.map { (tpr, i) =>
-            if (tpr.typeArgs.nonEmpty) {
-              report.errorAndAbort(s"Generic type ${prettyType(tpr)} is not supported as sub-type of ${prettyType(aTpeRepr)}")
+            tpr match { // TODO: tpr.typeArgs.nonEmpty
+              case AppliedType(_, args) if args.nonEmpty =>
+                report.errorAndAbort(s"Generic type ${prettyType(tpr)} is not supported as sub-type of ${prettyType(aTpeRepr)}")
+
+              case _ =>
             }
 
             tpr.asType match {

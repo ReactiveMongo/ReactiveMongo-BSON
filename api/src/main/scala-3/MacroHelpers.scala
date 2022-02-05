@@ -132,7 +132,13 @@ private[bson] trait MacroHelpers[A] extends OptionSupport with MacroLogging {
 
     def unapply(tpr: TypeRepr): Option[TypeRepr] = {
       if (isOptionalType(tpr)) {
-        tpr.typeArgs.headOption // TODO: Test case like OptionalInt in play-json
+        tpr match {
+          case AppliedType(_, args) =>
+            args.headOption // TODO: tpr.typeArgs.headOption
+
+          case _ =>
+            None
+        }
       } else None
     }
   }
