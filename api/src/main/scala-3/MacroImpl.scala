@@ -18,7 +18,6 @@ import exceptions.{
   ValueDoesNotMatchException
 }
 
-// TODO: Enum
 private[api] object MacroImpl:
   import Macros.Annotations,
   Annotations.{ DefaultValue, Ignore, Key, Writer, Flatten, NoneAsNull, Reader }

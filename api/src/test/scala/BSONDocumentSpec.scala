@@ -65,8 +65,7 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
           "foo" -> 1,
           "bar" -> 2D,
           "lorem" -> Option.empty[Long],
-          "ipsum" -> None,
-          "dolor" -> Seq.empty[BSONDocument]
+          "ipsum" -> None
         ).elements must_=== nonEmpty
       } and {
         BSONDocument
