@@ -33,6 +33,12 @@ object EnumHandler {
   }
 
   /**
+   * Returns a strict `KeyReader` for a given enum.
+   */
+  inline def keyReader[E <: Enum: Mirror.SumOf]: KeyReader[E] =
+    keyReader[E](false)
+
+  /**
    * Returns a `KeyReader` for a given enum.
    *
    * @param insensitive bind in a case-insensitive way, defaults to false
