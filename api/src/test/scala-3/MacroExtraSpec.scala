@@ -7,6 +7,7 @@ import reactivemongo.api.bson.{
   BSONInteger,
   BSONReader,
   BSONWriter,
+  BigFat,
   Macros
 }
 import reactivemongo.api.bson.TestUtils.typecheck
@@ -29,6 +30,45 @@ trait MacroExtraSpec { self: MacroSpec =>
     "not be handled without custom ProductOf" in {
       typecheck("Macros.writer[CustomNoProductOf]") must failWith(
         ".*ProductOf\\[CustomNoProductOf\\]"
+      )
+    }
+
+    "be handled with more than 22 fields" in {
+      val handler = Macros.handler[BigFat]
+
+      handler.writeTry(BigFat.example).foreach { x =>
+        println(BSONDocument pretty x)
+      }
+
+      handler.writeTry(BigFat.example) must beSuccessfulTry(
+        BSONDocument(
+          "a" -> 1,
+          "b" -> 2D,
+          "c" -> 3F,
+          "d" -> "d",
+          "e" -> Seq(1, 2, 3),
+          "f" -> 6,
+          "g" -> 7D,
+          "h" -> 8F,
+          "i" -> "i",
+          "j" -> Seq(4, 5),
+          "k" -> 10,
+          "l" -> 11D,
+          "m" -> 12F,
+          "n" -> "n",
+          "o" -> Seq(6, 7),
+          "p" -> 13,
+          "q" -> 14D,
+          "r" -> 15F,
+          "s" -> "s",
+          "t" -> Seq(8),
+          "u" -> 16F,
+          "v" -> "v",
+          "w" -> Seq(9, 10, 11),
+          "x" -> 12,
+          "y" -> Seq(13, 14),
+          "z" -> 15D
+        )
       )
     }
   }

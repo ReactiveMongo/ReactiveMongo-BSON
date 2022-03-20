@@ -66,17 +66,23 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
       "from Foo" in {
         testWithTuple(
           Foo("1", 2)
-        ) must_=== "scala.Tuple2[scala.Predef.String, scala.Int]/Foo(1,2)"
+        ) must_=== "reactivemongo.api.bson.Foo/Foo(1,2)"
       }
 
       "from generic Bar" in {
         testWithTuple(
           Bar[Double]("bar1", None, Seq(1.2D, 34.5D))
-        ) must_=== "scala.Tuple3[scala.Predef.String, scala.Option[scala.Double], scala.collection.immutable.Seq[scala.Double]]/Bar(bar1,None,List(1.2, 34.5))" and {
+        ) must_=== "reactivemongo.api.bson.Bar[scala.Double]/Bar(bar1,None,List(1.2, 34.5))" and {
           testWithTuple(
             Bar[Float]("bar2", Some(1.23F), Seq(0D))
-          ) must_=== "scala.Tuple3[scala.Predef.String, scala.Option[scala.Float], scala.collection.immutable.Seq[scala.Double]]/Bar(bar2,Some(1.23),List(0.0))"
+          ) must_=== "reactivemongo.api.bson.Bar[scala.Float]/Bar(bar2,Some(1.23),List(0.0))"
         }
+      }
+
+      "from BigFat" in {
+        testWithTuple[BigFat](BigFat.example).mustEqual(
+          "reactivemongo.api.bson.BigFat/BigFat(1,2.0,3.0,d,List(1, 2, 3),6,7.0,8.0,i,List(4, 5),10,11.0,12.0,n,List(6, 7),13,14.0,15.0,s,List(8),16.0,v,List(9, 10, 11),12,List(13, 14),15.0)"
+        )
       }
 
       "from non-case class" >> {
@@ -91,7 +97,7 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
 
           testWithTuple(
             new TestUnion.UC("name", 2)
-          ) must_=== "scala.Tuple$package.EmptyTuple/(name,2)"
+          ) must_=== "scala.Tuple2[scala.Predef.String, scala.Int]/(name,2)"
         }
 
         "be successful when conversion is provided" in {
@@ -115,6 +121,12 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
           Bar("bar3", Some("opt2"), Seq(3D, 4.5D))
         ) must_=== "name=bar3,opt=Some(opt2),scores=List(3.0, 4.5)"
       }
+
+      "when BigFat" in {
+        testWithFields(BigFat.example).mustEqual(
+          "e=List(1, 2, 3),n=n,t=List(8),a=1,m=12.0,i=i,v=v,p=13,r=15.0,w=List(9, 10, 11),k=10,s=s,x=12,j=List(4, 5),y=List(13, 14),u=16.0,f=6,q=14.0,b=2.0,g=7.0,l=11.0,c=3.0,h=8.0,o=List(6, 7),z=15.0,d=d"
+        )
+      }
     }
   }
 
@@ -134,6 +146,66 @@ end QuotesSpec
 case class Foo(bar: String, lorem: Int)
 
 case class Bar[T](name: String, opt: Option[T], scores: Seq[Double])
+
+case class BigFat(
+    a: Int,
+    b: Double,
+    c: Float,
+    d: String,
+    e: Seq[Int],
+    f: Int,
+    g: Double,
+    h: Float,
+    i: String,
+    j: Seq[Int],
+    k: Int,
+    l: Double,
+    m: Float,
+    n: String,
+    o: Seq[Int],
+    p: Int,
+    q: Double,
+    r: Float,
+    s: String,
+    t: Seq[Int],
+    u: Float,
+    v: String,
+    w: Seq[Int],
+    x: Int,
+    y: Seq[Int],
+    z: Double)
+
+object BigFat {
+
+  def example = BigFat(
+    a = 1,
+    b = 2D,
+    c = 3F,
+    d = "d",
+    e = Seq(1, 2, 3),
+    f = 6,
+    g = 7D,
+    h = 8F,
+    i = "i",
+    j = Seq(4, 5),
+    k = 10,
+    l = 11D,
+    m = 12F,
+    n = "n",
+    o = Seq(6, 7),
+    p = 13,
+    q = 14D,
+    r = 15F,
+    s = "s",
+    t = Seq(8),
+    u = 16F,
+    v = "v",
+    w = Seq(9, 10, 11),
+    x = 12,
+    y = Seq(13, 14),
+    z = 15D
+  )
+}
 
 object TestUnion:
   sealed trait UT

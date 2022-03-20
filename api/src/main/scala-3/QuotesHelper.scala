@@ -88,14 +88,14 @@ private[bson] trait QuotesHelper {
   @annotation.tailrec
   private def withElems[U <: Product](
       tupled: Expr[U],
-      fields: List[(Symbol, TypeRepr, Symbol)],
+      fields: List[(Symbol, TypeRepr, Term => Term)],
       prepared: List[Tuple2[String, (Ref => Term) => Term]]
     ): Map[String, (Ref => Term) => Term] = fields match {
     case (sym, t, f) :: tail => {
       val elem = ValDef.let(
         Symbol.spliceOwner,
-        s"tuple${f.name}",
-        Typed(tupled.asTerm.select(f), Inferred(t))
+        s"tuple${sym.name}",
+        Typed(f(tupled.asTerm), Inferred(t))
       )
 
       withElems(tupled, tail, (sym.name -> elem) :: prepared)
@@ -115,18 +115,34 @@ private[bson] trait QuotesHelper {
       decls: List[(Symbol, TypeRepr)],
       debug: String => Unit
     ): Map[String, (Term => Term) => Term] = {
-    val fields = decls.zipWithIndex.flatMap {
+    val tupleTpeSym = tupleTpe.typeSymbol
+
+    val fields = decls.zipWithIndex.map {
       case ((sym, t), i) =>
-        val field = tupleTpe.typeSymbol.declaredMethod(s"_${i + 1}")
+        debug(
+          s"// Field: ${sym.owner.owner.fullName}.${sym.name}, type = ${t.typeSymbol.fullName}, annotations = [${sym.annotations
+              .map(_.show) mkString ", "}]"
+        )
 
-        field.map { meth =>
-          debug(
-            s"// Field: ${sym.owner.owner.fullName}.${sym.name}, type = ${t.typeSymbol.fullName}, annotations = [${sym.annotations
-                .map(_.show) mkString ", "}]"
-          )
+        val fieldNme = s"_${i + 1}"
 
-          Tuple3(sym, t, meth)
+        val resolve: Term => Term = {
+          val field = tupleTpeSym.declaredField(fieldNme)
+
+          if (field == Symbol.noSymbol) {
+            tupleTpeSym.declaredMethod(fieldNme) match {
+              case meth :: Nil =>
+                (_: Term).select(meth)
+
+              case _ =>
+                report.errorAndAbort(s"Fails to resolve field: '${tupleTpeSym.fullName}.${fieldNme}'")
+            }
+          } else {
+            (_: Term).select(field)
+          }
         }
+
+        Tuple3(sym, t, resolve)
     }
 
     withElems[U](tupled, fields, List.empty)
@@ -139,30 +155,18 @@ private[bson] trait QuotesHelper {
    *
    * @param tpr the type for which a `ProductOf` is provided
    * @param toProduct the function to convert the input value as product `U`
-   * @param types the types of the elements (fields)
    *
    * @return The tuple type + `{ v: Term => { tuple: Ref => ... } }`
    * with `v` a term of type `tpe`, and `tuple` the product created from.
    */
   def withTuple[T, U <: Product, R: Type](
       tpr: TypeRepr,
-      toProduct: Expr[T => U],
-      types: List[TypeRepr]
+      toProduct: Expr[T => U]
     )(using
-      Type[T],
-      Type[U]
-    ): Tuple2[TypeRepr, Expr[T] => (Expr[U] => Expr[R]) => Expr[R]] = {
-    val unappliedTupleTpr: TypeRepr = {
-      if (types.isEmpty) {
-        TypeRepr.of[EmptyTuple]
-      } else {
-        TypeRepr.typeConstructorOf(Class.forName(s"scala.Tuple${types.size}"))
-      }
-    }
-
-    val tupleTpr = unappliedTupleTpr.appliedTo(types)
-
-    tupleTpr -> {
+      tt: Type[T],
+      ut: Type[U]
+    ): Tuple2[TypeRepr, Expr[T] => (Expr[U] => Expr[R]) => Expr[R]] =
+    TypeRepr.of(using ut) -> {
       (in: Expr[T]) =>
         { (f: (Expr[U] => Expr[R])) =>
           '{
@@ -171,7 +175,6 @@ private[bson] trait QuotesHelper {
           }
         }
     }
-  }
 
   /**
    * Returns the elements type for `product`.
