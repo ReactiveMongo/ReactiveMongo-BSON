@@ -2002,7 +2002,7 @@ private[api] object MacroImpl:
         }
 
         val (tupleTpe, withTupled) =
-          withTuple[T, U, TryResult[BSONDocument]](tpr, toProduct, types)
+          withTuple[T, U, TryResult[BSONDocument]](tpr, toProduct)
 
         withTupled(macroVal) { tupled =>
           val fieldMap = withFields(tupled, tupleTpe, tprElements, debug)
