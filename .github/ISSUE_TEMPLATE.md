@@ -4,8 +4,9 @@ This tracker is not a support system and so it is not a place to ask questions o
 
 This tracker is for confirmed issue or actionable feature request, used to manage and track the development of ReactiveMongo.
 
-### ReactiveMongo Version (0.10.5, 0.11.6 / etc)
+### ReactiveMongo version (0.10.5, 0.11.6 / etc)
 
+### Scala version (2.13.8 / etc)
 
 ### MongoDB version (2.6, 3.0 / etc)
 
