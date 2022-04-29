@@ -107,8 +107,7 @@ object BSONValueFixtures {
     bsonDoubleFixtures ++ bsonStrFixtures ++ bsonIntFixtures ++ bsonArrayFixtures ++ bsonDocFixtures ++ bsonBinFixtures ++ bsonOidFixtures ++ bsonBoolFixtures ++ bsonDateTimeFixtures ++ bsonRegexFixtures ++ bsonJSFixtures ++ bsonJSWsFixtures ++ bsonTsFixtures ++ bsonLongFixtures ++ bsonDecimalFixtures
 
   lazy val elementProducerFixtures: List[ElementProducer] =
-    bsonValueFixtures.map {
-      case p: ElementProducer => p
+    bsonValueFixtures.collect {
       case v =>
         BSONElement(v.hashCode.toString, v)
     }
