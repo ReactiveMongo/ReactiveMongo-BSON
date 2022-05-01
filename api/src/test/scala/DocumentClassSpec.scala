@@ -37,37 +37,37 @@ final class DocumentClassSpec
 
       "class AbstractClassA" in {
         typecheck("implicitly[DocumentClass[AbstractClassA]]") must failWith(
-          "no.*\\ implicit\\ .*DocumentClass\\[.*AbstractClassA\\].*"
+          ".*DocumentClass\\[.*AbstractClassA\\].*"
         )
       }
 
       "value class FooVal" in {
         typecheck("implicitly[DocumentClass[FooVal]]") must failWith(
-          "no.*\\ implicit\\ .*DocumentClass\\[.*FooVal\\].*"
+          ".*DocumentClass\\[.*FooVal\\].*"
         )
       }
 
       "Int" in {
         typecheck("implicitly[DocumentClass[Int]]") must failWith(
-          "no.*\\ implicit\\ .*DocumentClass\\[Int\\].*"
+          ".*DocumentClass\\[Int\\].*"
         )
       }
 
       "BSONValue" in {
         typecheck("implicitly[DocumentClass[BSONValue]]") must failWith(
-          "no.*\\ implicit\\ .*DocumentClass\\[.*BSONValue\\].*"
+          ".*DocumentClass\\[.*BSONValue\\].*"
         )
       }
 
       "BSONDateTime" in {
         typecheck("implicitly[DocumentClass[BSONDateTime]]") must failWith(
-          "no.*\\ implicit\\ .*DocumentClass\\[.*BSONDateTime\\].*"
+          ".*DocumentClass\\[.*BSONDateTime\\].*"
         )
       }
 
       "BSONLong" in {
         typecheck("implicitly[DocumentClass[BSONLong]]") must failWith(
-          "no.*\\ implicit\\ .*DocumentClass\\[.*BSONLong\\].*"
+          ".*DocumentClass\\[.*BSONLong\\].*"
         )
       }
     }

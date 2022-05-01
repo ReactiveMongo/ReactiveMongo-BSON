@@ -42,9 +42,9 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
     "be appended with a new element " in {
       val doc = BSONDocument.empty ++ ("foo" -> 1)
 
-      doc must_=== BSONDocument("foo" -> 1) and (doc.contains(
-        "foo"
-      ) must beTrue)
+      doc must_=== BSONDocument("foo" -> 1) and {
+        doc.contains("foo") must beTrue
+      }
     }
   }
 
