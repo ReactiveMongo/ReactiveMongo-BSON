@@ -2157,6 +2157,30 @@ sealed abstract class BSONDocument
     case Some(v) => reader.readTry(v).map(Some(_))
   }
 
+  /**
+   * Gets the [[BSONValue]] associated with the given `key`,
+   * and converts it with the given implicit [[BSONReader]].
+   *
+   * If there is no matching value, or the value could not be deserialized,
+   * or converted, returns a `Failure`.
+   *
+   * The `Failure` may hold a [[exceptions.BSONValueNotFoundException]],
+   * if the key could not be found.
+   *
+   * Contrary to [[getAsTry]] (which must generally be preferred), 
+   * if the value is [[BSONNull]] it passed to the given `reader` (not skipped).
+   *
+   * @param key $keyParam
+   */
+  final def getRawAsTry[T](key: String)(
+    implicit reader: BSONReader[T]): Try[T] = get(key) match {
+      case Some(v) => reader.readTry(v)
+
+      case _ =>
+        Failure(BSONValueNotFoundException(key, this))
+
+    }
+
   // ---
 
   private[bson] final def copy(newFields: Map[String, BSONValue] = self.fields): BSONDocument = new BSONDocument {

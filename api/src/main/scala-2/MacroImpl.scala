@@ -373,24 +373,30 @@ private[api] class MacroImpl(val c: Context) {
       q"${utilPkg}.Success(${Ident(TermName(sym.name.toString))})"
     }
 
-    private type ReadableProperty =
-      Tuple6[Symbol, String, TermName, Type, /*default:*/ Option[
-        Tree
-      ], /*reader:*/ Option[Tree]]
-
-    private object ReadableProperty {
-
-      def apply(
-          symbol: Symbol,
-          name: String,
-          term: TermName,
-          tpe: Type,
-          default: Option[Tree],
-          reader: Option[Tree]
-        ): ReadableProperty = Tuple6(symbol, name, term, tpe, default, reader)
-
-      def unapply(p: ReadableProperty) = Some(p)
+    private sealed trait ReadableProperty {
+      def symbol: Symbol
+      def name: String
+      def term: TermName
+      def tpe: Type
+      def default: Option[Tree]
     }
+
+    private case class RequiredReadableProperty(
+        symbol: Symbol,
+        name: String,
+        term: TermName,
+        tpe: Type,
+        default: Option[Tree],
+        reader: Tree)
+        extends ReadableProperty
+
+    private case class OptionalReadableProperty(
+        symbol: Symbol,
+        name: String,
+        term: TermName,
+        tpe: Type,
+        default: Option[Tree])
+        extends ReadableProperty
 
     /*
      * @param top $topParam
@@ -423,6 +429,53 @@ private[api] class MacroImpl(val c: Context) {
 
       val resolve = resolver(boundTypes, "BSONReader", debug)(readerType)
       val bufErr = TermName(c.freshName("err"))
+
+      def resolveReader(
+          pname: String,
+          sig: Type
+        ): Option[Tree] = {
+        val reader = resolve(sig)._1
+
+        if (reader.nonEmpty) {
+          Some(reader)
+        } else if (!hasOption[MacroOptions.AutomaticMaterialization]) {
+          None
+        } else {
+          val lt = leafType(sig)
+
+          warn(s"Materializing ${classOf[BSONReader[_]].getName}[${lt}] for '${tpe}.$pname': it's recommended to declare it explicitly")
+
+          val subHelper = createSubHelper(lt)
+
+          val nme = TermName(c.freshName("macroVal"))
+          val ln = TermName(c.freshName("leafReader"))
+
+          val lr: Tree = {
+            if (lt <:< anyValTpe) {
+              val ra = q"val ${nme}: ${bsonPkg}.BSONValue"
+
+              q"""implicit def ${ln}: ${appliedType(readerType, lt)} =
+                ${bsonPkg}.BSONReader.from[${lt}] { ${ra} =>
+                  ${subHelper.valueReaderTree(id = Ident(nme))}
+                }"""
+
+            } else {
+              val ra = q"val ${nme}: ${bsonPkg}.BSONDocument"
+
+              q"""implicit def ${ln}: ${appliedType(readerType, lt)} =
+                ${bsonPkg}.BSONDocumentReader.from[${lt}] { ${ra} =>
+                  ${subHelper.readerTree(id = Ident(nme), top = false)}
+                }"""
+            }
+          }
+
+          Some(q"""{
+            $lr
+
+            implicitly[${appliedType(readerType, sig)}]
+          }""")
+        }
+      }
 
       val companionObject = tpe.typeSymbol.companion
       val params: Seq[ReadableProperty] =
@@ -494,99 +547,72 @@ private[api] class MacroImpl(val c: Context) {
                   }
               }
 
-              ReadableProperty(
-                symbol = param,
-                name = pname,
-                term = TermName(c.freshName(pname)),
-                tpe = sig.dealias,
-                default = default,
-                reader = readerFromAnn
-              )
+              val reader: Option[Tree] = readerFromAnn.orElse {
+                resolveReader(pname, sig.dealias)
+              }
+
+              reader match {
+                case Some(rdr) =>
+                  RequiredReadableProperty(
+                    symbol = param,
+                    name = pname,
+                    term = TermName(c.freshName(pname)),
+                    tpe = sig.dealias,
+                    default = default,
+                    reader = rdr
+                  )
+
+                case _ if ignoreField(param) =>
+                  RequiredReadableProperty(
+                    symbol = param,
+                    name = pname,
+                    term = TermName(c.freshName(pname)),
+                    tpe = sig.dealias,
+                    default = default,
+                    reader = q"???"
+                  )
+
+                case _ if !isOptionalType(sig.dealias) =>
+                  abort(s"No implicit found for '${tpe}.${pname}': ${classOf[BSONWriter[_]].getName}[${sig}]")
+
+                case _ =>
+                  OptionalReadableProperty(
+                    symbol = param,
+                    name = pname,
+                    term = TermName(c.freshName(pname)),
+                    tpe = sig.dealias,
+                    default = default
+                  )
+              }
           }
 
       val decls = q"""val ${bufErr} =
         ${colPkg}.Seq.newBuilder[${exceptionsPkg}.HandlerException]""" +: (params.map {
-        case ReadableProperty(_, _, vt, sig, _, _) =>
-          q"val ${vt} = new ${bsonPkg}.Macros.LocalVar[${sig}]"
+        p => q"val ${p.term} = new ${bsonPkg}.Macros.LocalVar[${p.tpe}]"
       })
 
       val errName = TermName(c.freshName("cause"))
 
-      def resolveReader(
-          pname: String,
-          sig: Type,
-          fieldReader: Option[Tree]
-        ): Tree = {
-        val reader = fieldReader match {
-          case Some(r) => r
+      val values = params.map {
+        case p: ReadableProperty if ignoreField(p.symbol) =>
+          p.default match {
+            case Some(default) =>
+              q"${p.term}.take($default); ()"
 
-          case _ =>
-            sig match {
-              case OptionTypeParameter(ot) =>
-                resolve(sig) match {
-                  case (r, _) if r.nonEmpty =>
-                    r // a reader explicitly defined for an Option[x]
-
-                  case _ => resolve(ot)._1
-                }
-
-              case _ => resolve(sig)._1
-            }
-        }
-
-        if (reader.nonEmpty) {
-          reader
-        } else if (hasOption[MacroOptions.AutomaticMaterialization]) {
-          val lt = leafType(sig)
-
-          warn(s"Materializing ${classOf[BSONReader[_]].getName}[${lt}] for '${tpe}.$pname': it's recommended to declare it explicitly")
-
-          val subHelper = createSubHelper(lt)
-
-          val nme = TermName(c.freshName("macroVal"))
-          val ln = TermName(c.freshName("leafReader"))
-
-          val lr: Tree = {
-            if (lt <:< anyValTpe) {
-              val ra = q"val ${nme}: ${bsonPkg}.BSONValue"
-
-              q"""implicit def ${ln}: ${appliedType(readerType, lt)} =
-                ${bsonPkg}.BSONReader.from[${lt}] { ${ra} =>
-                  ${subHelper.valueReaderTree(id = Ident(nme))}
-                }"""
-
-            } else {
-              val ra = q"val ${nme}: ${bsonPkg}.BSONDocument"
-
-              q"""implicit def ${ln}: ${appliedType(readerType, lt)} =
-                ${bsonPkg}.BSONDocumentReader.from[${lt}] { ${ra} =>
-                  ${subHelper.readerTree(id = Ident(nme), top = false)}
-                }"""
-            }
+            case _ =>
+              abort(s"Cannot ignore '${tpe}.${paramName(p.symbol)}': not default value (see @DefaultValue)")
           }
 
-          q"""{
-            $lr
+        case RequiredReadableProperty(
+              param,
+              pname,
+              vt,
+              sig,
+              default,
+              reader
+            ) => {
 
-            implicitly[${appliedType(readerType, sig)}]
-          }"""
-        } else {
-          abort(s"Implicit not found for '${tpe}.$pname': ${classOf[BSONReader[_]].getName}[$sig]")
-        }
-      }
-
-      val values = params.map {
-        case ReadableProperty(param, _, vt, _, Some(default), _)
-            if (ignoreField(param)) =>
-          q"${vt}.take($default); ()"
-
-        case ReadableProperty(param, pname, _, _, None, _)
-            if (ignoreField(param)) =>
-          abort(s"Cannot ignore '${tpe}.$pname': not default value (see @DefaultValue)")
-
-        case ReadableProperty(param, pname, vt, sig, default, fieldReader) => {
           val rt = TermName(c.freshName("read"))
-          val reader: Tree = resolveReader(pname, sig, fieldReader)
 
           def tryWithDefault(`try`: Tree, dv: Tree) = q"""${`try`} match {
             case ${utilPkg}.Failure(
@@ -615,25 +641,76 @@ private[api] class MacroImpl(val c: Context) {
             } else {
               val field = q"$macroCfg.fieldNaming($pname)"
 
-              OptionTypeParameter.unapply(sig) match {
-                case Some(_) if fieldReader.isEmpty => {
-                  val getAsUnflattenedTry =
-                    q"${id}.getAsUnflattenedTry($field)($reader)"
-
-                  default match {
-                    case Some(dv) =>
-                      q"${getAsUnflattenedTry}.map(_.orElse(${dv}))"
-
-                    case _ =>
-                      getAsUnflattenedTry
-                  }
+              val getAsTry: Tree = {
+                if (isOptionalType(sig)) {
+                  q"${id}.getRawAsTry($field)($reader)"
+                } else {
+                  q"${id}.getAsTry($field)($reader)"
                 }
+              }
 
-                case _ => {
-                  val getAsTry = q"${id}.getAsTry($field)($reader)"
+              default.fold(getAsTry) { dv => tryWithDefault(getAsTry, dv) }
+            }
+          }
 
-                  default.fold(getAsTry) { dv => tryWithDefault(getAsTry, dv) }
-                }
+          q"""${get} match {
+              case ${utilPkg}.Success($rt) => ${vt}.take($rt); ()
+
+              case ${utilPkg}.Failure($errName) => 
+                ${bufErr} += ${exceptionsPkg}.HandlerException($pname, $errName)
+            }"""
+        }
+
+        case OptionalReadableProperty(
+              param,
+              pname,
+              vt,
+              sig @ OptionTypeParameter(ot),
+              default
+            ) => {
+          val rt = TermName(c.freshName("read"))
+          val reader: Tree = resolveReader(pname, ot) match {
+            case Some(rdr) => rdr
+
+            case _ =>
+              abort(s"No implicit found for '${tpe}.${pname}': ${classOf[BSONWriter[_]].getName}[Option[${ot}]]")
+          }
+
+          def tryWithDefault(`try`: Tree, dv: Tree) = q"""${`try`} match {
+            case ${utilPkg}.Failure(
+              _: ${exceptionsPkg}.BSONValueNotFoundException) =>
+              ${utilPkg}.Success(${dv})
+
+            case result =>
+              result
+          }"""
+
+          val get: Tree = {
+            if (param.annotations.exists(_.tree.tpe =:= typeOf[Flatten])) {
+              if (reader.toString == "forwardBSONReader") {
+                abort(
+                  s"Cannot flatten reader for '${tpe}.$pname': recursive type"
+                )
+              }
+
+              if (!(reader.tpe <:< appliedType(docReaderType, List(sig)))) {
+                abort(s"Cannot flatten reader '$reader' for '${tpe}.$pname': doesn't conform BSONDocumentReader")
+              }
+
+              val readTry = q"${reader}.readTry(${id})"
+
+              default.fold(readTry) { dv => tryWithDefault(readTry, dv) }
+            } else {
+              val field = q"$macroCfg.fieldNaming($pname)"
+              val getAsUnflattenedTry =
+                q"${id}.getAsUnflattenedTry($field)($reader)"
+
+              default match {
+                case Some(dv) =>
+                  q"${getAsUnflattenedTry}.map(_.orElse(${dv}))"
+
+                case _ =>
+                  getAsUnflattenedTry
               }
             }
           }
@@ -645,10 +722,13 @@ private[api] class MacroImpl(val c: Context) {
                 ${bufErr} += ${exceptionsPkg}.HandlerException($pname, $errName)
             }"""
         }
+
+        case p =>
+          abort(s"Unexpected field '${tpe}.${paramName(p.symbol)}'")
       }
 
       val applyArgs = params.map {
-        case ReadableProperty(_, _, vt, _, _, _) => q"${vt}.value()"
+        case p: ReadableProperty => q"${p.term}.value()"
       }
 
       val accName = TermName(c.freshName("acc"))
@@ -803,20 +883,24 @@ private[api] class MacroImpl(val c: Context) {
         q"${utilPkg}.Success(${bsonPkg}.BSONDocument(${discriminator}))"
       } getOrElse q"${utilPkg}.Success(${bsonPkg}.BSONDocument.empty)"
 
-    private type WritableProperty = Tuple4[Symbol, Int, Type, Option[Tree]]
-
-    private object WritableProperty {
-
-      def apply(
-          symbol: Symbol,
-          index: Int,
-          tpe: Type,
-          writerFromAnnotation: Option[Tree]
-        ) =
-        Tuple4(symbol, index, tpe, writerFromAnnotation)
-
-      def unapply(property: WritableProperty) = Some(property)
+    private sealed trait WritableProperty {
+      def symbol: Symbol
+      def index: Int
+      def tpe: Type
     }
+
+    private case class RequiredWritableProperty(
+        symbol: Symbol,
+        index: Int,
+        tpe: Type,
+        writer: Tree)
+        extends WritableProperty
+
+    private case class OptionalWritableProperty(
+        symbol: Symbol,
+        index: Int,
+        tpe: Type)
+        extends WritableProperty
 
     private def writeBodyConstructClass(
         id: Ident,
@@ -850,6 +934,41 @@ private[api] class MacroImpl(val c: Context) {
       val resolve = resolver(boundTypes, "BSONWriter", debug)(writerType)
       val tupleName = TermName(c.freshName("tuple"))
 
+      def resolveWriter(pname: String, wtpe: Type): Option[Tree] = {
+        val (writer, _) = resolve(wtpe)
+
+        if (writer.nonEmpty) {
+          Some(writer)
+        } else if (!hasOption[MacroOptions.AutomaticMaterialization]) {
+          None
+        } else {
+          val lt = leafType(wtpe)
+
+          warn(s"Materializing ${classOf[BSONWriter[_]].getName}[${lt}] for '${tpe}.$pname': it's recommended to declare it explicitly")
+
+          val subHelper = createSubHelper(lt)
+
+          val nme = TermName(c.freshName("leafVal"))
+          val lw: Tree = {
+            if (lt <:< anyValTpe) {
+              subHelper.valueWriterTree(id = Ident(nme))
+            } else {
+              subHelper.writerTree(valNme = nme, top = false)
+            }
+          }
+
+          val ln = TermName(c.freshName("leafWriter"))
+          val la = q"val ${nme}: ${lt}"
+
+          Some(q"""{
+            implicit def ${ln}: ${appliedType(writerType, lt)} =
+              ${bsonPkg}.BSONWriter.from[${lt}] { ${la} => $lw }
+
+            implicitly[${appliedType(writerType, wtpe)}]
+          }""")
+        }
+      }
+
       val (optional, required) =
         lazyZip(constructorParams.zipWithIndex, types).collect {
           case ((sym, i), o @ OptionTypeParameter(st)) if !ignoreField(sym) => {
@@ -866,11 +985,12 @@ private[api] class MacroImpl(val c: Context) {
         }.map {
           case (sym, i, sig) =>
             val writerAnnTpe = appliedType(writerAnnotationTpe, List(sig))
+            val pname = paramName(sym)
 
             val writerAnns = sym.annotations.flatMap {
               case ann if ann.tree.tpe <:< writerAnnotationTpe => {
                 if (!(ann.tree.tpe <:< writerAnnTpe)) {
-                  abort(s"Invalid annotation @Writer(${show(ann.tree)}) for '${tpe}.${paramName(sym)}': Writer[${sig}]")
+                  abort(s"Invalid annotation @Writer(${show(ann.tree)}) for '${tpe}.${pname}': Writer[${sig}]")
                 }
 
                 ann.tree.children.tail
@@ -893,43 +1013,24 @@ private[api] class MacroImpl(val c: Context) {
                 None
             }
 
-            WritableProperty(sym, i, sig, writerFromAnn)
-        }.partition(t => isOptionalType(t._3))
-
-      def resolveWriter(pname: String, wtpe: Type): Tree = {
-        val (writer, _) = resolve(wtpe)
-
-        if (writer.nonEmpty) {
-          writer
-        } else if (hasOption[MacroOptions.AutomaticMaterialization]) {
-          val lt = leafType(wtpe)
-
-          warn(s"Materializing ${classOf[BSONWriter[_]].getName}[${lt}] for '${tpe}.$pname': it's recommended to declare it explicitly")
-
-          val subHelper = createSubHelper(lt)
-
-          val nme = TermName(c.freshName("leafVal"))
-          val lw: Tree = {
-            if (lt <:< anyValTpe) {
-              subHelper.valueWriterTree(id = Ident(nme))
-            } else {
-              subHelper.writerTree(valNme = nme, top = false)
+            val writer: Option[Tree] = writerFromAnn.orElse {
+              resolveWriter(pname, sig)
             }
-          }
 
-          val ln = TermName(c.freshName("leafWriter"))
-          val la = q"val ${nme}: ${lt}"
+            writer match {
+              case Some(wrt) =>
+                RequiredWritableProperty(sym, i, sig, wrt)
 
-          q"""{
-            implicit def ${ln}: ${appliedType(writerType, lt)} =
-              ${bsonPkg}.BSONWriter.from[${lt}] { ${la} => $lw }
+              case _ if !isOptionalType(sig) =>
+                abort(s"Implicit not found for '${tpe}.$pname': ${classOf[BSONWriter[_]].getName}[${sig.typeSymbol.fullName}]")
 
-            implicitly[${appliedType(writerType, wtpe)}]
-          }"""
-        } else {
-          abort(s"Implicit not found for '${tpe}.$pname': ${classOf[BSONWriter[_]].getName}[$wtpe]")
+              case _ =>
+                OptionalWritableProperty(sym, i, sig)
+            }
+        }.partition {
+          case _: OptionalWritableProperty => true
+          case _                           => false
         }
-      }
 
       val tupleElement: Int => Tree = {
         val tuple = Ident(tupleName)
@@ -962,9 +1063,13 @@ private[api] class MacroImpl(val c: Context) {
       val errName = TermName(c.freshName("cause"))
 
       val values = required.map {
-        case WritableProperty(param, i, sig, writerFromAnn) =>
+        case OptionalWritableProperty(param, _, _) =>
+          abort(s"Unexpected optional field '${tpe}.${paramName(param)}'")
+
+        case p: RequiredWritableProperty => p
+      }.map {
+        case RequiredWritableProperty(param, i, sig, writer) =>
           val pname = paramName(param)
-          val writer = writerFromAnn getOrElse resolveWriter(pname, sig)
 
           val writeCall =
             q"$writer.writeTry(${tupleElement(i)}): ${utilPkg}.Try[${bsonPkg}.BSONValue]"
@@ -991,12 +1096,16 @@ private[api] class MacroImpl(val c: Context) {
           }"""
       }
 
-      val extra = optional.collect {
-        case WritableProperty(
+      val extra = optional.map {
+        case RequiredWritableProperty(param, _, _, _) =>
+          abort(s"Unexpected non-optional field '${tpe}.${paramName(param)}'")
+
+        case p: OptionalWritableProperty => p
+      }.map {
+        case OptionalWritableProperty(
               param,
               i,
-              optType @ OptionTypeParameter(sig),
-              writerFromAnn
+              OptionTypeParameter(sig)
             ) =>
           val pname = paramName(param)
           val field = q"$macroCfg.fieldNaming($pname)"
@@ -1015,40 +1124,34 @@ private[api] class MacroImpl(val c: Context) {
               ()
           }"""
 
-          writerFromAnn match {
-            case Some(explicitWriter) =>
-              q"""{
-                val ${vt} = ${tupleElement(i)}
-                ${writeCall(explicitWriter)}
-              }"""
+          def empty =
+            q"${bufOk} += ${bsonPkg}.BSONElement($field, ${bsonPkg}.BSONNull)"
 
-            case _ => {
-              def empty =
-                q"${bufOk} += ${bsonPkg}.BSONElement($field, ${bsonPkg}.BSONNull)"
+          val vp = ValDef(
+            Modifiers(Flag.PARAM),
+            vt,
+            TypeTree(sig),
+            EmptyTree
+          ) // ${vt} =>
 
-              val vp = ValDef(
-                Modifiers(Flag.PARAM),
-                vt,
-                TypeTree(sig),
-                EmptyTree
-              ) // ${vt} =>
+          def implicitWriter = resolveWriter(pname, sig) match {
+            case Some(wrt) =>
+              wrt
 
-              def implicitWriter = resolve(optType) match {
-                case (w, _) if w.nonEmpty =>
-                  w // a writer explicitly defined for a Option[x]
-
-                case _ => resolveWriter(pname, sig)
-              }
-
-              val call = writeCall(implicitWriter)
-
-              if (param.annotations.exists(_.tree.tpe =:= typeOf[NoneAsNull])) {
-                q"${tupleElement(i)}.fold({ ${empty}; () }) { ${vp} => $call }"
-              } else {
-                q"${tupleElement(i)}.foreach { ${vp} => $call }"
-              }
-            }
+            case _ =>
+              abort(s"Implicit not found for '${tpe}.$pname': ${classOf[BSONWriter[_]].getName}[Option[${sig.typeSymbol.fullName}]]")
           }
+
+          val call = writeCall(implicitWriter)
+
+          if (param.annotations.exists(_.tree.tpe =:= typeOf[NoneAsNull])) {
+            q"${tupleElement(i)}.fold({ ${empty}; () }) { ${vp} => $call }"
+          } else {
+            q"${tupleElement(i)}.foreach { ${vp} => $call }"
+          }
+
+        case OptionalWritableProperty(param, _, _) =>
+          abort(s"Invalid optional field '${tpe}.${paramName(param)}'")
       }
 
       // List[Tree] corresponding to fields appended to the buffer/builder

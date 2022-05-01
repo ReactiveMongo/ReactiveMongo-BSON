@@ -1038,23 +1038,27 @@ private[api] object MacroImpl:
           )
       }
 
-    private type ReadableProperty =
-      Tuple5[Symbol, Int, TypeRepr, /*default:*/ Option[
-        Expr[_]
-      ], /*reader:*/ Option[Expr[BSONReader[_]]]]
-
-    private object ReadableProperty {
-
-      def apply(
-          symbol: Symbol,
-          index: Int,
-          tpr: TypeRepr,
-          default: Option[Expr[_]],
-          reader: Option[Expr[BSONReader[_]]]
-        ): ReadableProperty = Tuple5(symbol, index, tpr, default, reader)
-
-      def unapply(p: ReadableProperty) = Some(p)
+    private sealed trait ReadableProperty {
+      def symbol: Symbol
+      def index: Int
+      def tpr: TypeRepr
+      def default: Option[Expr[_]]
     }
+
+    private case class RequiredReadableProperty(
+        symbol: Symbol,
+        index: Int,
+        tpr: TypeRepr,
+        default: Option[Expr[_]],
+        reader: Expr[BSONReader[_]])
+        extends ReadableProperty
+
+    private case class OptionalReadableProperty(
+        symbol: Symbol,
+        index: Int,
+        tpr: TypeRepr,
+        default: Option[Expr[_]])
+        extends ReadableProperty
 
     /**
      * @param macroVal the value to be read
@@ -1094,7 +1098,7 @@ private[api] object MacroImpl:
           val pt = rpt.dealias
 
           pt.asType match {
-            case '[t] =>
+            case pTpe @ '[t] =>
               val readerAnnTpe = readerAnnotationRepr.appliedTo(pt)
 
               val readerAnns = sym.annotations.flatMap {
@@ -1172,12 +1176,42 @@ private[api] object MacroImpl:
                     }
                   }
 
-              ReadableProperty(sym, i, pt, default, readerFromAnn)
+              val reader: Option[Expr[BSONReader[t]]] =
+                readerFromAnn.orElse {
+                  resolveReader[T, t](
+                    tpr,
+                    forwardExpr,
+                    sym.name,
+                    pt,
+                    resolve
+                  )(
+                    using pTpe
+                  )
+                }
+
+              reader match {
+                case Some(rdr) =>
+                  RequiredReadableProperty(sym, i, pt, default, rdr)
+
+                case _ if ignoreField(sym) =>
+                  RequiredReadableProperty(
+                    sym,
+                    i,
+                    pt,
+                    default,
+                    '{ scala.Predef.`???` }.asExprOf[BSONReader[t]]
+                  )
+
+                case _ if !isOptionalType(pt) =>
+                  report.errorAndAbort(s"No implicit found for '${prettyType(tpr)}.${sym.name}': ${classOf[BSONReader[_]].getName}[${prettyType(pt)}]")
+
+                case _ =>
+                  OptionalReadableProperty(sym, i, pt, default)
+              }
           }
       }.toSeq.partition {
-        case ReadableProperty(_, _, t, _, readerFromAnn) =>
-          readerFromAnn.isEmpty && isOptionalType(t)
-
+        case _: OptionalReadableProperty => true
+        case _                           => false
       }
 
       type ExceptionAcc = MBuilder[HandlerException, Seq[HandlerException]]
@@ -1214,22 +1248,29 @@ private[api] object MacroImpl:
         }
 
       val reqElmts: Seq[(Int, Expr[TryResult[_]])] = required.map {
-        case ReadableProperty(param, n, pt, Some(default), _)
+        case OptionalReadableProperty(param, _, pt, _) =>
+          report.errorAndAbort(
+            s"Unexpected optional field '${prettyType(tpr)}.${param.name}': ${prettyType(pt)}"
+          )
+
+        case p: RequiredReadableProperty => p
+      }.map {
+        case RequiredReadableProperty(param, n, pt, Some(default), _)
             if (ignoreField(param)) =>
           pt.asType match {
             case '[p] => n -> '{ TrySuccess(${ default.asExprOf[p] }) }
           }
 
-        case ReadableProperty(param, _, _, None, _) if (ignoreField(param)) =>
+        case RequiredReadableProperty(param, _, _, None, _)
+            if (ignoreField(param)) =>
           report.errorAndAbort(s"Cannot ignore '${prettyType(tpr)}.${param.name}': no default value (see @DefaultValue)")
 
-        case ReadableProperty(param, n, pt, default, readerFromAnn) => {
+        case RequiredReadableProperty(param, n, pt, default, rdr) => {
           pt.asType match {
             case ptpe @ '[p] =>
               val pname = param.name
-              val reader: Expr[BSONReader[p]] = readerFromAnn.fold(
-                resolveReader[T, p](tpr, forwardExpr, pname, pt, resolve)
-              )(_.asExprOf[BSONReader[p]])
+              val reader: Expr[BSONReader[p]] =
+                rdr.asExprOf[BSONReader[p]]
 
               val get: Expr[TryResult[p]] = {
                 if (mustFlatten(tpr, param, pt, reader)) {
@@ -1240,8 +1281,15 @@ private[api] object MacroImpl:
                   }
                 } else {
                   val field = fieldName(macroCfg, fieldKey(param))
-                  val getAsTry = '{
-                    ${ macroVal }.getAsTry[p]($field)($reader)
+
+                  val getAsTry = if (isOptionalType(pt)) {
+                    '{
+                      ${ macroVal }.getRawAsTry[p]($field)($reader)
+                    }
+                  } else {
+                    '{
+                      ${ macroVal }.getAsTry[p]($field)($reader)
+                    }
                   }
 
                   default.fold(getAsTry) { dv =>
@@ -1265,67 +1313,49 @@ private[api] object MacroImpl:
       }
 
       val exElmts: Seq[(Int, Expr[TryResult[_]])] = optional.map {
-        case p @ ReadableProperty(_, _, OptionTypeParameter(it), _, _) =>
-          p.copy(_3 = it)
+        case p @ OptionalReadableProperty(_, _, OptionTypeParameter(it), _) =>
+          p.copy(tpr = it)
 
-        case ReadableProperty(param, _, pt, _, _) =>
+        case OptionalReadableProperty(param, _, pt, _) =>
           report.errorAndAbort(
-            s"Invalid optional field '${param.name}': ${prettyType(pt)}"
+            s"Invalid optional field '${prettyType(tpr)}.${param.name}': ${prettyType(pt)}"
+          )
+
+        case RequiredReadableProperty(param, _, pt, _, _) =>
+          report.errorAndAbort(
+            s"Unexpected non-optional field '${prettyType(tpr)}.${param.name}': ${prettyType(pt)}"
           )
 
       }.map {
-        case ReadableProperty(param, n, pt, Some(default), _)
+        case OptionalReadableProperty(param, n, pt, Some(default))
             if (ignoreField(param)) =>
           pt.asType match {
             case '[p] => n -> '{ TrySuccess(${ default.asExprOf[p] }) }
           }
 
-        case ReadableProperty(param, _, _, None, _) if (ignoreField(param)) =>
+        case OptionalReadableProperty(param, _, _, None)
+            if (ignoreField(param)) =>
           report.errorAndAbort(s"Cannot ignore '${prettyType(tpr)}.${param.name}': not default value (see @DefaultValue)")
 
-        case ReadableProperty(
+        case OptionalReadableProperty(
               param,
               n,
               it,
-              default,
-              Some(readerFromAnn)
-            ) => {
-          it.asType match {
-            case '[i] =>
-              type p = Option[i]
-              val pt = TypeRepr.of[p]
-
-              val pname = param.name
-              val field = fieldName(macroCfg, fieldKey(param))
-              val reader = readerFromAnn.asExprOf[BSONReader[p]]
-
-              val readTry: Expr[TryResult[p]] = {
-                if (mustFlatten(tpr, param, pt, reader)) {
-                  '{ ${ reader }.readTry(${ macroVal }) }
-                } else {
-                  '{ ${ macroVal }.getAsTry[p]($field)($reader) }
-                }
-              }
-
-              n -> default.fold(readTry) { dv =>
-                tryWithOptDefault[i](readTry, dv.asExprOf[p])
-              }
-          }
-        }
-
-        case ReadableProperty(
-              param,
-              n,
-              it,
-              default,
-              None
+              default
             ) => {
           val pname = param.name
 
           it.asType match {
-            case '[i] =>
+            case iTpe @ '[i] =>
               val reader: Expr[BSONReader[i]] =
-                resolveReader(tpr, forwardExpr, pname, it, resolve)
+                resolveReader(tpr, forwardExpr, pname, it, resolve)(
+                  using iTpe
+                ) match {
+                  case Some(r) => r
+
+                  case _ =>
+                    report.errorAndAbort(s"No implicit found for '${prettyType(tpr)}.${param.name}': ${classOf[BSONReader[_]].getName}[${prettyType(it)}]")
+                }
 
               type p = Option[i]
 
@@ -1403,14 +1433,14 @@ private[api] object MacroImpl:
         resolve: TypeRepr => Option[Implicit]
       )(using
         tpe: Type[T]
-      ): Expr[BSONReader[T]] = {
+      ): Option[Expr[BSONReader[T]]] = {
       resolve(tpr) match {
         case Some((reader, _)) =>
-          reader.asExprOf[BSONReader[T]]
+          Some(reader.asExprOf[BSONReader[T]])
 
         case None => {
           if (!hasOption[MacroOptions.AutomaticMaterialization]) {
-            report.errorAndAbort(s"No implicit found for '${prettyType(aTpeRepr)}.$pname': ${classOf[BSONReader[_]].getName}[${prettyType(tpr)}]")
+            None
           } else {
             val lt = leafType(tpr)
 
@@ -1436,12 +1466,12 @@ private[api] object MacroImpl:
                   subReader.readTry(_: BSONValue)
                 }
 
-                '{
+                Some('{
                   given leafReader: BSONReader[at] =
                     BSONReader.from[at](${ tryRead })
 
                   scala.compiletime.summonInline[BSONReader[T]]
-                }
+                })
               }
 
               case tt @ '[at] => {
@@ -1469,12 +1499,12 @@ private[api] object MacroImpl:
                   subReader.readTry(_: BSONDocument)
                 }
 
-                '{
+                Some('{
                   given leafReader: BSONDocumentReader[at] =
                     BSONDocumentReader.from[at](${ tryRead })
 
                   scala.compiletime.summonInline[BSONReader[T]]
-                }
+                })
               }
             }
           }
@@ -1870,21 +1900,24 @@ private[api] object MacroImpl:
     private def singletonWriter[T: Type]: Expr[TrySuccess[BSONDocument]] =
       '{ TrySuccess(BSONDocument.empty) }
 
-    private type WritableProperty =
-      Tuple4[Symbol, Int, TypeRepr, Option[Expr[BSONWriter[_]]]]
-
-    private object WritableProperty {
-
-      def apply(
-          symbol: Symbol,
-          index: Int,
-          tpr: TypeRepr,
-          writerFromAnnotation: Option[Expr[BSONWriter[_]]]
-        ) =
-        Tuple4(symbol, index, tpr, writerFromAnnotation)
-
-      def unapply(property: WritableProperty) = Some(property)
+    private sealed trait WritableProperty {
+      def symbol: Symbol
+      def index: Int
+      def tpr: TypeRepr
     }
+
+    private case class RequiredWritableProperty(
+        symbol: Symbol,
+        index: Int,
+        tpr: TypeRepr,
+        writer: Expr[BSONWriter[_]])
+        extends WritableProperty
+
+    private case class OptionalWritableProperty(
+        symbol: Symbol,
+        index: Int,
+        tpr: TypeRepr)
+        extends WritableProperty
 
     private lazy val writerCompanion =
       '{ reactivemongo.api.bson.BSONWriter }.asTerm
@@ -1947,7 +1980,7 @@ private[api] object MacroImpl:
             val pt = rpt.dealias
 
             pt.asType match {
-              case '[t] =>
+              case pTpe @ '[t] =>
                 val writerAnnTpe = writerAnnotationRepr.appliedTo(pt)
 
                 val writerAnns = sym.annotations.flatMap {
@@ -1962,7 +1995,7 @@ private[api] object MacroImpl:
                     }
                   }
 
-                  case a =>
+                  case _ =>
                     Seq.empty[Expr[BSONWriter[t]]]
                 }
 
@@ -1980,11 +2013,33 @@ private[api] object MacroImpl:
                       None
                   }
 
-                WritableProperty(sym, i, pt, writerFromAnn)
+                val writer: Option[Expr[BSONWriter[t]]] =
+                  writerFromAnn.orElse {
+                    resolveWriter[t, T](
+                      tpr,
+                      forwardExpr,
+                      sym.name,
+                      pt,
+                      resolve
+                    )(
+                      using pTpe
+                    )
+                  }
+
+                writer match {
+                  case Some(wrt) =>
+                    RequiredWritableProperty(sym, i, pt, wrt)
+
+                  case _ if !isOptionalType(pt) =>
+                    report.errorAndAbort(s"No implicit found for '${prettyType(tpr)}.${sym.name}': ${classOf[BSONWriter[_]].getName}[${prettyType(pt)}]")
+
+                  case _ =>
+                    OptionalWritableProperty(sym, i, pt)
+                }
             }
         }.toSeq.partition {
-          case WritableProperty(_, _, t, writerFromAnn) =>
-            writerFromAnn.isEmpty && isOptionalType(t)
+          case _: OptionalWritableProperty => true
+          case _                           => false
         }
 
         type ElementAcc = MBuilder[BSONElement, Seq[BSONElement]]
@@ -2093,7 +2148,14 @@ private[api] object MacroImpl:
             }
 
             val values: Seq[Expr[Unit]] = required.map {
-              case WritableProperty(param, i, pt, writerFromAnn) =>
+              case OptionalWritableProperty(param, _, pt) =>
+                report.errorAndAbort(
+                  s"Unexpected optional field '${prettyType(tpr)}.${param.name}': ${prettyType(pt)}"
+                )
+
+              case p: RequiredWritableProperty => p
+            }.map {
+              case RequiredWritableProperty(param, i, pt, wrt) =>
                 val pname = param.name
 
                 val withField = fieldMap.get(pname) match {
@@ -2105,17 +2167,14 @@ private[api] object MacroImpl:
                     )
                 }
 
-                val field = fieldName(config, fieldKey(param))
-
                 pt.asType match {
                   case pTpe @ '[p] =>
-                    val writer: Expr[BSONWriter[p]] = writerFromAnn.fold(
-                      resolveWriter[p, T](tpr, forwardExpr, pname, pt, resolve)(
-                        using pTpe
-                      )
-                    )(_.asExprOf[BSONWriter[p]])
+                    val writer: Expr[BSONWriter[p]] =
+                      wrt.asExprOf[BSONWriter[p]]
 
                     (withField { f =>
+                      val field = fieldName(config, fieldKey(param))
+
                       writeCall[p](
                         field,
                         param,
@@ -2127,12 +2186,19 @@ private[api] object MacroImpl:
                 }
             } // end of required.map
 
-            val extra: Seq[Expr[Unit]] = optional.collect {
-              case WritableProperty(
+            val extra: Seq[Expr[Unit]] = optional.map {
+              case RequiredWritableProperty(param, _, pt, _) =>
+                report.errorAndAbort(
+                  s"Unexpected non-optional field '${prettyType(tpr)}.${param.name}': ${prettyType(pt)}"
+                )
+
+              case p: OptionalWritableProperty =>
+                p
+            }.map {
+              case OptionalWritableProperty(
                     param,
                     i,
-                    optType @ OptionTypeParameter(pt),
-                    None
+                    optType @ OptionTypeParameter(pt)
                   ) =>
                 val pname = param.name
 
@@ -2150,7 +2216,11 @@ private[api] object MacroImpl:
                     val writer: Expr[BSONWriter[p]] =
                       resolveWriter[p, T](tpr, forwardExpr, pname, pt, resolve)(
                         using pTpe
-                      )
+                      ) match {
+                        case Some(w) => w
+                        case None =>
+                          report.errorAndAbort(s"No implicit found for '${prettyType(tpr)}.$pname': ${classOf[BSONWriter[_]].getName}[${prettyType(pt)}]")
+                      }
 
                     val field = fieldName(config, fieldKey(param))
 
@@ -2251,14 +2321,14 @@ private[api] object MacroImpl:
         resolve: TypeRepr => Option[Implicit]
       )(using
         tpe: Type[T]
-      ): Expr[BSONWriter[T]] = {
+      ): Option[Expr[BSONWriter[T]]] = {
       resolve(tpr) match {
         case Some((writer, _)) =>
-          writer.asExprOf[BSONWriter[T]]
+          Some(writer.asExprOf[BSONWriter[T]])
 
         case None => {
           if (!hasOption[MacroOptions.AutomaticMaterialization]) {
-            report.errorAndAbort(s"No implicit found for '${prettyType(aTpeRepr)}.$pname': ${classOf[BSONWriter[_]].getName}[${prettyType(tpr)}]")
+            None
           } else {
             val lt = leafType(tpr)
 
@@ -2284,12 +2354,12 @@ private[api] object MacroImpl:
                   subWriter.writeTry(_: at)
                 }
 
-                '{
+                Some('{
                   given leafWriter: BSONWriter[at] =
                     BSONWriter.from[at](${ tryWrite })
 
                   scala.compiletime.summonInline[BSONWriter[T]]
-                }
+                })
               }
 
               case tt @ '[at] => {
@@ -2313,12 +2383,12 @@ private[api] object MacroImpl:
                   subWriter.writeTry(_: at)
                 }
 
-                '{
+                Some('{
                   given leafWriter: BSONWriter[at] =
                     BSONWriter.from[at](${ tryWrite })
 
                   scala.compiletime.summonInline[BSONWriter[T]]
-                }
+                })
               }
             }
           }

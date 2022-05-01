@@ -91,12 +91,61 @@ final class MacroSpec
       roundtrip(doc, Macros.handler[Pet])
     }
 
-    "support option" in {
-      val format = Macros.handler[Optional]
+    "support optional" >> {
       val some = Optional("some", Some("value"))
       val none = Optional("none", None)
 
-      roundtrip(some, format) and roundtrip(none, format)
+      "using default instances" in {
+        val format = Macros.handler[Optional]
+
+        roundtrip(some, format) and roundtrip(none, format)
+      }
+
+      "using custom instances" in {
+        implicit def optStrW: BSONWriter[Option[String]] =
+          BSONWriter[Option[String]] {
+            case Some(str) =>
+              BSONDocument(f"$$str" -> str)
+
+            case _ =>
+              BSONNull
+          }
+
+        implicit def optStrR: BSONReader[Option[String]] =
+          BSONReader.from[Option[String]] {
+            case doc: BSONDocument =>
+              doc.getAsUnflattenedTry[String](f"$$str")
+
+            case _ =>
+              Success(None)
+          }
+
+        val w: BSONDocumentWriter[Optional] = Macros.writer
+        val r: BSONDocumentReader[Optional] = Macros.reader
+        val h: BSONDocumentHandler[Optional] = Macros.handler
+
+        val someBson = BSONDocument(
+          "name" -> "some",
+          "value" -> BSONDocument(f"$$str" -> "value")
+        )
+        val noneBson = BSONDocument("name" -> "none", "value" -> BSONNull)
+
+        w.writeTry(some) must beSuccessfulTry(someBson) and {
+          h.writeTry(some) must beSuccessfulTry(someBson)
+        } and {
+          r.readTry(someBson) must beSuccessfulTry(some)
+        } and {
+          h.readTry(someBson) must beSuccessfulTry(some)
+        } and {
+          w.writeTry(none) must beSuccessfulTry(noneBson)
+        } and {
+          h.writeTry(none) must beSuccessfulTry(noneBson)
+        } and {
+          r.readTry(noneBson) must beSuccessfulTry(none)
+        } and {
+          h.readTry(noneBson) must beSuccessfulTry(none)
+        }
+      }
     }
 
     "not support type mismatch for optional value" in {

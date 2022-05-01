@@ -50,6 +50,12 @@ final class HandlerSpec
       ) and {
         doc.getAsTry[String]("name") must beSuccessfulTry("James")
       } and {
+        doc.getRawAsTry[BSONString]("name") must beSuccessfulTry(
+          BSONString("James")
+        )
+      } and {
+        doc.getRawAsTry[String]("name") must beSuccessfulTry("James")
+      } and {
         doc.getAsTry[BSONInteger]("name") must beFailedTry
       } and {
         doc.getAsOpt[BSONInteger]("name") must beNone
@@ -75,6 +81,20 @@ final class HandlerSpec
         doc.get("name").get.asTry[Int] must beFailedTry
       } and {
         doc.get("name").get.asOpt[String] must beSome("James")
+      } and {
+        implicit def r: BSONReader[Option[String]] =
+          BSONReader[Option[String]] {
+            case BSONString(str) => Some(str)
+            case _               => None
+          }
+
+        doc.getRawAsTry[Option[String]]("missing") must beSuccessfulTry(
+          Option.empty[String]
+        ) and {
+          doc.getRawAsTry[Option[String]]("name") must beSuccessfulTry(
+            Some("James")
+          )
+        }
       }
     }
 
@@ -1239,7 +1259,8 @@ final class HandlerSpec
         ),
         "adress" -> BSONString("coucou")
       ),
-      "lastSeen" -> BSONLong(1360512704747L)
+      "lastSeen" -> BSONLong(1360512704747L),
+      "missing" -> BSONNull
     )
 
     bson
