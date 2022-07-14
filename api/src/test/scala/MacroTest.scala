@@ -326,4 +326,27 @@ object MacroTest extends MacroTestCompat {
       list: Seq[Int])
 
   case class Item(name: String, number: FooVal)
+
+  // ---
+
+  case class PrefKind(name: String) {
+    type ValueType
+  }
+
+  object PrefKind {
+    type Aux[V] = PrefKind { type ValueType = V }
+
+    def of[V](name: String): PrefKind.Aux[V] =
+      PrefKind(name).asInstanceOf[PrefKind.Aux[V]]
+
+    private val underlying: BSONHandler[PrefKind] = Macros.handler
+
+    implicit def writer[V]: BSONWriter[PrefKind.Aux[V]] =
+      BSONWriter.from[PrefKind.Aux[V]](underlying.writeTry)
+
+    implicit def reader[V]: BSONReader[PrefKind.Aux[V]] =
+      underlying.afterRead(_.asInstanceOf[PrefKind.Aux[V]])
+  }
+
+  case class Preference[V](key: String, kind: PrefKind.Aux[V], value: V)
 }

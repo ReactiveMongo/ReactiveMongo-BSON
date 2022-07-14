@@ -547,8 +547,10 @@ private[api] class MacroImpl(val c: Context) {
                   }
               }
 
+              val dealiased: Type = dealias(sig)
+
               val reader: Option[Tree] = readerFromAnn.orElse {
-                resolveReader(pname, sig.dealias)
+                resolveReader(pname, dealiased)
               }
 
               reader match {
@@ -557,7 +559,7 @@ private[api] class MacroImpl(val c: Context) {
                     symbol = param,
                     name = pname,
                     term = TermName(c.freshName(pname)),
-                    tpe = sig.dealias,
+                    tpe = dealiased,
                     default = default,
                     reader = rdr
                   )
@@ -567,12 +569,12 @@ private[api] class MacroImpl(val c: Context) {
                     symbol = param,
                     name = pname,
                     term = TermName(c.freshName(pname)),
-                    tpe = sig.dealias,
+                    tpe = dealiased,
                     default = default,
                     reader = q"???"
                   )
 
-                case _ if !isOptionalType(sig.dealias) =>
+                case _ if !isOptionalType(dealiased) =>
                   abort(s"No implicit found for '${tpe}.${pname}': ${classOf[BSONWriter[_]].getName}[${sig}]")
 
                 case _ =>
@@ -580,7 +582,7 @@ private[api] class MacroImpl(val c: Context) {
                     symbol = param,
                     name = pname,
                     term = TermName(c.freshName(pname)),
-                    tpe = sig.dealias,
+                    tpe = dealiased,
                     default = default
                   )
               }
@@ -976,11 +978,11 @@ private[api] class MacroImpl(val c: Context) {
               o.substituteTypes(List(st.typeSymbol), List(t))
             }
 
-            Tuple3(sym, i, sig.dealias)
+            Tuple3(sym, i, dealias(sig))
           }
 
           case ((sym, i), sig) if !ignoreField(sym) =>
-            Tuple3(sym, i, sig.dealias)
+            Tuple3(sym, i, dealias(sig))
 
         }.map {
           case (sym, i, sig) =>
@@ -1483,7 +1485,9 @@ private[api] class MacroImpl(val c: Context) {
             false
           }
 
-        case Some((a, b)) if (a.baseClasses != b.baseClasses) => {
+        case Some((a, b))
+            if (a.baseClasses
+              .map(_.fullName) != b.baseClasses.map(_.fullName)) => {
           warn(s"Generic types are not compatible: $a != $b")
 
           false
@@ -1743,6 +1747,10 @@ private[api] class MacroImpl(val c: Context) {
 
         case t => t.typeSymbol.fullName
       }
+
+    @inline def dealias(t: Type): Type =
+      if (t.typeSymbol.name.toString == "<refinement>") t
+      else t.dealias
 
     protected def resolver(
         boundTypes: Map[String, Type],

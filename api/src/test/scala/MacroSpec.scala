@@ -347,12 +347,24 @@ final class MacroSpec
       roundtrip(doc2, f)
     }
 
-    "case class and handler inside trait" in {
+    "handle case class and handler inside trait" in {
       val t = new NestModule {}
       roundtrip(t.Nested("it works"), t.format)
     }
 
-    "case class inside trait with handler outside" in {
+    "handle case class with refinement type as field" in {
+      val pref = Preference[String](
+        key = "_id",
+        kind = PrefKind.of[String]("ID"),
+        value = "unique"
+      )
+
+      val h = Macros.handler[Preference[String]]
+
+      roundtrip(pref, h)
+    }
+
+    "handle case class inside trait with handler outside" in {
       val t = new NestModule {}
       import t._ // you need Nested in scope because t.Nested won't work
       val format = Macros.handler[Nested]
@@ -1023,6 +1035,24 @@ final class MacroSpec
       }
     }
 
+    "be generated for case class with refinement type as field" in {
+      val pref = Preference(
+        key = "expires",
+        kind = PrefKind.of[Int]("Expiry"),
+        value = 123
+      )
+
+      val reader = Macros.handler[Preference[Int]]
+
+      reader.readTry(
+        BSONDocument(
+          "key" -> "expires",
+          "kind" -> BSONDocument("name" -> "Expiry"),
+          "value" -> 123
+        )
+      ) must beSuccessfulTry(pref)
+    }
+
     "be generated with @Flatten annotation" in {
       typecheck("Macros.reader[InvalidRecursive]") must failWith(
         "Cannot\\ flatten\\ reader\\ for\\ 'MacroTest\\.InvalidRecursive\\.parent':\\ recursive\\ type"
@@ -1282,6 +1312,24 @@ final class MacroSpec
           BSONDocument("name" -> "bar2", "next" -> doc1)
         )
       }
+    }
+
+    "be generated for case class with refinement type as field" in {
+      val pref = Preference(
+        key = "expires",
+        kind = PrefKind.of[Int]("Expiry"),
+        value = 123
+      )
+
+      val writer = Macros.writer[Preference[Int]]
+
+      writer.writeTry(pref) must beSuccessfulTry(
+        BSONDocument(
+          "key" -> "expires",
+          "kind" -> BSONDocument("name" -> "Expiry"),
+          "value" -> 123
+        )
+      )
     }
 
     "be generated with @Flatten annotation" in {
