@@ -45,11 +45,8 @@ object Common extends AutoPlugin {
         opts ++ Seq("-skip-packages", "highlightextractor", "-implicits")
       }
     },
-    resolvers ++= Seq(
-      Resolver.sonatypeRepo("staging"),
-      Resolver.sonatypeRepo("snapshots"),
-      Resolver.typesafeRepo("releases")
-    ),
+    resolvers ++= Resolver.sonatypeOssRepos("staging", "snapshots"),
+    resolvers += Resolver.typesafeRepo("releases"),
     mimaFailOnNoPrevious := false,
     mimaPreviousArtifacts := {
       if (scalaBinaryVersion.value startsWith "2.") {

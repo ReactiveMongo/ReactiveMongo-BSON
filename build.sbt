@@ -8,11 +8,6 @@ val baseArtifact = "reactivemongo-bson"
 
 name := "reactivemongo-biːsən"
 
-ThisBuild / resolvers ++= Seq(
-  Resolver.sonatypeRepo("snapshots"),
-  "Typesafe repository releases" at "https://repo.typesafe.com/typesafe/releases/"
-)
-
 val commonSettings = Seq(
   Compile / unmanagedSourceDirectories += {
     val base = (Compile / sourceDirectory).value

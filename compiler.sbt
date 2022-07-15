@@ -4,7 +4,7 @@ ThisBuild / crossScalaVersions := Seq(
   "2.11.12",
   scalaVersion.value,
   "2.13.8",
-  "3.1.3-RC5"
+  "3.1.3"
 )
 
 crossVersion := CrossVersion.binary
