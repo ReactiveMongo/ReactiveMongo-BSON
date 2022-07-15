@@ -45,7 +45,8 @@ object Common extends AutoPlugin {
         opts ++ Seq("-skip-packages", "highlightextractor", "-implicits")
       }
     },
-    resolvers ++= Resolver.sonatypeOssRepos("staging", "snapshots"),
+    resolvers ++= Resolver.sonatypeOssRepos("staging"),
+    resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
     resolvers += Resolver.typesafeRepo("releases"),
     mimaFailOnNoPrevious := false,
     mimaPreviousArtifacts := {
