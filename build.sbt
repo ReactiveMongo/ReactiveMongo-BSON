@@ -54,13 +54,6 @@ val spireLaws = Def.setting[ModuleID] {
 
 ThisBuild / libraryDependencies ++= specsDeps.value.map(_ % Test)
 
-lazy val apiFilter: Seq[(File, String)] => Seq[(File, String)] = {
-  (_: Seq[(File, String)]).filter {
-    case (file, name) =>
-      name.indexOf("com/github/ghik/silencer") == -1
-  }
-}
-
 lazy val api = (project in file("api"))
   .enablePlugins(VelocityPlugin)
   .settings(
@@ -103,8 +96,18 @@ lazy val api = (project in file("api"))
           fmt("reactivemongo.api.bson.BSONIdentityLowPriorityHandlers#BSONValueIdentity.readTry")
         )
       },
-      Compile / packageBin / mappings ~= apiFilter,
-      Compile / packageSrc / mappings ~= apiFilter
+      // Mock silencer for Scala3
+      Test / doc / scalacOptions ++= List("-skip-packages", "com.github.ghik"),
+      Compile / packageBin / mappings ~= {
+        _.filter {
+          case (_, path) => !path.startsWith("com/github/ghik")
+        }
+      },
+      Compile / packageSrc / mappings ~= {
+        _.filter {
+          case (_, path) => path != "silent.scala"
+        }
+      }
     )
   )
 
