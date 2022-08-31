@@ -74,7 +74,9 @@ lazy val api = (project in file("api"))
         "org.typelevel" %% "discipline-specs2" % "1.1.3",
         spireLaws.value
       ).map(_.cross(CrossVersion.for3Use2_13) % Test),
-      libraryDependencies ++= Seq("org.slf4j" % "slf4j-simple" % "2.0.0"),
+      libraryDependencies ++= Seq(
+        slf4jSimple % Test,
+        "org.slf4j" % "slf4j-api" % "2.0.0"),
       libraryDependencies ++= {
         if (scalaBinaryVersion.value startsWith "2.") {
           Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
@@ -130,7 +132,7 @@ lazy val monocle = (project in file("monocle"))
           if (ver == "2.11") "1.6.0-M1"
           else "2.1.0"
         }).cross(CrossVersion.for3Use2_13),
-        slf4jApi % Test
+        slf4jSimple % Test
       )
     )
   )
@@ -142,7 +144,7 @@ lazy val geo = (project in file("geo"))
       name := s"${baseArtifact}-geo",
       description := "GeoJSON support for the BSON API",
       Test / fork := true,
-      libraryDependencies += slf4jApi % Test
+      libraryDependencies += slf4jSimple % Test
     )
   )
   .dependsOn(api, monocle % Test)
