@@ -611,6 +611,152 @@ final class HandlerSpec
     }
   }
 
+  "Byte" should {
+    val handler = implicitly[BSONHandler[Byte]]
+    val expected = 123.toByte
+
+    "be read from BSONDecimal" >> {
+      "successfully if whole < Byte.MaxValue" in {
+        BSONDecimal
+          .fromLong(123L)
+          .flatMap(handler.readTry) must beSuccessfulTry(expected)
+      }
+
+      "with error if not whole" in {
+        BSONDecimal
+          .fromBigDecimal(BigDecimal(123.45D))
+          .flatMap(handler.readTry) must beFailedTry[Byte]
+      }
+    }
+
+    "be read from BSONDouble" >> {
+      "successfully if whole < Byte.MaxValue" in {
+        handler.readTry(BSONDouble(123D)) must beSuccessfulTry(expected)
+      }
+
+      "with error if not whole" in {
+        handler.readTry(BSONDouble(123.45D)) must beFailedTry[Byte]
+      }
+    }
+
+    "be read from BSONInteger" in {
+      handler.readTry(BSONInteger(123)) must beSuccessfulTry(expected)
+    }
+
+    "be read from BSONLong" >> {
+      "successfully if < Byte.MaxValue" in {
+        handler.readTry(BSONLong(123L)) must beSuccessfulTry(expected)
+      }
+
+      "with error if >= Byte.MaxValue" in {
+        handler
+          .readTry(BSONLong(Byte.MaxValue.toLong + 1L)) must beFailedTry[Byte]
+
+      }
+    }
+  }
+
+  "Short" should {
+    val handler = implicitly[BSONHandler[Short]]
+    val expected = 123.toShort
+
+    "be read from BSONDecimal" >> {
+      "successfully if whole < Short.MaxValue" in {
+        BSONDecimal
+          .fromLong(123L)
+          .flatMap(handler.readTry) must beSuccessfulTry(expected)
+      }
+
+      "with error if not whole" in {
+        BSONDecimal
+          .fromBigDecimal(BigDecimal(123.45D))
+          .flatMap(handler.readTry) must beFailedTry[Short]
+      }
+    }
+
+    "be read from BSONDouble" >> {
+      "successfully if whole < Short.MaxValue" in {
+        handler.readTry(BSONDouble(123D)) must beSuccessfulTry(expected)
+      }
+
+      "with error if not whole" in {
+        handler.readTry(BSONDouble(123.45D)) must beFailedTry[Short]
+      }
+    }
+
+    "be read from BSONInteger" in {
+      handler.readTry(BSONInteger(123)) must beSuccessfulTry(expected)
+    }
+
+    "be read from BSONLong" >> {
+      "successfully if < Short.MaxValue" in {
+        handler.readTry(BSONLong(123L)) must beSuccessfulTry(expected)
+      }
+
+      "with error if >= Short.MaxValue" in {
+        handler
+          .readTry(BSONLong(Short.MaxValue.toLong + 1L)) must beFailedTry[Short]
+
+      }
+    }
+  }
+
+  "Character" should {
+    val handler = implicitly[BSONHandler[Char]]
+
+    "be read from BSONDecimal" >> {
+      "successfully if whole < Char.MaxValue" in {
+        BSONDecimal
+          .fromLong('x'.toLong)
+          .flatMap(handler.readTry) must beSuccessfulTry('x')
+      }
+
+      "with error if not whole" in {
+        BSONDecimal
+          .fromBigDecimal(BigDecimal(123.45D))
+          .flatMap(handler.readTry) must beFailedTry[Char]
+      }
+    }
+
+    "be read from BSONDouble" >> {
+      "successfully if whole < Char.MaxValue" in {
+        handler.readTry(BSONDouble('y'.toDouble)) must beSuccessfulTry('y')
+      }
+
+      "with error if not whole" in {
+        handler.readTry(BSONDouble(123.45D)) must beFailedTry[Char]
+      }
+    }
+
+    "be read from BSONInteger" in {
+      handler.readTry(BSONInteger('z'.toInt)) must beSuccessfulTry('z')
+    }
+
+    "be read from BSONLong" >> {
+      "successfully if < Char.MaxValue" in {
+        handler.readTry(BSONLong('é'.toLong)) must beSuccessfulTry('é')
+      }
+
+      "with error if >= Char.MaxValue" in {
+        handler
+          .readTry(BSONLong(Char.MaxValue.toLong + 1L)) must beFailedTry[Char]
+
+      }
+    }
+
+    "be read from BSONString" >> {
+      "successfully if size == 1" in {
+        handler.readTry(BSONString("a")) must beSuccessfulTry('a')
+      }
+
+      "with error if size < 0 or size > 1" in {
+        handler.readTry(BSONString("")) must beFailedTry[Char] and {
+          handler.readTry(BSONString("xy")) must beFailedTry[Char]
+        }
+      }
+    }
+  }
+
   "Long" should {
     val handler = implicitly[BSONHandler[Long]]
 

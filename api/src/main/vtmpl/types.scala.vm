@@ -116,9 +116,20 @@ sealed trait BSONValue { self =>
     Failure(TypeDoesNotMatchException(
       "BSONInteger", self.getClass.getSimpleName))
 
+  @inline private[bson] def asShort: Try[Short] =
+    Failure(TypeDoesNotMatchException(
+      "Short", self.getClass.getSimpleName))
+
+  @inline private[bson] def asByte: Try[Byte] =
+    Failure(TypeDoesNotMatchException(
+      "Byte", self.getClass.getSimpleName))
+
   @inline private[bson] def asString: Try[String] =
     Failure(TypeDoesNotMatchException(
       "BSONString", self.getClass.getSimpleName))
+
+  @inline private[bson] def asChar: Try[Char] =
+    Failure(TypeDoesNotMatchException("Char", self.getClass.getSimpleName))
 
 }
 
@@ -290,13 +301,37 @@ final class BSONDouble private[bson] (val value: Double)
 
   override lazy val asInt: Try[Int] = {
     if (value.isWhole && value >= Int.MinValue && value <= Int.MaxValue) {
-      Try(value.toInt)
+      toInt
     } else {
       super.asInt
     }
   }
 
   @inline def toInt = Try(value.toInt)
+
+  override lazy val asShort: Try[Short] = {
+    if (value.isWhole && value >= Short.MinValue && value <= Short.MaxValue) {
+      Try(value.toShort)
+    } else {
+      super.asShort
+    }
+  }
+
+  override lazy val asByte: Try[Byte] = {
+    if (value.isWhole && value >= Byte.MinValue && value <= Byte.MaxValue) {
+      Try(value.toByte)
+    } else {
+      super.asByte
+    }
+  }
+
+  override lazy val asChar: Try[Char] = {
+    if (value.isWhole && value >= Char.MinValue && value <= Char.MaxValue) {
+      Try(value.toChar)
+    } else {
+      super.asChar
+    }
+  }
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Try(BigDecimal exact value)
@@ -366,6 +401,11 @@ final class BSONString private[bson] (val value: String) extends BSONValue {
 
   override private[reactivemongo] lazy val asString: Try[String] =
     Success(value)
+
+  override lazy val asChar: Try[Char] = {
+    if (value.length == 1) Success(value charAt 0)
+    else super.asChar
+  }
 
   override def hashCode: Int = value.hashCode
 
@@ -1468,6 +1508,30 @@ final class BSONInteger private[bson] (val value: Int)
   override lazy val asInt: Try[Int] = Success(value)
   @inline def toInt = asInt
 
+  override lazy val asShort: Try[Short] = {
+    if (value >= Short.MinValue && value <= Short.MaxValue) {
+      Try(value.toShort)
+    } else {
+      super.asShort
+    }
+  }
+
+  override lazy val asByte: Try[Byte] = {
+    if (value >= Byte.MinValue && value <= Byte.MaxValue) {
+      Try(value.toByte)
+    } else {
+      super.asByte
+    }
+  }
+
+  override lazy val asChar: Try[Char] = {
+    if (value >= Char.MinValue && value <= Char.MaxValue) {
+      Try(value.toChar)
+    } else {
+      super.asChar
+    }
+  }
+
   private[bson] override lazy val asLong: Try[Long] = Success(value.toLong)
   @inline def toLong = asLong
 
@@ -1614,6 +1678,21 @@ final class BSONLong private[bson] (val value: Long)
 
   @inline def toInt = Try(value.toInt)
 
+  override lazy val asShort: Try[Short] = {
+    if (value >= Short.MinValue && value <= Short.MaxValue) Try(value.toShort)
+    else super.asShort
+  }
+
+  override lazy val asByte: Try[Byte] = {
+    if (value >= Byte.MinValue && value <= Byte.MaxValue) Try(value.toByte)
+    else super.asByte
+  }
+
+  override lazy val asChar: Try[Char] = {
+    if (value >= Char.MinValue && value <= Char.MaxValue) Try(value.toChar)
+    else super.asChar
+  }
+
   private[bson] override lazy val asLong: Try[Long] = Success(value)
 
   @inline def toLong = asLong
@@ -1679,6 +1758,15 @@ final class BSONDecimal private[bson] (
     asDecimal.filter(_.isValidInt).map(_.toInt)
 
   @inline def toInt = asInt
+
+  override lazy val asShort: Try[Short] =
+    asDecimal.filter(_.isValidShort).map(_.toShort)
+
+  override lazy val asByte: Try[Byte] =
+    asDecimal.filter(_.isValidByte).map(_.toByte)
+
+  override lazy val asChar: Try[Char] =
+    asDecimal.filter(_.isValidChar).map(_.toChar)
 
   private[bson] override lazy val asLong: Try[Long] =
     asDecimal.filter(_.isValidLong).map(_.toLong)

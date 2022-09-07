@@ -34,6 +34,22 @@ private[bson] trait DefaultBSONHandlers
     @inline def safeWrite(int: Int) = BSONInteger(int)
   }
 
+  ${singletonModifiers}object BSONByteHandler
+      extends BSONHandler[Byte] with SafeBSONWriter[Byte] {
+
+    @inline def readTry(bson: BSONValue): Try[Byte] = bson.asByte
+
+    @inline def safeWrite(byte: Byte) = BSONInteger(byte.toInt)
+  }
+
+  ${singletonModifiers}object BSONShortHandler
+      extends BSONHandler[Short] with SafeBSONWriter[Short] {
+
+    @inline def readTry(bson: BSONValue): Try[Short] = bson.asShort
+
+    @inline def safeWrite(short: Short) = BSONInteger(short.toInt)
+  }
+
   ${singletonModifiers}object BSONLongHandler
     extends BSONHandler[Long] with SafeBSONWriter[Long] {
 
@@ -71,6 +87,14 @@ private[bson] trait DefaultBSONHandlers
     @inline def readTry(bson: BSONValue): Try[String] = bson.asString
 
     @inline def safeWrite(string: String) = BSONString(string)
+  }
+
+  ${singletonModifiers}object BSONCharHandler
+    extends BSONHandler[Char] with SafeBSONWriter[Char] {
+
+    @inline def readTry(bson: BSONValue): Try[Char] = bson.asChar
+
+    @inline def safeWrite(ch: Char) = BSONString(ch.toString)
   }
 
   ${singletonModifiers}object BSONBooleanHandler

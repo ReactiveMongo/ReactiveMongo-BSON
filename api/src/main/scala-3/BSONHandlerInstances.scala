@@ -18,6 +18,12 @@ import reactivemongo.api.{ bson => pkg }
 private[bson] trait BSONHandlerInstances:
   given intHandler: BSONHandler[Int] = BSONIntegerHandler
 
+  given shortHandler: BSONHandler[Short] = BSONShortHandler
+
+  given byteHandler: BSONHandler[Byte] = BSONByteHandler
+
+  given charHandler: BSONHandler[Char] = BSONCharHandler
+
   given longHandler: BSONHandler[Long] = BSONLongHandler
 
   given doubleHandler: BSONHandler[Double] = BSONDoubleHandler
