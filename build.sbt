@@ -52,7 +52,15 @@ val spireLaws = Def.setting[ModuleID] {
     .exclude("org.typelevel", s"discipline-scalatest_${sm}"),
 }
 
-ThisBuild / libraryDependencies ++= specsDeps.value.map(_ % Test)
+ThisBuild / libraryDependencies ++= {
+  if (scalaBinaryVersion.value == "2.12") {
+    specsDeps.value.map { d =>
+      (d % Test).exclude("org.scala-lang.modules", "*")
+    }
+  } else {
+    specsDeps.value.map(_ % Test)
+  }
+}
 
 lazy val api = (project in file("api"))
   .enablePlugins(VelocityPlugin)
