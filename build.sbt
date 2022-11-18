@@ -76,7 +76,7 @@ lazy val api = (project in file("api"))
       ).map(_.cross(CrossVersion.for3Use2_13) % Test),
       libraryDependencies ++= Seq(
         slf4jSimple % Test,
-        "org.slf4j" % "slf4j-api" % "2.0.1"
+        "org.slf4j" % "slf4j-api" % "2.0.4"
       ),
       libraryDependencies ++= {
         if (scalaBinaryVersion.value startsWith "2.") {
