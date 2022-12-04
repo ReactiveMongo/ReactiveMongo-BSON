@@ -6,7 +6,7 @@ This tracker is for confirmed issue or actionable feature request, used to manag
 
 ### ReactiveMongo version (0.10.5, 0.11.6 / etc)
 
-### Scala version (2.13.8 / etc)
+### Scala version (2.13.10 / etc)
 
 ### MongoDB version (2.6, 3.0 / etc)
 

@@ -52,7 +52,15 @@ val spireLaws = Def.setting[ModuleID] {
     .exclude("org.typelevel", s"discipline-scalatest_${sm}"),
 }
 
-ThisBuild / libraryDependencies ++= specsDeps.value.map(_ % Test)
+ThisBuild / libraryDependencies ++= {
+  if (scalaBinaryVersion.value == "2.12") {
+    specsDeps.value.map { d =>
+      (d % Test).exclude("org.scala-lang.modules", "*")
+    }
+  } else {
+    specsDeps.value.map(_ % Test)
+  }
+}
 
 lazy val api = (project in file("api"))
   .enablePlugins(VelocityPlugin)
@@ -69,14 +77,14 @@ lazy val api = (project in file("api"))
         }
       },
       libraryDependencies ++= Seq(
-        "org.specs2" %% "specs2-scalacheck" % specsVer,
-        "org.specs2" %% "specs2-matcher-extra" % specsVer,
+        "org.specs2" %% "specs2-scalacheck" % specsVer.value,
+        "org.specs2" %% "specs2-matcher-extra" % specsVer.value,
         "org.typelevel" %% "discipline-specs2" % "1.1.3",
         spireLaws.value
       ).map(_.cross(CrossVersion.for3Use2_13) % Test),
       libraryDependencies ++= Seq(
         slf4jSimple % Test,
-        "org.slf4j" % "slf4j-api" % "2.0.5"
+        "org.slf4j" % "slf4j-api" % slf4jVersion
       ),
       libraryDependencies ++= {
         if (scalaBinaryVersion.value startsWith "2.") {
@@ -155,6 +163,7 @@ lazy val benchmarks = (project in file("benchmarks"))
   .settings(
     mimaPreviousArtifacts := Set.empty,
     libraryDependencies ++= reactivemongoShaded.value,
+    libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always,
     publish := ({}),
     publishTo := None
   )
