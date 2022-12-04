@@ -3,8 +3,8 @@ ThisBuild / scalaVersion := "2.12.17"
 ThisBuild / crossScalaVersions := Seq(
   "2.11.12",
   scalaVersion.value,
-  "2.13.8",
-  "3.1.3"
+  "2.13.10",
+  "3.2.1"
 )
 
 crossVersion := CrossVersion.binary
@@ -105,7 +105,15 @@ ThisBuild / libraryDependencies ++= {
 }
 
 ThisBuild / scalacOptions ++= {
-  if (scalaBinaryVersion.value startsWith "2.") {
-    Seq("-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used")
+  val ver = scalaBinaryVersion.value
+
+  if (ver startsWith "2.") {
+    val base = "-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used"
+
+    if (ver == "2.13") {
+      Seq(s"${base};a\\ type\\ was\\ inferred\\ to\\ be.*(Any|Object).*")
+    } else {
+      Seq(base)
+    }
   } else Seq.empty
 }
