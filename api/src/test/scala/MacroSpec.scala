@@ -509,8 +509,8 @@ final class MacroSpec
         val a = UA2(1)
         val b = UB2("hai")
 
-        val format = Macros
-          .handlerOpts[UT2, UnionType[UA2 \/ UB2] with AutomaticMaterialization]
+        val format = Macros.handlerOpts[UT2, UnionType[UA2 \/ UB2]
+          with AutomaticMaterialization]
 
         format
           .writeTry(a)

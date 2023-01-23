@@ -9,8 +9,15 @@ import scala.reflect.macros.blackbox.Context
 private[api] class MacroImpl(val c: Context) {
   import c.universe._
 
-  import Macros.Annotations,
-  Annotations.{ DefaultValue, Flatten, Ignore, Key, NoneAsNull, Reader, Writer }
+  import Macros.Annotations, Annotations.{
+    DefaultValue,
+    Flatten,
+    Ignore,
+    Key,
+    NoneAsNull,
+    Reader,
+    Writer
+  }
 
   def reader[
       A: c.WeakTypeTag,

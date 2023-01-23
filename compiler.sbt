@@ -108,7 +108,8 @@ ThisBuild / scalacOptions ++= {
   val ver = scalaBinaryVersion.value
 
   if (ver startsWith "2.") {
-    val base = "-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used"
+    val base =
+      "-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used"
 
     if (ver == "2.13") {
       Seq(s"${base};a\\ type\\ was\\ inferred\\ to\\ be.*(Any|Object).*")

@@ -19,8 +19,15 @@ import exceptions.{
 }
 
 private[api] object MacroImpl:
-  import Macros.Annotations,
-  Annotations.{ DefaultValue, Ignore, Key, Writer, Flatten, NoneAsNull, Reader }
+  import Macros.Annotations, Annotations.{
+    DefaultValue,
+    Ignore,
+    Key,
+    Writer,
+    Flatten,
+    NoneAsNull,
+    Reader
+  }
 
   def reader[A: Type, Opts <: MacroOptions: Type](
       using
@@ -460,11 +467,10 @@ private[api] object MacroImpl:
     val helper = createReaderHelper[A, Opts](config)
 
     '{
-      withSelfDocReader {
-        (forwardBSONReader: BSONDocumentReader[A]) =>
-          { (macroVal: BSONDocument) =>
-            ${ helper.readBody('{ macroVal }, '{ forwardBSONReader }) }
-          }
+      withSelfDocReader { (forwardBSONReader: BSONDocumentReader[A]) =>
+        { (macroVal: BSONDocument) =>
+          ${ helper.readBody('{ macroVal }, '{ forwardBSONReader }) }
+        }
       }
     }
   }
@@ -495,11 +501,10 @@ private[api] object MacroImpl:
     val helper = createWriterHelper[A, Opts](config)
 
     '{
-      withSelfDocWriter {
-        (forwardBSONWriter: BSONDocumentWriter[A]) =>
-          { (macroVal: A) =>
-            ${ helper.writeBody('{ macroVal }, '{ forwardBSONWriter }) }
-          }
+      withSelfDocWriter { (forwardBSONWriter: BSONDocumentWriter[A]) =>
+        { (macroVal: A) =>
+          ${ helper.writeBody('{ macroVal }, '{ forwardBSONWriter }) }
+        }
       }
     }
   }

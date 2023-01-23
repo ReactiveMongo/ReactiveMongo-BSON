@@ -59,8 +59,9 @@ private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
   given localeWriter: SafeWriter[Locale] = BSONLocaleHandler
 
   given mapSafeWriter[V](
-      using BSONWriter[V] & SafeBSONWriter[V]
-  ): BSONDocumentWriter[Map[String, V]] = pkg.mapSafeWriter[V]
+      using
+      BSONWriter[V] & SafeBSONWriter[V]
+    ): BSONDocumentWriter[Map[String, V]] = pkg.mapSafeWriter[V]
 
   given bsonMapWriter[V <: BSONValue]: BSONDocumentWriter[Map[String, V]] =
     pkg.bsonMapWriter[V]
@@ -69,20 +70,23 @@ private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
     pkg.mapWriter[V]
 
   given mapKeySafeWriter[K, V](
-      using KeyWriter[K] & SafeKeyWriter[K],
+      using
+      KeyWriter[K] & SafeKeyWriter[K],
       BSONWriter[V] & SafeBSONWriter[V]
-  ): BSONDocumentWriter[Map[K, V]] =
+    ): BSONDocumentWriter[Map[K, V]] =
     pkg.mapKeySafeWriter[K, V]
 
   given bsonMapKeyWriter[K, V <: BSONValue](
-      using KeyWriter[K]
-  ): BSONDocumentWriter[Map[K, V]] =
+      using
+      KeyWriter[K]
+    ): BSONDocumentWriter[Map[K, V]] =
     pkg.bsonMapKeyWriter[K, V]
 
   given mapKeyWriter[K, V](
-      using KeyWriter[K],
+      using
+      KeyWriter[K],
       BSONWriter[V]
-  ): BSONDocumentWriter[Map[K, V]] =
+    ): BSONDocumentWriter[Map[K, V]] =
     pkg.mapKeyWriter[K, V]
 
   export pkg.{
@@ -109,23 +113,21 @@ private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
     collectionWriter
   }
 
-  given tuple2Writer[
-      A: BSONWriter,
-      B: BSONWriter
-  ]: BSONWriter[(A, B)] = BSONWriter.tuple2
+  given tuple2Writer[A: BSONWriter, B: BSONWriter]: BSONWriter[(A, B)] =
+    BSONWriter.tuple2
 
   given tuple3Writer[
       A: BSONWriter,
       B: BSONWriter,
       C: BSONWriter
-  ]: BSONWriter[(A, B, C)] = BSONWriter.tuple3
+    ]: BSONWriter[(A, B, C)] = BSONWriter.tuple3
 
   given tuple4Writer[
       A: BSONWriter,
       B: BSONWriter,
       C: BSONWriter,
       D: BSONWriter
-  ]: BSONWriter[(A, B, C, D)] = BSONWriter.tuple4
+    ]: BSONWriter[(A, B, C, D)] = BSONWriter.tuple4
 
   given tuple5Writer[
       A: BSONWriter,
@@ -133,7 +135,7 @@ private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
       C: BSONWriter,
       D: BSONWriter,
       E: BSONWriter
-  ]: BSONWriter[(A, B, C, D, E)] = BSONWriter.tuple5
+    ]: BSONWriter[(A, B, C, D, E)] = BSONWriter.tuple5
 end BSONWriterInstances
 
 private[bson] sealed trait BSONWriterInstancesLowPrio {
