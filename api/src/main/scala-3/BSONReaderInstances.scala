@@ -59,9 +59,10 @@ private[bson] trait BSONReaderInstances:
     pkg.mapReader[V]
 
   given mapKeyReader[K, V](
-      using KeyReader[K],
+      using
+      KeyReader[K],
       BSONReader[V]
-  ): BSONDocumentReader[Map[K, V]] =
+    ): BSONDocumentReader[Map[K, V]] =
     pkg.mapKeyReader[K, V]
 
   given bsonValueIdentityReader: BSONReader[BSONValue] = BSONValueIdentity
@@ -90,23 +91,21 @@ private[bson] trait BSONReaderInstances:
     collectionReader
   }
 
-  given tuple2Reader[
-      A: BSONReader,
-      B: BSONReader
-  ]: BSONReader[(A, B)] = BSONReader.tuple2
+  given tuple2Reader[A: BSONReader, B: BSONReader]: BSONReader[(A, B)] =
+    BSONReader.tuple2
 
   given tuple3Reader[
       A: BSONReader,
       B: BSONReader,
       C: BSONReader
-  ]: BSONReader[(A, B, C)] = BSONReader.tuple3
+    ]: BSONReader[(A, B, C)] = BSONReader.tuple3
 
   given tuple4Reader[
       A: BSONReader,
       B: BSONReader,
       C: BSONReader,
       D: BSONReader
-  ]: BSONReader[(A, B, C, D)] = BSONReader.tuple4
+    ]: BSONReader[(A, B, C, D)] = BSONReader.tuple4
 
   given tuple5Reader[
       A: BSONReader,
@@ -114,5 +113,5 @@ private[bson] trait BSONReaderInstances:
       C: BSONReader,
       D: BSONReader,
       E: BSONReader
-  ]: BSONReader[(A, B, C, D, E)] = BSONReader.tuple5
+    ]: BSONReader[(A, B, C, D, E)] = BSONReader.tuple5
 end BSONReaderInstances

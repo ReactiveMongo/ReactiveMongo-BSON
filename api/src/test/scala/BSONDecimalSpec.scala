@@ -19,7 +19,7 @@ final class BSONDecimalSpec extends org.specs2.mutable.Specification {
 
   "BSONDecimal" should {
     lazy val fixtures1 =
-      Seq[( /*result: */ BSONDecimal, /*expected: */ BSONDecimal)](
+      Seq[(/*result: */ BSONDecimal, /*expected: */ BSONDecimal)](
         BSONDecimal(
           0x3040000000000000L,
           0x0000000000000000L
