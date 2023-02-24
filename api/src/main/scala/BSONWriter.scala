@@ -299,11 +299,7 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
    * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] that creates tuple elements
    * as [[BSONArray]] elements.
    */
-  def tuple3[
-      A: BSONWriter,
-      B: BSONWriter,
-      C: BSONWriter
-    ]: BSONWriter[(A, B, C)] =
+  def tuple3[A: BSONWriter, B: BSONWriter, C: BSONWriter]: BSONWriter[(A, B, C)] =
     apply[(A, B, C)] { case (a, b, c) => BSONArray(a, b, c) }
 
   /**

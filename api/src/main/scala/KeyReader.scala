@@ -72,7 +72,10 @@ object KeyReader {
    * Provides a [[KeyReader]] instance of any `T` type
    * that can be parsed from a `String`.
    */
-  implicit def keyReader[T](implicit conv: String => T): KeyReader[T] =
+  implicit def keyReader[T](
+      implicit
+      conv: String => T
+    ): KeyReader[T] =
     apply[T](conv)
 
   implicit def bigDecimalKeyReader: KeyReader[BigDecimal] =

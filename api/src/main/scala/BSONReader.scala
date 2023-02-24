@@ -281,21 +281,18 @@ object BSONReader extends BSONReaderCompat with BSONReaderInstances {
    *
    * @see [[tuple2]]
    */
-  def tuple3[
-      A: BSONReader,
-      B: BSONReader,
-      C: BSONReader
-    ]: BSONReader[(A, B, C)] = from[(A, B, C)] {
-    case BSONArray(v1 +: v2 +: v3 +: _) =>
-      for {
-        _1 <- v1.asTry[A]
-        _2 <- v2.asTry[B]
-        _3 <- v3.asTry[C]
-      } yield Tuple3(_1, _2, _3)
+  def tuple3[A: BSONReader, B: BSONReader, C: BSONReader]: BSONReader[(A, B, C)] =
+    from[(A, B, C)] {
+      case BSONArray(v1 +: v2 +: v3 +: _) =>
+        for {
+          _1 <- v1.asTry[A]
+          _2 <- v2.asTry[B]
+          _3 <- v3.asTry[C]
+        } yield Tuple3(_1, _2, _3)
 
-    case bson =>
-      Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
-  }
+      case bson =>
+        Failure(exceptions.ValueDoesNotMatchException(BSONValue pretty bson))
+    }
 
   /**
    * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads

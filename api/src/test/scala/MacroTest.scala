@@ -27,9 +27,9 @@ import reactivemongo.api.bson.Macros.Annotations.{
 
 object MacroTest extends MacroTestCompat {
 
-  type Handler[
-      A
-    ] = BSONDocumentReader[A] with BSONDocumentWriter[A] with BSONHandler[A]
+  type Handler[A] = BSONDocumentReader[A]
+    with BSONDocumentWriter[A]
+    with BSONHandler[A]
 
   case class Person(firstName: String, lastName: String)
   case class Pet(name: String, owner: Person)

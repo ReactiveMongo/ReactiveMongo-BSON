@@ -135,7 +135,11 @@ object BSONDocumentReader {
    * reader.readTry(doc) // Success("bar")
    * }}}
    */
-  def field[T](name: String)(implicit r: BSONReader[T]): BSONDocumentReader[T] =
+  def field[T](
+      name: String
+    )(implicit
+      r: BSONReader[T]
+    ): BSONDocumentReader[T] =
     BSONDocumentReader.from[T](_.getAsTry[T](name))
 
   /**

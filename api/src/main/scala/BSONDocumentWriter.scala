@@ -170,7 +170,11 @@ object BSONDocumentWriter {
    * // => Success: {'foo': 'bar'}
    * }}}
    */
-  def field[T](name: String)(implicit w: BSONWriter[T]): BSONDocumentWriter[T] =
+  def field[T](
+      name: String
+    )(implicit
+      w: BSONWriter[T]
+    ): BSONDocumentWriter[T] =
     BSONDocumentWriter[T] { value => BSONDocument(name -> value) }
 
   /**

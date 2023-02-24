@@ -58,10 +58,8 @@ object Macros extends MacroAnnotations:
    * $tparam
    * $tparamOpts
    */
-  inline def readerOpts[
-      A,
-      Opts <: MacroOptions.Default
-    ]: BSONDocumentReader[A] = ${ MacroImpl.reader[A, Opts] }
+  inline def readerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentReader[A] =
+    ${ MacroImpl.reader[A, Opts] }
 
   /**
    * Creates a [[BSONReader]] for [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]] `A`.
@@ -185,10 +183,7 @@ object Macros extends MacroAnnotations:
    * $tparam
    * $tparamOpts
    */
-  inline def writerOpts[
-      A,
-      Opts <: MacroOptions.Default
-    ]: BSONDocumentWriter[A] =
+  inline def writerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentWriter[A] =
     ${ MacroImpl.writer[A, Opts] }
 
   /**
@@ -246,10 +241,8 @@ object Macros extends MacroAnnotations:
    * $tparam
    * $tparamOpts
    */
-  inline def handlerOpts[
-      A,
-      Opts <: MacroOptions.Default
-    ]: BSONDocumentHandler[A] = ${ MacroImpl.handler[A, Opts] }
+  inline def handlerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentHandler[A] =
+    ${ MacroImpl.handler[A, Opts] }
 
   /**
    * Creates a [[BSONHandler]] for an [[https://dotty.epfl.ch/docs/reference/other-new-features/opaques.html opaque type alias]] `A`, that itself aliases a [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Class]].
@@ -395,7 +388,10 @@ object OpaqueAlias:
 
   inline given materialized[T]: OpaqueAlias[T] = ${ impl[T] }
 
-  private def impl[T: Type](using q: Quotes): Expr[OpaqueAlias[T]] = {
+  private def impl[T: Type](
+      using
+      q: Quotes
+    ): Expr[OpaqueAlias[T]] = {
     import q.reflect.*
 
     TypeRepr.of[T] match {

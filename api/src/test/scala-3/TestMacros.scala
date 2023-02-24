@@ -8,7 +8,10 @@ object TestMacros:
   inline def testKnownSubtypes[T]: List[String] =
     ${ testKnownSubtypesMacro[T] }
 
-  def testKnownSubtypesMacro[T: Type](using q: Quotes): Expr[List[String]] = {
+  def testKnownSubtypesMacro[T: Type](
+      using
+      q: Quotes
+    ): Expr[List[String]] = {
     import q.reflect.*
 
     val helper = new QuotesHelper {
@@ -26,7 +29,10 @@ object TestMacros:
   inline def testProductElements[T]: List[String] =
     ${ testProductElementsMacro[T] }
 
-  def testProductElementsMacro[T: Type](using q: Quotes): Expr[List[String]] = {
+  def testProductElementsMacro[T: Type](
+      using
+      q: Quotes
+    ): Expr[List[String]] = {
     import q.reflect.*
 
     val helper = new QuotesHelper {
