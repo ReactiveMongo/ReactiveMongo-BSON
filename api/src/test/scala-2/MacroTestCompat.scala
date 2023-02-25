@@ -1,6 +1,10 @@
 trait MacroTestCompat { _: MacroTest.type =>
 
-  case class WithImplicit1(pos: Int, text: String)(implicit x: Numeric[Int]) {
+  case class WithImplicit1(
+      pos: Int,
+      text: String
+    )(implicit
+      x: Numeric[Int]) {
     def test = x
   }
 

@@ -55,7 +55,10 @@ private[bson] trait BSONReaderInstances:
 
   given localeReader: BSONReader[Locale] = BSONLocaleHandler
 
-  given mapReader[V](using BSONReader[V]): BSONDocumentReader[Map[String, V]] =
+  given mapReader[V](
+      using
+      BSONReader[V]
+    ): BSONDocumentReader[Map[String, V]] =
     pkg.mapReader[V]
 
   given mapKeyReader[K, V](
@@ -94,11 +97,8 @@ private[bson] trait BSONReaderInstances:
   given tuple2Reader[A: BSONReader, B: BSONReader]: BSONReader[(A, B)] =
     BSONReader.tuple2
 
-  given tuple3Reader[
-      A: BSONReader,
-      B: BSONReader,
-      C: BSONReader
-    ]: BSONReader[(A, B, C)] = BSONReader.tuple3
+  given tuple3Reader[A: BSONReader, B: BSONReader, C: BSONReader]: BSONReader[(A, B, C)] =
+    BSONReader.tuple3
 
   given tuple4Reader[
       A: BSONReader,

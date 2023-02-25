@@ -12,7 +12,11 @@ object BSON {
    * Prefer `readDocument` over this one
    * if you want to deserialize `BSONDocuments`.
    */
-  def read[T](bson: BSONValue)(implicit reader: BSONReader[T]): Try[T] =
+  def read[T](
+      bson: BSONValue
+    )(implicit
+      reader: BSONReader[T]
+    ): Try[T] =
     reader.readTry(bson)
 
   /**
@@ -22,7 +26,11 @@ object BSON {
    * Prefer `writeDocument` over this one
    * if you want to serialize `T` instances.
    */
-  def write[T](t: T)(implicit writer: BSONWriter[T]): Try[BSONValue] =
+  def write[T](
+      t: T
+    )(implicit
+      writer: BSONWriter[T]
+    ): Try[BSONValue] =
     writer.writeTry(t)
 
   /**

@@ -66,7 +66,10 @@ private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
   given bsonMapWriter[V <: BSONValue]: BSONDocumentWriter[Map[String, V]] =
     pkg.bsonMapWriter[V]
 
-  given mapWriter[V](using BSONWriter[V]): BSONDocumentWriter[Map[String, V]] =
+  given mapWriter[V](
+      using
+      BSONWriter[V]
+    ): BSONDocumentWriter[Map[String, V]] =
     pkg.mapWriter[V]
 
   given mapKeySafeWriter[K, V](
@@ -116,11 +119,8 @@ private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
   given tuple2Writer[A: BSONWriter, B: BSONWriter]: BSONWriter[(A, B)] =
     BSONWriter.tuple2
 
-  given tuple3Writer[
-      A: BSONWriter,
-      B: BSONWriter,
-      C: BSONWriter
-    ]: BSONWriter[(A, B, C)] = BSONWriter.tuple3
+  given tuple3Writer[A: BSONWriter, B: BSONWriter, C: BSONWriter]: BSONWriter[(A, B, C)] =
+    BSONWriter.tuple3
 
   given tuple4Writer[
       A: BSONWriter,

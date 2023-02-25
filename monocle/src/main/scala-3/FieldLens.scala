@@ -23,14 +23,21 @@ sealed trait FieldLens[T] {
 object FieldLens:
   import scala.reflect.ClassTag
 
-  given bsonValueField[T <: BSONValue](using ct: ClassTag[T]): FieldLens[T] =
+  given bsonValueField[T <: BSONValue](
+      using
+      ct: ClassTag[T]
+    ): FieldLens[T] =
     new FieldLens[T] {
       def element(name: String, value: T): BSONElement = name -> value
 
       def getter(name: String) = (_: BSONDocument).get(name).flatMap(ct.unapply)
     }
 
-  given safe[T](using w: SafeBSONWriter[T], r: BSONReader[T]): FieldLens[T] =
+  given safe[T](
+      using
+      w: SafeBSONWriter[T],
+      r: BSONReader[T]
+    ): FieldLens[T] =
     new FieldLens[T] {
 
       def element(name: String, value: T): BSONElement =
@@ -39,7 +46,11 @@ object FieldLens:
       def getter(name: String) = (_: BSONDocument).getAsOpt[T](name)(r)
     }
 
-  given default[T](using w: BSONWriter[T], r: BSONReader[T]): FieldLens[T] =
+  given default[T](
+      using
+      w: BSONWriter[T],
+      r: BSONReader[T]
+    ): FieldLens[T] =
     new FieldLens[T] {
 
       def element(name: String, value: T): BSONElement =

@@ -51,7 +51,10 @@ object KeyWriter extends LowPriorityKeyWriter {
    * Provides a [[KeyWriter]] instance of any `T` type
    * that can be viewed as a `String`.
    */
-  implicit def keyWriter[T](implicit conv: T => String): KeyWriter[T] =
+  implicit def keyWriter[T](
+      implicit
+      conv: T => String
+    ): KeyWriter[T] =
     apply[T](conv)
 
   /**

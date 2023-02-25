@@ -282,9 +282,8 @@ final class MacroSpec
         }
       }
 
-      def genSeqHandler[
-          T: BSONDocumentHandler
-        ]: BSONDocumentHandler[GenSeq[T]] = Macros.handler[GenSeq[T]]
+      def genSeqHandler[T: BSONDocumentHandler]: BSONDocumentHandler[GenSeq[T]] =
+        Macros.handler[GenSeq[T]]
 
       val seq = GenSeq(
         items = Seq(Option.empty[Single], Option(Single(BigDecimal(1)))),

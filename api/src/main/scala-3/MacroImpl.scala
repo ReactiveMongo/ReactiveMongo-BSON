@@ -288,7 +288,10 @@ private[api] object MacroImpl:
     '{ BSONHandler.provided[A](${ reader }, ${ writer }) }
   }
 
-  def documentClass[A: Type](using q: Quotes): Expr[DocumentClass[A]] = {
+  def documentClass[A: Type](
+      using
+      q: Quotes
+    ): Expr[DocumentClass[A]] = {
     import q.reflect.*
 
     val anyValTpe = TypeRepr.of[AnyVal]
@@ -434,7 +437,11 @@ private[api] object MacroImpl:
     }
   }
 
-  private def ensureFindType[A](using q: Quotes, tpe: Type[A]): Unit = {
+  private def ensureFindType[A](
+      using
+      q: Quotes,
+      tpe: Type[A]
+    ): Unit = {
     import q.reflect.*
 
     TypeRepr.of[A](using tpe).dealias match {
@@ -548,8 +555,7 @@ private[api] object MacroImpl:
     }
   }
 
-  def implicitOptionsConfig(
-      using
+  def implicitOptionsConfig(using
       q: Quotes,
       ct: Type[MacroConfiguration]
     ): Expr[MacroConfiguration] = {
@@ -1032,7 +1038,10 @@ private[api] object MacroImpl:
       }
     }
 
-    private def singletonReader[T](using tpe: Type[T]): Expr[TrySuccess[T]] =
+    private def singletonReader[T](
+        using
+        tpe: Type[T]
+      ): Expr[TrySuccess[T]] =
       Expr.summon[ValueOf[T]] match {
         case Some(vof) =>
           '{ TrySuccess(${ vof }.value) }
