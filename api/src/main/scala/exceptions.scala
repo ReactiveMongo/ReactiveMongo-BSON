@@ -2,6 +2,8 @@ package reactivemongo.api.bson.exceptions
 
 import scala.util.control.NoStackTrace
 
+import reactivemongo.api.bson.BSONValue
+
 /** Formerly `DocumentKeyNotFoundException` */
 final class BSONValueNotFoundException private[exceptions] (
     k: => String,
@@ -92,6 +94,26 @@ object TypeDoesNotMatchException {
    */
   def apply(expected: String, actual: String): TypeDoesNotMatchException =
     new TypeDoesNotMatchException(expected, actual)
+
+  /**
+   * Defines a type exception.
+   *
+   * @param expected the name of the expected type
+   * @param actual the actual value
+   */
+  def apply(expected: String, actual: BSONValue): TypeDoesNotMatchException = {
+    val sn = actual.getClass.getSimpleName
+
+    val repr = {
+      if (sn == "") {
+        actual.getClass.getEnclosingClass.getSimpleName.stripSuffix(f"$$")
+      } else {
+        sn
+      }
+    }
+
+    new TypeDoesNotMatchException(expected, repr)
+  }
 
   /**
    * Extracts expected and actual types from the type exception.
