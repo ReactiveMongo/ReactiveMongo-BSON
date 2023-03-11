@@ -14,7 +14,7 @@ import java.time.{
   ZonedDateTime
 }
 
-import scala.util.Success
+import scala.util.{ Failure, Success }
 
 import org.specs2.specification.core.Fragments
 
@@ -394,6 +394,12 @@ final class HandlerSpec
           kr.readTry(repr) must beSuccessfulTry(uuid)
         }
       }
+    }
+
+    "fails from array" in {
+      BSONDocument("foo" -> BSONArray()).getAsTry[BSONDocument](
+        "foo"
+      ) must_=== Failure(TypeDoesNotMatchException("BSONDocument", "BSONArray"))
     }
   }
 

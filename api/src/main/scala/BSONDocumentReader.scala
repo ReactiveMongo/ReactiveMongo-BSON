@@ -10,12 +10,7 @@ trait BSONDocumentReader[T] extends BSONReader[T] { self =>
     case doc: BSONDocument => readDocument(doc)
 
     case _ =>
-      Failure(
-        exceptions.TypeDoesNotMatchException(
-          "BSONDocument",
-          bson.getClass.getSimpleName
-        )
-      )
+      Failure(exceptions.TypeDoesNotMatchException("BSONDocument", bson))
   }
 
   /**

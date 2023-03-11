@@ -40,7 +40,11 @@ private[bson] object BSONIterator {
 
     value match {
       case BSONArray(vs) =>
-        s"${prefix}[\n" + pretty(i + 1, vs) + s"\n${indent}]"
+        if (vs.isEmpty) {
+          s"${prefix}[]"
+        } else {
+          s"${prefix}[\n" + pretty(i + 1, vs) + s"\n${indent}]"
+        }
 
       case bin: BSONBinary =>
         s"${prefix}${BSONBinary pretty bin}"
@@ -52,7 +56,11 @@ private[bson] object BSONIterator {
         s"${prefix}${BSONDateTime pretty time}"
 
       case BSONDocument(elements) =>
-        s"${prefix}{\n" + pretty(i + 1, elements) + s"\n$indent}"
+        if (elements.isEmpty) {
+          s"${prefix}{}"
+        } else {
+          s"${prefix}{\n" + pretty(i + 1, elements) + s"\n$indent}"
+        }
 
       case BSONDouble(d) =>
         s"${prefix}$d"

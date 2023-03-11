@@ -346,9 +346,7 @@ private[bson] trait BSONIdentityHandlers
       case Some(v) => Success(v)
 
       case _ =>
-        Failure(
-          TypeDoesNotMatchException(valueType, bson.getClass.getSimpleName)
-        )
+        Failure(TypeDoesNotMatchException(valueType, bson))
     }
 
     final override def readOpt(bson: BSONValue): Option[B] = unapply(bson)
