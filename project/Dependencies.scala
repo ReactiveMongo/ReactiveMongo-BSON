@@ -15,7 +15,7 @@ object Dependencies {
     ).map(_.cross(CrossVersion.for3Use2_13))
   }
 
-  val slf4jVersion = "2.0.6"
+  val slf4jVersion = "2.0.7"
 
   val slf4jSimple = "org.slf4j" % "slf4j-simple" % slf4jVersion
 }
