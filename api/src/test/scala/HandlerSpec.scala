@@ -397,7 +397,7 @@ final class HandlerSpec
     }
 
     "fails from array" in {
-      BSONDocument("foo" -> BSONArray()).getAsTry[BSONDocument](
+      BSONDocument("foo" -> BSONArray.empty).getAsTry[BSONDocument](
         "foo"
       ) must_=== Failure(TypeDoesNotMatchException("BSONDocument", "BSONArray"))
     }

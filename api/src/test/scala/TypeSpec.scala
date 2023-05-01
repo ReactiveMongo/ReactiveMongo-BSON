@@ -2,6 +2,8 @@ import scala.util.{ Failure, Success }
 
 import reactivemongo.api.bson._
 
+import org.specs2.specification.core.Fragments
+
 import reactivemongo.BSONValueFixtures
 
 final class TypeSpec extends org.specs2.mutable.Specification {
@@ -72,6 +74,26 @@ final class TypeSpec extends org.specs2.mutable.Specification {
   }
 
   "BSON binary/blob" should {
+    "support subtypes" >> {
+      Fragments.foreach(
+        Seq[(Byte, Subtype)](
+          (0: Byte) -> Subtype.GenericBinarySubtype,
+          (1: Byte) -> Subtype.FunctionSubtype,
+          (2: Byte) -> Subtype.OldBinarySubtype,
+          (3: Byte) -> Subtype.OldUuidSubtype,
+          (4: Byte) -> Subtype.UuidSubtype,
+          (5: Byte) -> Subtype.Md5Subtype,
+          (6: Byte) -> Subtype.EncryptedSubtype,
+          (7: Byte) -> Subtype.CompressedSubtype
+        )
+      ) {
+        case (code, expected) =>
+          s"for code ${code}" in {
+            Subtype(code) must_=== expected
+          }
+      }
+    }
+
     "be read as byte array" in {
       val bytes = Array[Byte](1, 2, 3)
       val bson = BSONBinary(bytes, Subtype.GenericBinarySubtype)
