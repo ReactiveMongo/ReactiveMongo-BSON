@@ -491,11 +491,11 @@ final class MacroSpec
             format.writeTry(UF) must beFailedTry[BSONDocument]
           } and {
             format.readTry(
-              BSONDocument("className" -> UE.getClass.getSimpleName)
+              BSONDocument("className" -> "UE")
             ) must beFailedTry[UT]
           } and {
             format.readTry(
-              BSONDocument("className" -> UF.getClass.getSimpleName)
+              BSONDocument("className" -> "UF")
             ) must beFailedTry[UT]
           }
         }

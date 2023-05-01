@@ -105,7 +105,7 @@ object TypeDoesNotMatchException {
     val sn = actual.getClass.getSimpleName
 
     val repr = {
-      if (sn == "") {
+      if (sn == "" || sn.startsWith(f"anon$$")) {
         actual.getClass.getEnclosingClass.getSimpleName.stripSuffix(f"$$")
       } else {
         sn

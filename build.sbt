@@ -1,4 +1,3 @@
-
 import Dependencies._
 
 organization := "org.reactivemongo"
