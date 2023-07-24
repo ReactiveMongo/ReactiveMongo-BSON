@@ -101,19 +101,8 @@ object TypeDoesNotMatchException {
    * @param expected the name of the expected type
    * @param actual the actual value
    */
-  def apply(expected: String, actual: BSONValue): TypeDoesNotMatchException = {
-    val sn = actual.getClass.getSimpleName
-
-    val repr = {
-      if (sn == "" || sn.startsWith(f"anon$$")) {
-        actual.getClass.getEnclosingClass.getSimpleName.stripSuffix(f"$$")
-      } else {
-        sn
-      }
-    }
-
-    new TypeDoesNotMatchException(expected, repr)
-  }
+  def apply(expected: String, actual: BSONValue): TypeDoesNotMatchException =
+    new TypeDoesNotMatchException(expected, BSONValue.pretty(actual))
 
   /**
    * Extracts expected and actual types from the type exception.
