@@ -822,8 +822,13 @@ object BSONArray {
    * // "[ 'foo', NumberLong(1) ]"
    * }}}
    */
-  def pretty(array: BSONArray): String =
-    s"[\n${dollar}{BSONIterator.pretty(0, array.values)}\n]"
+  def pretty(array: BSONArray): String = {
+    if (array.isEmpty) {
+      "[]"
+    } else {
+      s"[\n${dollar}{BSONIterator.pretty(0, array.values)}\n]"
+    }
+  }
 
   /**
    * An empty BSONArray.
@@ -1360,9 +1365,11 @@ object BSONRegex {
     new BSONRegex(value, flags)
 
   /** Returns the plain string representation for the given [[BSONRegex]]. */
-  @inline def pretty(re: BSONRegex): String =
-    s"/${re.value}/${re.flags}"
+  @inline def pretty(re: BSONRegex): String = {
+    val prettyPat = re.value.replaceAll("/", "\\\\/")
 
+    s"/${prettyPat}/${re.flags}"
+  }
 }
 
 /**
