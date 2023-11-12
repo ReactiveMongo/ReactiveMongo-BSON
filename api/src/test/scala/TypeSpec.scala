@@ -126,6 +126,12 @@ final class TypeSpec extends org.specs2.mutable.Specification {
     }
   }
 
+  "BSON regex" should {
+    "be pretty-printed" in {
+      BSONRegex.pretty(BSONRegex("foo/bar", "g")) must_=== """/foo\/bar/g"""
+    }
+  }
+
   "BSON string" should {
     "be pretty-printed" in {
       BSONString.pretty(BSONString("foo 'bar'")) must_=== "'foo \\'bar\\''"
