@@ -24,8 +24,13 @@ object Common extends AutoPlugin {
         else "-noshaded"
       }
 
-      ver.span(_ != '-') match {
-        case (a, b) => s"${a}${suffix}${b}"
+      if (ver endsWith "-SNAPSHOT") {
+        s"${ver stripSuffix "-SNAPSHOT"}${suffix}-SNAPSHOT"
+      } else {
+        ver.span(_ != '-') match {
+          case (a, b) => s"${a}${suffix}${b}"
+          case _ => s"${ver}${suffix}"
+        }
       }
     },
     target := {
