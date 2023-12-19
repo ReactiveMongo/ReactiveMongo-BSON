@@ -254,22 +254,22 @@ final class HandlerSpec
       ) must beSome(1))
     }
 
-    "get bsondocument at index 3" in {
+    "get BSON document at index 3" in {
       array.getAsOpt[BSONDocument](3) must beSome.which {
         _.getAsOpt[String]("name") must beSome("Joe")
       }
     }
 
-    "get bsonarray at index 4" in {
+    "get BSON array at index 4" in {
       val tdoc = array.getAsTry[BSONDocument](4)
 
-      tdoc must beFailedTry.withThrowable[TypeDoesNotMatchException]
-
-      array.getAsTry[BSONArray](4) must beSuccessfulTry[BSONArray].which {
-        tarray =>
-          tarray.getAsOpt[BSONLong](0) must beSome(BSONLong(0L)) and (tarray
-            .getAsOpt[BSONBooleanLike](0)
-            .map(_.toBoolean) must beSome(Success(false)))
+      tdoc must beFailedTry.withThrowable[TypeDoesNotMatchException] and {
+        array.getAsTry[BSONArray](4) must beSuccessfulTry[BSONArray].which {
+          tarray =>
+            tarray.getAsOpt[BSONLong](0) must beSome(BSONLong(0L)) and (tarray
+              .getAsOpt[BSONBooleanLike](0)
+              .map(_.toBoolean) must beSome(Success(false)))
+        }
       }
     }
   }
@@ -1204,6 +1204,17 @@ final class HandlerSpec
           barHandler.writeOpt(bar) must beSome(doc)
         }
       }
+    }
+  }
+
+  "Object ID" should {
+    "fail to string" in {
+      val reader = implicitly[BSONReader[BSONObjectID]]
+
+      reader.readTry(BSONString("foo")) must beFailedTry[BSONObjectID]
+        .withThrowable[TypeDoesNotMatchException](
+          """String \('foo'\) != BSONObjectID"""
+        )
     }
   }
 
