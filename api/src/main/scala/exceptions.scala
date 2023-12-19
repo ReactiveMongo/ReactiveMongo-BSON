@@ -102,7 +102,10 @@ object TypeDoesNotMatchException {
    * @param actual the actual value
    */
   def apply(expected: String, actual: BSONValue): TypeDoesNotMatchException =
-    new TypeDoesNotMatchException(expected, BSONValue.pretty(actual))
+    new TypeDoesNotMatchException(
+      expected,
+      s"${actual.bsonType} (${BSONValue pretty actual})"
+    )
 
   /**
    * Extracts expected and actual types from the type exception.

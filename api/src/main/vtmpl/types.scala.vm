@@ -52,6 +52,11 @@ sealed trait BSONValue { self =>
   private[bson] val code: Int
 
   /**
+   * The pretty type name
+   */
+  private[bson] val bsonType: String
+
+  /**
    * The code indicating the BSON type for this value as Byte
    */
   private[bson] def byteCode: Byte
@@ -269,6 +274,7 @@ final class BSONDouble private[bson] (val value: Double)
 
   val code = 0x01
   val byteCode = 0x01: Byte
+  val bsonType = "Double"
 
   override private[reactivemongo] val byteSize = 8
 
@@ -396,6 +402,7 @@ object BSONDouble {
 final class BSONString private[bson] (val value: String) extends BSONValue {
   val code = 0x02
   val byteCode = 0x02: Byte
+  val bsonType = "String"
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 
@@ -479,6 +486,7 @@ sealed abstract class BSONArray extends BSONValue {
 
   val code = 0x04
   val byteCode = 0x04: Byte
+  val bsonType = "Array"
 
   /**
    * Returns the [[BSONValue]] at the given `index`.
@@ -862,6 +870,7 @@ final class BSONBinary private[bson] (
 
   val code = 0x05
   val byteCode = 0x05: Byte
+  val bsonType = "Binary data"
 
   /** Returns the whole binary content as array. */
   def byteArray: Array[Byte] = value.duplicate().readArray(value.size)
@@ -954,6 +963,7 @@ object BSONBinary {
 sealed trait BSONUndefined extends BSONValue with BSONBooleanLike.Value {
   val code = 0x06
   val byteCode = (0x06: Byte)
+  val bsonType = "Undefined"
 
   override private[reactivemongo] val byteSize = 0
 
@@ -988,6 +998,7 @@ sealed abstract class BSONObjectID extends BSONValue {
 
   val code = 0x07
   val byteCode = 0x07: Byte
+  val bsonType = "ObjectId"
 
   protected val raw: Array[Byte]
 
@@ -1220,6 +1231,7 @@ final class BSONBoolean private[bson] (val value: Boolean)
 
   val code = 0x08
   val byteCode = 0x08: Byte
+  val bsonType = "Boolean"
 
   override private[reactivemongo] val byteSize = 1
 
@@ -1254,6 +1266,7 @@ final class BSONDateTime private[bson] (val value: Long)
   extends BSONValue with BSONNumberLike.Value {
   val code = 0x09
   val byteCode = 0x09: Byte
+  val bsonType = "Timestamp"
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     Success(BigDecimal(value))
@@ -1307,6 +1320,7 @@ object BSONDateTime {
 sealed trait BSONNull extends BSONValue with BSONBooleanLike.Value {
   val code = 0x0A
   val byteCode = 0x0A: Byte
+  val bsonType = "Null"
 
   override private[reactivemongo] val byteSize = 0
 
@@ -1330,6 +1344,7 @@ final class BSONRegex private[bson] (
   extends BSONValue {
   val code = 0x0B
   val byteCode = 0x0B: Byte
+  val bsonType = "Regular Expression"
 
   override private[reactivemongo] lazy val byteSize =
     2 + value.getBytes.size + flags.getBytes.size
@@ -1380,6 +1395,7 @@ object BSONRegex {
 final class BSONJavaScript private[bson] (val value: String) extends BSONValue {
   val code = 0x0D
   val byteCode = 0x0D: Byte
+  val bsonType = "JavaScript"
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 
@@ -1416,6 +1432,7 @@ object BSONJavaScript {
 final class BSONSymbol private[bson] (val value: String) extends BSONValue {
   val code = 0x0E
   val byteCode = 0x0E: Byte
+  val bsonType = "Symbol"
 
   override private[reactivemongo] lazy val byteSize = 5 + value.getBytes.size
 
@@ -1454,6 +1471,7 @@ final class BSONJavaScriptWS private[bson] (
   val scope: BSONDocument) extends BSONValue {
   val code = 0x0F
   val byteCode = 0x0F: Byte
+  val bsonType = "JavaScript code with scope"
 
   override private[reactivemongo] lazy val byteSize =
     5 + value.getBytes.size + scope.byteSize
@@ -1499,6 +1517,7 @@ final class BSONInteger private[bson] (val value: Int)
 
   val code = 0x10
   val byteCode = 0x10: Byte
+  val bsonType = "32-bit integer"
 
   override private[reactivemongo] val byteSize = 4
 
@@ -1579,6 +1598,7 @@ sealed abstract class BSONTimestamp
 
   val code = 0x11
   val byteCode = 0x11: Byte
+  val bsonType = "Timestamp"
 
   /**
    * Raw value (most significant 32 bits = epoch seconds / least significant 32 bits = ordinal)
@@ -1665,6 +1685,7 @@ final class BSONLong private[bson] (val value: Long)
 
   val code = 0x12
   val byteCode = 0x12: Byte
+  val bsonType = "64-bit integer"
 
   override lazy val toDouble: Try[Double] = {
     if (value >= Double.MinValue && value <= Double.MaxValue) {
@@ -1751,6 +1772,7 @@ final class BSONDecimal private[bson] (
 
   val code = 0x13
   val byteCode = 0x13: Byte
+  val bsonType = "Decimal128"
 
   override private[bson] lazy val asDecimal: Try[BigDecimal] =
     BSONDecimal.toBigDecimal(this)
@@ -1920,6 +1942,7 @@ object BSONDecimal {
 sealed trait BSONMinKey extends BSONValue {
   val byteCode = 0xFF.toByte
   val code = byteCode.toInt
+  val bsonType = "Min key"
 
   override private[reactivemongo] val byteSize = 0
   override val toString = "BSONMinKey"
@@ -1933,6 +1956,7 @@ object BSONMinKey extends BSONMinKey {
 sealed trait BSONMaxKey extends BSONValue {
   val code = 0x7F
   val byteCode = 0x7F: Byte
+  val bsonType = "Max key"
 
   override private[reactivemongo] val byteSize = 0
   override val toString = "BSONMaxKey"
@@ -1959,6 +1983,7 @@ sealed abstract class BSONDocument
 
   val code = 0x03
   val byteCode = 0x03: Byte
+  val bsonType = "Object"
 
   /** The document fields */
   private[bson] def fields: Map[String, BSONValue]
