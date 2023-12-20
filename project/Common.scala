@@ -21,16 +21,12 @@ object Common extends AutoPlugin {
       val ver = (ThisBuild / version).value
       val suffix = {
         if (useShaded.value) "" // default ~> no suffix
-        else "-noshaded"
+        else "noshaded"
       }
 
-      if (ver endsWith "-SNAPSHOT") {
-        s"${ver stripSuffix "-SNAPSHOT"}${suffix}-SNAPSHOT"
-      } else {
-        ver.span(_ != '-') match {
-          case (a, b) => s"${a}${suffix}${b}"
-          case _ => s"${ver}${suffix}"
-        }
+      ver.span(_ != '-') match {
+        case (_, "") => s"${ver}.${suffix}"
+        case (a, b) => s"${a}.${suffix}${b}"
       }
     },
     target := {
