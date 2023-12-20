@@ -66,9 +66,9 @@ for V in $SCALA_VERSIONS; do
 
         if [ `echo "$SCALA_DIR" | grep noshaded | wc -l` -ne 0 ]; then
           if [ ! -z $QUALIFIER ]; then
-            BASES="$BASES $SCALA_DIR/$N"_"$MV-$WO_QUALIFIER-noshaded-"`echo "$VERSION" | cut -d '-' -f 2`
+            BASES="$BASES $SCALA_DIR/$N"_"$MV-$WO_QUALIFIER.noshaded-"`echo "$VERSION" | cut -d '-' -f 2`
           else
-            BASES="$BASES $SCALA_DIR/$N"_"$MV-$VERSION-noshaded"
+            BASES="$BASES $SCALA_DIR/$N"_"$MV-$VERSION.noshaded"
           fi
         else
           BASES="$BASES $SCALA_DIR/$N"_$MV-$VERSION
