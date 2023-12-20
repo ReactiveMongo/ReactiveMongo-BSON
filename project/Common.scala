@@ -24,9 +24,14 @@ object Common extends AutoPlugin {
         else "noshaded"
       }
 
-      ver.span(_ != '-') match {
-        case (_, "") => s"${ver}.${suffix}"
-        case (a, b) => s"${a}.${suffix}${b}"
+      if (suffix.isEmpty) {
+        ver
+      } else {
+        ver.span(_ != '-') match {
+          case (_, "") => s"${ver}.${suffix}"
+
+          case (a, b) => s"${a}.${suffix}${b}"
+        }
       }
     },
     target := {
