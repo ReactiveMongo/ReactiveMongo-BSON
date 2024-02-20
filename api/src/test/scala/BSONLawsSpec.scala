@@ -23,6 +23,7 @@ final class BSONLawsSpecs
 
   { // Addition semigroup
     val semigroup = new Semigroup[BSONValue] {
+
       def combine(x: BSONValue, y: BSONValue): BSONValue =
         BSONValue.Addition(x, y)
     }
@@ -34,6 +35,7 @@ final class BSONLawsSpecs
   { // Composition monoid
     val monoid = new Monoid[ElementProducer] {
       val empty = ElementProducer.Empty
+
       def combine(x: ElementProducer, y: ElementProducer): ElementProducer =
         ElementProducer.Composition(x, y)
     }
