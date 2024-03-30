@@ -51,6 +51,7 @@ private[api] class MacroImpl(val c: Context) {
     val config = implicitOptionsConfig
 
     reify(new BSONHandler[A] {
+
       private val r: BSONValue => UTry[A] = { macroVal =>
         createHelper[A, Opts](config).valueReaderBody.splice
       }

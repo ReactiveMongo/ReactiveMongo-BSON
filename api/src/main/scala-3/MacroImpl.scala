@@ -2129,12 +2129,10 @@ private[api] object MacroImpl:
                 '{
                   ${ res }.get match {
                     case doc: BSONDocument =>
-                      ${ appendDocCall('{ doc }, field, param, pt, writer) }
-                      ()
+                      ${ appendDocCall('{ doc }, field, param, pt, writer) }; ()
 
                     case bson =>
-                      ${ appendCall(field, '{ bson }) }
-                      ()
+                      ${ appendCall(field, '{ bson }) }; ()
                   }
                 }
               } else {
@@ -2149,12 +2147,11 @@ private[api] object MacroImpl:
                     },
                     {
                       case doc: BSONDocument =>
-                        ${ appendDocCall('{ doc }, field, param, pt, writer) }
+                        ${ appendDocCall('{ doc }, field, param, pt, writer) };
                         ()
 
                       case bson =>
-                        ${ appendCall(field, '{ bson }) }
-                        ()
+                        ${ appendCall(field, '{ bson }) }; ()
                     }
                   )
                 }

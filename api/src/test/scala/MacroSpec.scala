@@ -250,6 +250,7 @@ final class MacroSpec
         new BSONWriter[Single]
           with BSONReader[Single]
           with BSONHandler[Single] {
+
           def writeTry(single: Single) =
             BSONDecimal.fromBigDecimal(single.value)
 
@@ -271,6 +272,7 @@ final class MacroSpec
           implicit
           h: BSONHandler[T]
         ): BSONDocumentHandler[Option[T]] = new BSONDocumentHandler[Option[T]] {
+
         def readDocument(doc: BSONDocument): Try[Option[T]] =
           doc.getAsUnflattenedTry[T](f"$$some")
 
