@@ -120,8 +120,7 @@ private[bson] trait QuotesHelper {
     val fields = decls.zipWithIndex.map {
       case ((sym, t), i) =>
         debug(
-          s"// Field: ${sym.owner.owner.fullName}.${sym.name}, type = ${t.typeSymbol.fullName}, annotations = [${sym.annotations
-              .map(_.show) mkString ", "}]"
+          s"// Field: ${sym.owner.owner.fullName}.${sym.name}, type = ${t.typeSymbol.fullName}, annotations = [${sym.annotations.map(_.show) mkString ", "}]"
         )
 
         val fieldNme = s"_${i + 1}"
