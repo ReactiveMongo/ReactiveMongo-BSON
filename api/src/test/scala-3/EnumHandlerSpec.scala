@@ -1,5 +1,3 @@
-import scala.util.Success
-
 import reactivemongo.api.bson._
 
 import org.specs2.specification.core.Fragments

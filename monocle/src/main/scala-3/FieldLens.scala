@@ -1,6 +1,6 @@
 package reactivemongo.api.bson.monocle
 
-import scala.util.{ Failure, Success, Try }
+import scala.util.{ Failure, Success }
 
 import reactivemongo.api.bson.{
   BSONDocument,
@@ -8,7 +8,6 @@ import reactivemongo.api.bson.{
   BSONReader,
   BSONValue,
   BSONWriter,
-  ElementProducer,
   SafeBSONWriter
 }
 

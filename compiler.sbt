@@ -4,7 +4,7 @@ ThisBuild / crossScalaVersions := Seq(
   "2.11.12",
   scalaVersion.value,
   "2.13.10",
-  "3.2.2"
+  "3.4.2"
 )
 
 crossVersion := CrossVersion.binary
@@ -25,7 +25,12 @@ ThisBuild / scalacOptions ++= {
       "-Xlint",
       "-g:vars"
     )
-  } else Seq()
+  } else Seq(
+    "-Wconf:msg=.*should\\ not\\ .*infix\\ operator.*:s",
+    "-Wconf:msg=.*vararg\\ splices.*:s",
+    "-Wconf:msg=.*with\\ as\\ a\\ type\\ operator.*:s",
+    "-Wconf:msg=.*deprecated\\ for\\ wildcard\\ arguments.*:s"
+  )
 }
 
 ThisBuild / scalacOptions ++= {
@@ -72,12 +77,6 @@ Compile / console / scalacOptions ~= {
   _.filterNot(o =>
     o.startsWith("-X") || o.startsWith("-Y") || o.startsWith("-P:silencer")
   )
-}
-
-Test / compile / scalacOptions ~= {
-  val excluded = Set("-Xfatal-warnings")
-
-  _.filterNot(excluded.contains)
 }
 
 val filteredScalacOpts: Seq[String] => Seq[String] = {

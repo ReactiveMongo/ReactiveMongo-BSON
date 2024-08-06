@@ -164,6 +164,15 @@ lazy val benchmarks = (project in file("benchmarks"))
     mimaPreviousArtifacts := Set.empty,
     libraryDependencies ++= reactivemongoShaded.value,
     libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always,
+    scalacOptions ++= {
+      if (scalaBinaryVersion.value startsWith "3") {
+        Seq(
+          "-Wconf:msg=.*has\\ been\\ deprecated.*\\ uninitialized.*:s"
+        )
+      } else {
+        Seq.empty
+      }
+    },
     publish := ({}),
     publishTo := None
   )

@@ -2,7 +2,7 @@ package reactivemongo.api.bson
 
 import scala.util.{ Failure, Success, Try }
 
-import GeoPosition.safeWriter.{ safeWrite => writePos }
+import GeoPosition.safeWriter
 
 /**
  * GeoJSON [[https://docs.mongodb.com/manual/reference/geojson/#overview geometry]] object
@@ -144,7 +144,9 @@ object GeoPoint {
     }
 
   implicit val writer: BSONDocumentWriter[GeoPoint] =
-    GeoGeometry.writer[GeoPoint] { point => writePos(point.coordinates) }
+    GeoGeometry.writer[GeoPoint] { point =>
+      safeWriter.safeWrite(point.coordinates)
+    }
 }
 
 /**
@@ -230,8 +232,10 @@ object GeoLineString {
     GeoGeometry.reader[GeoLineString](readCoordinates)
 
   private[bson] val writeCoordinates: GeoLineString => BSONArray = { lineStr =>
-    writePos(lineStr._1) +: writePos(lineStr._2) +: BSONArray(
-      lineStr.more.map(writePos)
+    safeWriter.safeWrite(lineStr._1) +: safeWriter.safeWrite(
+      lineStr._2
+    ) +: BSONArray(
+      lineStr.more.map(safeWriter.safeWrite)
     )
   }
 

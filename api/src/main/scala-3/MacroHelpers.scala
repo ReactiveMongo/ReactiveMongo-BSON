@@ -10,13 +10,14 @@ private[bson] trait MacroHelpers[A] extends OptionSupport with MacroLogging {
   _i: ImplicitResolver[A] with QuotesHelper =>
 
   type Q <: Quotes
+
   protected val quotes: Q
 
   import quotes.reflect.*
 
-    // format: off
-    protected given q: Q = quotes
-    // format: on
+  // format: off
+  protected given q: Q = quotes
+  // format: on
 
   protected[api] def aTpe: Type[A]
   protected[api] def aTpeRepr: TypeRepr
@@ -267,7 +268,7 @@ private[bson] trait OptionSupport {
   import quotes.reflect.*
 
     // format: off
-    private given q: Q = quotes
+    //TODO: Remove; private given q: Q = quotes
 
     protected type Opts <: MacroOptions
 

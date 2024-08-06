@@ -63,7 +63,12 @@ object Common extends AutoPlugin {
         Set.empty
       }
     },
-    mimaBinaryIssueFilters ++= Seq(missingMethodInOld)
+    mimaBinaryIssueFilters ++= Seq(missingMethodInOld),
+    Test / compile / scalacOptions ~= {
+      val excluded = Set("-Xfatal-warnings")
+
+      _.filterNot(excluded.contains)
+    }
   )
 
   private val missingMethodInOld: ProblemFilter = {

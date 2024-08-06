@@ -135,7 +135,6 @@ object EnumHelper:
       }
     }.zipWithIndex.map {
       case ((sym, expr), i) =>
-        val name = sym.name.toLowerCase
         val body: Expr[Some[T]] = '{ Some(${ expr }) }
 
         CaseDef(

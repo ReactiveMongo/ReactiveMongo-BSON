@@ -140,7 +140,7 @@ private[bson] trait ImplicitResolver[A] {
    * @param forwardExpr the `Expr` that forward to the materialized instance itself
    */
   private class ImplicitTransformer[T](forwardExpr: Expr[T]) extends TreeMap {
-    private val denorm = denormalized _
+    private val denorm = denormalized
 
     @SuppressWarnings(Array("AsInstanceOf"))
     override def transformTree(tree: Tree)(owner: Symbol): Tree = tree match {
@@ -179,7 +179,6 @@ private[bson] trait ImplicitResolver[A] {
       ptype: TypeRepr,
       tx: TreeMap
     ): Option[Implicit] = {
-    val pt = ptype.asType
     val (ntpe, selfRef) = normalized(ptype)
     val ptpe = ntpe
 

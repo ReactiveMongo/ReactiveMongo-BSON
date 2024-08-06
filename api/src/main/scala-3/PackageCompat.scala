@@ -1,9 +1,5 @@
 package reactivemongo.api
 
-import scala.util.{ Failure, Success }
-
-import reactivemongo.api.bson.{ BSONArray, BSONWriter }
-
 private[api] trait PackageCompat:
 
   /**
