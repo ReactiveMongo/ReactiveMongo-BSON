@@ -47,7 +47,7 @@ object Common extends AutoPlugin {
       ) ++ Opts.doc.title(name.value)
 
       if (scalaBinaryVersion.value startsWith "3") {
-        opts ++ Seq("-skip-by-id=highlightextractor")
+        opts ++ Seq("-skip-by-id", "com.github.ghik.silencer")
       } else {
         opts ++ Seq("-skip-packages", "highlightextractor", "-implicits")
       }

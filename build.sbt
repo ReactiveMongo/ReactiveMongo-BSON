@@ -81,7 +81,7 @@ lazy val api = (project in file("api"))
         "org.specs2" %% "specs2-matcher-extra" % specsVer.value,
         "org.typelevel" %% "discipline-specs2" % "1.1.3",
         spireLaws.value
-      ).map(_.cross(CrossVersion.for3Use2_13) % Test),
+      ).map(_.cross(CrossVersion.for3Use2_13 /* TODO: Remove */) % Test),
       libraryDependencies ++= Seq(
         slf4jSimple % Test,
         "org.slf4j" % "slf4j-api" % slf4jVersion
