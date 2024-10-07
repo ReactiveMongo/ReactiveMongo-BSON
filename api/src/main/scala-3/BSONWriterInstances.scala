@@ -13,7 +13,7 @@ import java.time.{
   ZonedDateTime
 }
 
-import reactivemongo.api.{ bson => pkg }
+import reactivemongo.api.bson as pkg
 
 private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
 

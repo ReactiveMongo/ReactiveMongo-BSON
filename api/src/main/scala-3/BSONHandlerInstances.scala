@@ -13,7 +13,7 @@ import java.time.{
   ZonedDateTime
 }
 
-import reactivemongo.api.{ bson => pkg }
+import reactivemongo.api.bson as pkg
 
 private[bson] trait BSONHandlerInstances:
   given intHandler: BSONHandler[Int] = BSONIntegerHandler

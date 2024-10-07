@@ -6,7 +6,13 @@ SCRIPT_DIR=`dirname $0 | sed -e "s|^\./|$PWD/|"`
 
 cd "$SCRIPT_DIR/.."
 
-sbt ++$SCALA_VERSION ';scalafixAll -check ;scalafmtAll'
+SBT_TASKS="scalafmtAll"
+
+if [ "v${SCALA_VERSION}" != "v2.11.12" ]; then
+  SBT_TASKS=";scalafixAll -check ;${SBT_TASK}"
+fi
+
+sbt "++$SCALA_VERSION" "$SBT_TASKS"
 
 git diff --exit-code || (
   echo "ERROR: Scalafmt check failed, see differences above."

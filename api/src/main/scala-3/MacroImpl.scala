@@ -1,12 +1,12 @@
 package reactivemongo.api.bson
 
 import scala.util.{
-  Failure => TryFailure,
-  Success => TrySuccess,
-  Try => TryResult
+  Failure as TryFailure,
+  Success as TrySuccess,
+  Try as TryResult
 }
 
-import scala.collection.mutable.{ Builder => MBuilder }
+import scala.collection.mutable.Builder as MBuilder
 
 import scala.deriving.Mirror.ProductOf
 import scala.quoted.{ Expr, Quotes, Type }
