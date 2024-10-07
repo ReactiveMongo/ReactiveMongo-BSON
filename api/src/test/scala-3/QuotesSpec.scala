@@ -5,7 +5,7 @@ import scala.deriving.Mirror
 import reactivemongo.api.bson.TestUtils.typecheck
 
 import org.specs2.matcher.MatchResult
-import org.specs2.matcher.TypecheckMatchers._
+import org.specs2.matcher.TypecheckMatchers.*
 
 final class QuotesSpec extends org.specs2.mutable.Specification:
   "Quotes".title

@@ -75,6 +75,12 @@ trait BSONReader[T] { self =>
     new BSONReader.MappedReader[T, U](self, f)
 
   /**
+   * '''EXPERIMENTAL:''' (API may change without notice)
+   */
+  def collect[U](read: PartialFunction[T, U]): BSONReader[U] =
+    BSONReader.from[U] { bson => self.readTry(bson).collect(read) }
+
+  /**
    * $beforeReadDescription
    *
    * {{{
