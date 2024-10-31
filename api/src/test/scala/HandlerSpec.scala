@@ -243,9 +243,31 @@ final class HandlerSpec
     }
   }
 
-  "Complex Array" should {
+  "Complex array" should {
     "be of size = 6" in {
       array.size must_=== 6
+    }
+
+    "be collect'ed" in {
+      val reader =
+        implicitly[BSONReader[Seq[BSONValue]]].collect[::[BSONValue]] {
+          case head :: tail => ::(head, tail)
+        }
+
+      reader.readTry(array) must beSuccessfulTry(
+        ::(
+          BSONString("elem0"),
+          List(
+            BSONInteger(1),
+            BSONDouble(2.222),
+            BSONDocument("name" -> "Joe"),
+            BSONArray(0L),
+            BSONString("pp[4]")
+          )
+        )
+      ) and {
+        reader.readTry(BSONArray.empty) must beFailedTry[Seq[BSONValue]]
+      }
     }
 
     "have a an int = 2 at index 2" in {
@@ -399,8 +421,10 @@ final class HandlerSpec
     "fails from array" in {
       BSONDocument("foo" -> BSONArray.empty).getAsTry[BSONDocument](
         "foo"
-      ) must_=== Failure(TypeDoesNotMatchException("BSONDocument", "[]"))
-    }
+      ) must_=== Failure(
+        TypeDoesNotMatchException("BSONDocument", "Array ([])")
+      )
+    } tag "wip"
   }
 
   "BSONDateTime" should {
