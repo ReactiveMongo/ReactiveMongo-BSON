@@ -75,6 +75,22 @@ trait BSONReader[T] { self =>
     new BSONReader.MappedReader[T, U](self, f)
 
   /**
+   * '''EXPERIMENTAL:''' (API may change without notice)
+   */
+  def collect[U](read: PartialFunction[T, U]): BSONReader[U] =
+    BSONReader.from[U] { bson =>
+      self.readTry(bson).flatMap { v =>
+        read.lift(v) match {
+          case Some(result) =>
+            Success(result)
+
+          case None =>
+            Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
+        }
+      }
+    }
+
+  /**
    * $beforeReadDescription
    *
    * {{{
@@ -250,7 +266,7 @@ object BSONReader extends BSONReaderCompat with BSONReaderInstances {
     iterable[T, Seq](read)
 
   /**
-   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
+   * '''EXPERIMENTAL:''' Creates a [[BSONReader]] that reads
    * the [[BSONArray]] elements.
    *
    * {{{
@@ -276,7 +292,7 @@ object BSONReader extends BSONReaderCompat with BSONReaderInstances {
     }
 
   /**
-   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
+   * '''EXPERIMENTAL:''' Creates a [[BSONReader]] that reads
    * the [[BSONArray]] elements.
    *
    * @see [[tuple2]]
@@ -295,7 +311,7 @@ object BSONReader extends BSONReaderCompat with BSONReaderInstances {
     }
 
   /**
-   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
+   * '''EXPERIMENTAL:''' Creates a [[BSONReader]] that reads
    * the [[BSONArray]] elements.
    *
    * @see [[tuple2]]
@@ -319,7 +335,7 @@ object BSONReader extends BSONReaderCompat with BSONReaderInstances {
   }
 
   /**
-   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentReader]] that reads
+   * '''EXPERIMENTAL:''' Creates a [[BSONReader]] that reads
    * the [[BSONArray]] elements.
    *
    * @see [[tuple2]]
