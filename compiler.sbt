@@ -1,9 +1,9 @@
-ThisBuild / scalaVersion := "2.12.17"
+ThisBuild / scalaVersion := "2.12.20"
 
 ThisBuild / crossScalaVersions := Seq(
   "2.11.12",
   scalaVersion.value,
-  "2.13.10",
+  "2.13.15",
   "3.4.2"
 )
 
@@ -25,12 +25,13 @@ ThisBuild / scalacOptions ++= {
       "-Xlint",
       "-g:vars"
     )
-  } else Seq(
-    "-Wconf:msg=.*should\\ not\\ .*infix\\ operator.*:s",
-    "-Wconf:msg=.*vararg\\ splices.*:s",
-    "-Wconf:msg=.*with\\ as\\ a\\ type\\ operator.*:s",
-    "-Wconf:msg=.*deprecated\\ for\\ wildcard\\ arguments.*:s"
-  )
+  } else
+    Seq(
+      "-Wconf:msg=.*should\\ not\\ .*infix\\ operator.*:s",
+      "-Wconf:msg=.*vararg\\ splices.*:s",
+      "-Wconf:msg=.*with\\ as\\ a\\ type\\ operator.*:s",
+      "-Wconf:msg=.*deprecated\\ for\\ wildcard\\ arguments.*:s"
+    )
 }
 
 ThisBuild / scalacOptions ++= {
@@ -90,7 +91,7 @@ Test / console / scalacOptions ~= filteredScalacOpts
 // Silencer
 ThisBuild / libraryDependencies ++= {
   if (!scalaBinaryVersion.value.startsWith("3")) {
-    val silencerVersion = "1.17.13"
+    val silencerVersion = "1.7.19"
 
     Seq(
       compilerPlugin(
