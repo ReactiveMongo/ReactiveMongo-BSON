@@ -112,8 +112,7 @@ private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
     bsonUndefinedWriter,
     bsonRegexWriter,
     bsonJavaScriptWriter,
-    bsonJavaScriptWSWriter,
-    collectionWriter
+    bsonJavaScriptWSWriter
   }
 
   given tuple2Writer[A: BSONWriter, B: BSONWriter]: BSONWriter[(A, B)] =
@@ -140,6 +139,17 @@ end BSONWriterInstances
 
 private[bson] sealed trait BSONWriterInstancesLowPrio {
   _self: BSONWriterInstances =>
+
+  /*
+   * Since Scala 3.6 the order of givens prioritization have changed - compiler can choose the most general implicit instead of the most specific
+   * For example when searching for Writer[Map[String, T]]
+   *   - Scala 3.5 chooses mapWriter: BSONDocumentWriter[Map[String, V]] instead of collectionWriter[T, Repr <: Iterable[T]]: BSONWriter[Repr] as it's more specyfic
+   *   - Scala 3.6 sees both of the candidates as equally good leading to ambigious implicit search result
+   * To prevent this issue for Scala 3.6+ users more generalized writers should be put in the low-priority trait to workaround these changes.
+   * It would have no effect for Scala 3.5- users since the more specific implicit would choosen anyway
+   * See Scala 3 PR that introduced this change for more info: https://github.com/scala/scala3/pull/19300
+   */
+  export pkg.collectionWriter
 
   given bsonValueIdentityWriter: BSONWriter[BSONValue] = BSONValueIdentity
 }
