@@ -21,6 +21,6 @@ addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.7")
 
 addSbtPlugin("com.github.sbt" % "sbt-dynver" % "5.0.1")
 
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.10.4")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.13.0")
 
 addSbtPlugin("cchantep" % "sbt-velocity" % "0.1")
