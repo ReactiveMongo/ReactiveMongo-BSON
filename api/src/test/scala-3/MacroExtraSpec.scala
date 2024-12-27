@@ -12,7 +12,7 @@ import reactivemongo.api.bson.{
 }
 import reactivemongo.api.bson.TestUtils.typecheck
 
-import org.specs2.matcher.TypecheckMatchers._
+import org.specs2.matcher.TypecheckMatchers.*
 
 final class CustomNoProductOf(val name: String, val age: Int)
 

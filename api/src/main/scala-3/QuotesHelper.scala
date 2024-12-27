@@ -1,9 +1,9 @@
 package reactivemongo.api.bson
 
 import scala.util.{
-  Failure => TryFailure,
-  Success => TrySuccess,
-  Try => TryResult
+  Failure as TryFailure,
+  Success as TrySuccess,
+  Try as TryResult
 }
 
 import scala.deriving.Mirror.ProductOf

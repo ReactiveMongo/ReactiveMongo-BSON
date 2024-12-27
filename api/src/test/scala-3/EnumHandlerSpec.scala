@@ -1,4 +1,4 @@
-import reactivemongo.api.bson._
+import reactivemongo.api.bson.*
 
 import org.specs2.specification.core.Fragments
 

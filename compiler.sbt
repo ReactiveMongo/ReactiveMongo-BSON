@@ -1,9 +1,9 @@
-ThisBuild / scalaVersion := "2.12.17"
+ThisBuild / scalaVersion := "2.12.20"
 
 ThisBuild / crossScalaVersions := Seq(
   "2.11.12",
   scalaVersion.value,
-  "2.13.10",
+  "2.13.15",
   "3.4.2"
 )
 
@@ -21,16 +21,17 @@ ThisBuild / scalacOptions ++= Seq(
 ThisBuild / scalacOptions ++= {
   if (scalaBinaryVersion.value startsWith "2.") {
     Seq(
-      "-target:jvm-1.8",
       "-Xlint",
       "-g:vars"
     )
-  } else Seq(
-    "-Wconf:msg=.*should\\ not\\ .*infix\\ operator.*:s",
-    "-Wconf:msg=.*vararg\\ splices.*:s",
-    "-Wconf:msg=.*with\\ as\\ a\\ type\\ operator.*:s",
-    "-Wconf:msg=.*deprecated\\ for\\ wildcard\\ arguments.*:s"
-  )
+  } else {
+    Seq(
+      "-Wconf:msg=.*should\\ not\\ .*infix\\ operator.*:s",
+      "-Wconf:msg=.*vararg\\ splices.*:s",
+      "-Wconf:msg=.*with\\ as\\ a\\ type\\ operator.*:s",
+      "-Wconf:msg=.*deprecated\\ for\\ wildcard\\ arguments.*:s"
+    )
+  }
 }
 
 ThisBuild / scalacOptions ++= {
@@ -38,6 +39,7 @@ ThisBuild / scalacOptions ++= {
 
   if (sv == "2.12") {
     Seq(
+      "-target:jvm-1.8",
       "-Xmax-classfile-name",
       "128",
       "-Ywarn-numeric-widen",
@@ -50,6 +52,7 @@ ThisBuild / scalacOptions ++= {
     )
   } else if (sv == "2.11") {
     Seq(
+      "-target:jvm-1.8",
       "-Xmax-classfile-name",
       "128",
       "-Yopt:_",
@@ -59,6 +62,8 @@ ThisBuild / scalacOptions ++= {
     )
   } else if (sv == "2.13") {
     Seq(
+      "-release",
+      "8",
       "-explaintypes",
       "-Werror",
       "-Wnumeric-widen",
@@ -69,7 +74,7 @@ ThisBuild / scalacOptions ++= {
       "-Wunused"
     )
   } else {
-    Seq("-Wunused:all", "-language:implicitConversions")
+    Seq("-release", "8", "-Wunused:all", "-language:implicitConversions")
   }
 }
 
@@ -89,8 +94,16 @@ Test / console / scalacOptions ~= filteredScalacOpts
 
 // Silencer
 ThisBuild / libraryDependencies ++= {
-  if (!scalaBinaryVersion.value.startsWith("3")) {
-    val silencerVersion = "1.17.13"
+  val v = scalaBinaryVersion.value
+
+  if (!v.startsWith("3")) {
+    val silencerVersion: String = {
+      if (v == "2.11") {
+        "1.17.13"
+      } else {
+        "1.7.19"
+      }
+    }
 
     Seq(
       compilerPlugin(
@@ -107,13 +120,17 @@ ThisBuild / scalacOptions ++= {
   val ver = scalaBinaryVersion.value
 
   if (ver startsWith "2.") {
-    val base =
-      "-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used"
-
     if (ver == "2.13") {
-      Seq(s"${base};a\\ type\\ was\\ inferred\\ to\\ be.*(Any|Object).*")
+      Seq(
+        "-Wconf:msg=.*inferred\\ to\\ be.*(Any|Object).*:is",
+        "-Wconf:msg=.*parameter\\ macro(Val|Doc)\\ .*is\\ never\\ used:is",
+        "-Wconf:msg=.*pattern\\ var\\ macro.*\\ is\\ never\\ used:is",
+        "-Wconf:msg=.*bh\\ .*MacroSpec.*:is",
+        "-Wconf:msg=.*local\\ type\\ Opts\\ is\\ never.*:is",
+        "-Wconf:msg=.*WithImplicit2\\ .*never\\ used.*:is"
+      )
     } else {
-      Seq(base)
+      Seq("-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used")
     }
   } else Seq.empty
 }

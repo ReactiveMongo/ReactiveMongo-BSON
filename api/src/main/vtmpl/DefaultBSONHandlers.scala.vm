@@ -310,11 +310,12 @@ private[bson] trait DefaultBSONHandlers
 }
 
 @SuppressWarnings(Array("TryGet"))
-@com.github.ghik.silencer.silent("Unused import") // higherKinds: 2.13+
 private[bson] trait LowPriority1BSONHandlers
   extends LowPriority2BSONHandlers { self: DefaultBSONHandlers =>
 
+#if( $scalaVersion.indexOf("2.11") == 0 || $scalaVersion.indexOf("2.12") == 0 )
   import scala.language.higherKinds
+#end
 
   // Collections Handlers
   protected class BSONArrayCollectionWriter[T, Repr](implicit ev: Repr => Iterable[T], writer: BSONWriter[T]) extends BSONWriter[Repr] {
@@ -403,7 +404,14 @@ private[bson] trait LowPriority1BSONHandlers
 
 #if( $scalaVersion.indexOf("2.") == 0 )
   @com.github.ghik.silencer.silent
-  implicit def collectionWriter[T, Repr](implicit ev: Repr => Iterable[T], writer: BSONWriter[T], notOption: Repr ¬ Option[T]): BSONWriter[Repr] = new BSONArrayCollectionWriter[T, Repr]
+  implicit def collectionWriter[T, Repr](
+    implicit ev: Repr => Iterable[T], 
+    writer: BSONWriter[T], 
+#if( $scalaVersion.indexOf("2.11") < 0 )
+    @scala.annotation.nowarn
+#end
+    notOption: Repr ¬ Option[T]
+  ): BSONWriter[Repr] = new BSONArrayCollectionWriter[T, Repr]
 #else
   @com.github.ghik.silencer.silent
   given collectionWriter[T, Repr <: Iterable[T]](using BSONWriter[T], Repr ¬ Option[T]): BSONWriter[Repr] = new BSONArrayCollectionWriter[T, Repr]

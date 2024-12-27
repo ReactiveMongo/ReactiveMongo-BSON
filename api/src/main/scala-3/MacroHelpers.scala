@@ -1,6 +1,6 @@
 package reactivemongo.api.bson
 
-import scala.util.{ Try => TryResult }
+import scala.util.Try as TryResult
 
 import scala.quoted.{ Expr, Quotes, Type }
 

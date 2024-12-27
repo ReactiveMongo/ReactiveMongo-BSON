@@ -1,7 +1,7 @@
 import reactivemongo.api.bson.DocumentClass
 import reactivemongo.api.bson.TestUtils.typecheck
 
-import org.specs2.matcher.TypecheckMatchers._
+import org.specs2.matcher.TypecheckMatchers.*
 
 trait DocumentClassExtraSpec { self: DocumentClassSpec =>
   import MacroTest._
