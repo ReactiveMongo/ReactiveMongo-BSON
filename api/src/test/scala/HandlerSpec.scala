@@ -1005,7 +1005,7 @@ final class HandlerSpec
         spec(
           BSONHandler.collect[Foo](
             read = { case BSONString(bar) => Foo(bar) },
-            write = { case foo => BSONString(foo.bar) }
+            write = { case f => BSONString(f.bar) }
           )
         )
       }

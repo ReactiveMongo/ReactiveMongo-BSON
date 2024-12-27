@@ -6,11 +6,11 @@ import scala.util.Success
  * Macros for generating `BSONReader` and `BSONWriter` at compile time.
  *
  * {{{
- * import reactivemongo.api.bson.Macros
+ * import reactivemongo.api.bson.{ BSONDocumentHandler, Macros }
  *
  * case class Person(name: String, surname: String)
  *
- * implicit val personHandler = Macros.handler[Person]
+ * implicit val personHandler: BSONDocumentHandler[Person] = Macros.handler[Person]
  * }}}
  *
  * @see [[MacroOptions]] for specific options

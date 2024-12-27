@@ -6,7 +6,7 @@ commands:
     parameters:
       sbt_version:
         type: string
-        default: "1.8.2"
+        default: "1.10.7"
     steps:
       - restore_cache:
           keys:
@@ -98,7 +98,7 @@ commands:
 jobs:
   scala211_jdk11:
     docker:
-      - image: circleci/openjdk:11-jdk
+      - image: cimg/openjdk:11.0
 
     working_directory: ~/repo
 
@@ -115,12 +115,12 @@ jobs:
 
   scala212_jdk8:
     docker:
-      - image: circleci/openjdk:8-jdk
+      - image: cimg/openjdk:8.0
 
     working_directory: ~/repo
 
     environment:
-      SCALA_VERSION: 2.12.17
+      SCALA_VERSION: 2.12.20
     
     steps:
       - checkout
@@ -130,14 +130,14 @@ jobs:
       - store_test_results:
           path: test-reports
 
-  scala213_jdk10:
+  scala213_jdk11:
     docker:
-      - image: circleci/openjdk:10-jdk
+      - image: cimg/openjdk:11.0
 
     working_directory: ~/repo
 
     environment:
-      SCALA_VERSION: 2.13.12
+      SCALA_VERSION: 2.13.15
     
     steps:
       - checkout
@@ -149,7 +149,7 @@ jobs:
 
   scala31_jdk11:
     docker:
-      - image: circleci/openjdk:11-jdk
+      - image: cimg/openjdk:11.0
 
     working_directory: ~/repo
     
@@ -168,7 +168,7 @@ jobs:
 
   publish_snapshots:
     docker:
-      - image: circleci/openjdk:8-jdk
+      - image: cimg/openjdk:8.0
 
     working_directory: ~/repo
     
@@ -200,7 +200,7 @@ workflows:
     jobs:
       - scala211_jdk11
       - scala212_jdk8
-      - scala213_jdk10
+      - scala213_jdk11
       - scala31_jdk11
 
       - publish_snapshots:
@@ -211,7 +211,7 @@ workflows:
           requires:
             - scala211_jdk11
             - scala212_jdk8
-            - scala213_jdk10
+            - scala213_jdk11
             - scala31_jdk11
 
       - trigger_dependent_builds:

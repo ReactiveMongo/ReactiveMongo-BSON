@@ -14,10 +14,11 @@ case class UB2(s: String) extends UT2
 object MacroCompilation {
 
   object CompileUnion1 {
-    implicit def reader1 = Macros.reader[Member1]
-    implicit def writer1 = Macros.writer[Member1]
+    implicit def reader1: BSONDocumentReader[Member1] = Macros.reader[Member1]
+    implicit def writer1: BSONDocumentWriter[Member1] = Macros.writer[Member1]
 
-    implicit def handler2 = Macros.handler[Member2.type]
+    implicit def handler2: BSONDocumentHandler[Member2.type] =
+      Macros.handler[Member2.type]
 
     @com.github.ghik.silencer.silent(".*Member2.*\\ no\\ case\\ accessor.*")
     implicit def reader2: BSONDocumentReader[Family] = {

@@ -65,8 +65,8 @@ private[bson] object BSONIterator {
       case BSONDouble(d) =>
         s"${prefix}$d"
 
-      case BSONInteger(i) =>
-        s"${prefix}$i"
+      case BSONInteger(iv) =>
+        s"${prefix}$iv"
 
       case l: BSONLong =>
         s"${prefix}${BSONLong pretty l}"

@@ -98,9 +98,10 @@ trait HandlerConverters extends LowPriorityHandlerConverters1 {
     val BsonTimestampClass = classOf[BsonTimestamp].getName
     val BsonUndefinedClass = classOf[BsonUndefined].getName
 
-    @com.github.ghik.silencer.silent
-    def get[T](clazz: Class[T], r: CodecRegistry): Codec[T] =
+    def get[T](clazz: Class[T], r: CodecRegistry): Codec[T] = {
+      val _ = r
       get(clazz)
+    }
 
     def get[T](clazz: Class[T]): Codec[T] = {
       val c: Codec[_] = clazz.getName match {

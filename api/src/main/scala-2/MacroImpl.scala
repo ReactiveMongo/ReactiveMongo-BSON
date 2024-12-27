@@ -1525,19 +1525,20 @@ private[api] class MacroImpl(val c: Context) {
       @annotation.tailrec
       def parseUnionTree(trees: List[Type], found: List[Type]): List[Type] =
         trees match {
-          case tree :: rem =>
-            if (tree <:< union) {
-              tree match {
+          case tr :: rem => {
+            if (tr <:< union) {
+              tr match {
                 case TypeRef(_, _, List(a, b)) =>
                   parseUnionTree(a :: b :: rem, found)
 
                 case _ =>
                   c.abort(
                     c.enclosingPosition,
-                    s"Union type parameters expected: $tree"
+                    s"Union type parameters expected: $tr"
                   )
               }
-            } else parseUnionTree(rem, tree :: found)
+            } else parseUnionTree(rem, tr :: found)
+          }
 
           case _ => found
         }
@@ -1728,17 +1729,6 @@ private[api] class MacroImpl(val c: Context) {
 
       neededImplicit -> selfRef
     }
-
-    // To print the implicit types in the compiler messages
-    private def prettyType(boundTypes: Map[String, Type])(t: Type): String =
-      boundTypes.getOrElse(t.typeSymbol.fullName, t) match {
-        case TypeRef(_, base, args) if args.nonEmpty =>
-          s"""${base.asType.fullName}[${args
-              .map(prettyType(boundTypes)(_))
-              .mkString(", ")}]"""
-
-        case t => t.typeSymbol.fullName
-      }
 
     @inline def dealias(t: Type): Type =
       if (t.typeSymbol.name.toString == "<refinement>") t
