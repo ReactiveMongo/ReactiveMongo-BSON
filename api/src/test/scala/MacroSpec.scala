@@ -284,7 +284,9 @@ final class MacroSpec
         }
       }
 
-      def genSeqHandler[T: BSONDocumentHandler]: BSONDocumentHandler[GenSeq[T]] =
+      def genSeqHandler[
+          T: BSONDocumentHandler
+        ]: BSONDocumentHandler[GenSeq[T]] =
         Macros.handler[GenSeq[T]]
 
       val seq = GenSeq(
@@ -373,7 +375,8 @@ final class MacroSpec
     }
 
     "respect compilation options" in {
-      val format = Macros.handlerOpts[Person, MacroOptions.Verbose] // more stuff in compiler log
+      val format = Macros
+        .handlerOpts[Person, MacroOptions.Verbose] // more stuff in compiler log
 
       roundtrip(Person("john", "doe"), format)
     }
@@ -510,8 +513,8 @@ final class MacroSpec
         val a = UA2(1)
         val b = UB2("hai")
 
-        val format = Macros.handlerOpts[UT2, UnionType[UA2 \/ UB2]
-          with AutomaticMaterialization]
+        val format = Macros
+          .handlerOpts[UT2, UnionType[UA2 \/ UB2] with AutomaticMaterialization]
 
         format
           .writeTry(a)

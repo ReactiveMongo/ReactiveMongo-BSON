@@ -29,11 +29,11 @@ object MacroCompilation {
   object CompileUnion2 {
     import MacroOptions._
 
-    val reader = Macros.readerOpts[UT2, UnionType[UA2 \/ UB2]
-      with AutomaticMaterialization]
+    val reader = Macros
+      .readerOpts[UT2, UnionType[UA2 \/ UB2] with AutomaticMaterialization]
 
-    val writer = Macros.writerOpts[UT2, UnionType[UA2 \/ UB2]
-      with AutomaticMaterialization]
+    val writer = Macros
+      .writerOpts[UT2, UnionType[UA2 \/ UB2] with AutomaticMaterialization]
     /* Was failing `writer` with:
 
 [error] ../api/src/test/scala/MacroCompilation.scala:30:35: local val macroCfg$macro$21 in value $anonfun is never used

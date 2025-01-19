@@ -49,7 +49,7 @@ val spireLaws = Def.setting[ModuleID] {
   }
 
   ("org.typelevel" %% "spire-laws" % ver)
-    .exclude("org.typelevel", s"discipline-scalatest_${sm}"),
+    .exclude("org.typelevel", s"discipline-scalatest_${sm}")
 }
 
 ThisBuild / libraryDependencies ++= {

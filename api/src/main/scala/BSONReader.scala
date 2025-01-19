@@ -297,7 +297,11 @@ object BSONReader extends BSONReaderCompat with BSONReaderInstances {
    *
    * @see [[tuple2]]
    */
-  def tuple3[A: BSONReader, B: BSONReader, C: BSONReader]: BSONReader[(A, B, C)] =
+  def tuple3[
+      A: BSONReader,
+      B: BSONReader,
+      C: BSONReader
+    ]: BSONReader[(A, B, C)] =
     from[(A, B, C)] {
       case BSONArray(v1 +: v2 +: v3 +: _) =>
         for {

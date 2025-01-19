@@ -1045,7 +1045,9 @@ private[api] object MacroImpl:
 
         case _ =>
           report.errorAndAbort(
-            s"Something weird is going on with '${prettyType(TypeRepr.of(using tpe))}'. Should be a singleton but can't parse it"
+            s"Something weird is going on with '${prettyType(
+                TypeRepr.of(using tpe)
+              )}'. Should be a singleton but can't parse it"
           )
       }
 
