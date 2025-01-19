@@ -118,7 +118,11 @@ private[bson] trait BSONWriterInstances extends BSONWriterInstancesLowPrio:
   given tuple2Writer[A: BSONWriter, B: BSONWriter]: BSONWriter[(A, B)] =
     BSONWriter.tuple2
 
-  given tuple3Writer[A: BSONWriter, B: BSONWriter, C: BSONWriter]: BSONWriter[(A, B, C)] =
+  given tuple3Writer[
+      A: BSONWriter,
+      B: BSONWriter,
+      C: BSONWriter
+    ]: BSONWriter[(A, B, C)] =
     BSONWriter.tuple3
 
   given tuple4Writer[

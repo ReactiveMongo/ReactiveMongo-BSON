@@ -97,7 +97,11 @@ private[bson] trait BSONReaderInstances:
   given tuple2Reader[A: BSONReader, B: BSONReader]: BSONReader[(A, B)] =
     BSONReader.tuple2
 
-  given tuple3Reader[A: BSONReader, B: BSONReader, C: BSONReader]: BSONReader[(A, B, C)] =
+  given tuple3Reader[
+      A: BSONReader,
+      B: BSONReader,
+      C: BSONReader
+    ]: BSONReader[(A, B, C)] =
     BSONReader.tuple3
 
   given tuple4Reader[

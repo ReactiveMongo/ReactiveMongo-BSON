@@ -19,35 +19,59 @@ private[api] class MacroImpl(val c: Context) {
     Writer
   }
 
-  def reader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] =
+  def reader[
+      A: c.WeakTypeTag,
+      Opts: c.WeakTypeTag
+    ]: c.Expr[BSONDocumentReader[A]] =
     readerWithConfig[A, Opts](implicitOptionsConfig)
 
-  def configuredReader[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentReader[A]] =
+  def configuredReader[
+      A: c.WeakTypeTag,
+      Opts: c.WeakTypeTag
+    ]: c.Expr[BSONDocumentReader[A]] =
     readerWithConfig[A, Opts](withOptionsConfig)
 
   @SuppressWarnings(Array("PointlessTypeBounds"))
-  def valueReader[A <: AnyVal: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONReader[A]] =
+  def valueReader[
+      A <: AnyVal: c.WeakTypeTag,
+      Opts: c.WeakTypeTag
+    ]: c.Expr[BSONReader[A]] =
     reify(BSONReader.from[A] { macroVal =>
       createHelper[A, Opts](implicitOptionsConfig).valueReaderBody.splice
     })
 
-  def writer[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentWriter[A]] =
+  def writer[
+      A: c.WeakTypeTag,
+      Opts: c.WeakTypeTag
+    ]: c.Expr[BSONDocumentWriter[A]] =
     writerWithConfig[A, Opts](implicitOptionsConfig)
 
-  def configuredWriter[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentWriter[A]] =
+  def configuredWriter[
+      A: c.WeakTypeTag,
+      Opts: c.WeakTypeTag
+    ]: c.Expr[BSONDocumentWriter[A]] =
     writerWithConfig[A, Opts](withOptionsConfig)
 
   @SuppressWarnings(Array("PointlessTypeBounds"))
-  def valueWriter[A <: AnyVal: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONWriter[A]] =
+  def valueWriter[
+      A <: AnyVal: c.WeakTypeTag,
+      Opts: c.WeakTypeTag
+    ]: c.Expr[BSONWriter[A]] =
     reify(BSONWriter.from[A] { macroVal =>
       createHelper[A, Opts](implicitOptionsConfig).valueWriterBody.splice
     })
 
-  def handler[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentHandler[A]] =
+  def handler[
+      A: c.WeakTypeTag,
+      Opts: c.WeakTypeTag
+    ]: c.Expr[BSONDocumentHandler[A]] =
     handlerWithConfig[A, Opts](implicitOptionsConfig)
 
   @SuppressWarnings(Array("PointlessTypeBounds"))
-  def valueHandler[A <: AnyVal: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONHandler[A]] = {
+  def valueHandler[
+      A <: AnyVal: c.WeakTypeTag,
+      Opts: c.WeakTypeTag
+    ]: c.Expr[BSONHandler[A]] = {
     val config = implicitOptionsConfig
 
     reify(new BSONHandler[A] {
@@ -66,7 +90,10 @@ private[api] class MacroImpl(val c: Context) {
     })
   }
 
-  def configuredHandler[A: c.WeakTypeTag, Opts: c.WeakTypeTag]: c.Expr[BSONDocumentHandler[A]] =
+  def configuredHandler[
+      A: c.WeakTypeTag,
+      Opts: c.WeakTypeTag
+    ]: c.Expr[BSONDocumentHandler[A]] =
     handlerWithConfig[A, Opts](withOptionsConfig)
 
   def documentClass[A: c.WeakTypeTag]: c.Expr[DocumentClass[A]] = {
@@ -1455,7 +1482,9 @@ private[api] class MacroImpl(val c: Context) {
     @SuppressWarnings(Array("ListSize"))
     private def deepConforms(types: Seq[(Type, Type)]): Boolean =
       types.headOption match {
-        case Some((TypeRef(NoPrefix, a, _), TypeRef(NoPrefix, b, _))) => { // for generic parameter
+        case Some(
+              (TypeRef(NoPrefix, a, _), TypeRef(NoPrefix, b, _))
+            ) => { // for generic parameter
           if (a.fullName != b.fullName) {
             warn(s"Type symbols are not compatible: $a != $b")
 

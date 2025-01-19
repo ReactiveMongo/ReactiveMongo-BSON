@@ -58,7 +58,10 @@ object Macros extends MacroAnnotations:
    * $tparam
    * $tparamOpts
    */
-  inline def readerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentReader[A] =
+  inline def readerOpts[
+      A,
+      Opts <: MacroOptions.Default
+    ]: BSONDocumentReader[A] =
     ${ MacroImpl.reader[A, Opts] }
 
   /**
@@ -183,7 +186,10 @@ object Macros extends MacroAnnotations:
    * $tparam
    * $tparamOpts
    */
-  inline def writerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentWriter[A] =
+  inline def writerOpts[
+      A,
+      Opts <: MacroOptions.Default
+    ]: BSONDocumentWriter[A] =
     ${ MacroImpl.writer[A, Opts] }
 
   /**
@@ -241,7 +247,10 @@ object Macros extends MacroAnnotations:
    * $tparam
    * $tparamOpts
    */
-  inline def handlerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentHandler[A] =
+  inline def handlerOpts[
+      A,
+      Opts <: MacroOptions.Default
+    ]: BSONDocumentHandler[A] =
     ${ MacroImpl.handler[A, Opts] }
 
   /**
