@@ -147,7 +147,7 @@ jobs:
       - store_test_results:
           path: test-reports
 
-  scala31_jdk11:
+  scala3_jdk11:
     docker:
       - image: cimg/openjdk:11.0
 
@@ -201,7 +201,7 @@ workflows:
       - scala211_jdk11
       - scala212_jdk8
       - scala213_jdk11
-      - scala31_jdk11
+      - scala3_jdk11
 
       - publish_snapshots:
           filters:
@@ -212,7 +212,7 @@ workflows:
             - scala211_jdk11
             - scala212_jdk8
             - scala213_jdk11
-            - scala31_jdk11
+            - scala3_jdk11
 
       - trigger_dependent_builds:
           filters:

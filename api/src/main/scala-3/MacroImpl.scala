@@ -12,7 +12,7 @@ import scala.deriving.Mirror.ProductOf
 import scala.quoted.{ Expr, Quotes, Type }
 import scala.reflect.ClassTag
 
-import exceptions.{ HandlerException, ValueDoesNotMatchException }
+import exceptions.HandlerException
 
 @scala.annotation.nowarn("any")
 private[api] object MacroImpl:

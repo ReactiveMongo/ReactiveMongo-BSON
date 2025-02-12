@@ -71,7 +71,7 @@ lazy val api = (project in file("api"))
       Compile / compile / scalacOptions ++= {
         // !! Cannot be set in `compile.sbt`
         if (scalaBinaryVersion.value == "3") {
-          Seq("-Ysafe-init")
+          Seq("-Wsafe-init")
         } else {
           Seq.empty
         }
@@ -112,9 +112,6 @@ lazy val api = (project in file("api"))
       Compile / packageBin / mappings ~= {
         _.filter { case (_, path) => !path.startsWith("com/github/ghik") }
       },
-      Compile / packageSrc / mappings ~= {
-        _.filter { case (_, path) => path != "silent.scala" }
-      }
     )
   )
 
