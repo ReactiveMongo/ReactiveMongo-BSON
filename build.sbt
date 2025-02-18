@@ -111,7 +111,7 @@ lazy val api = (project in file("api"))
       Test / doc / scalacOptions ++= List("-skip-packages", "com.github.ghik"),
       Compile / packageBin / mappings ~= {
         _.filter { case (_, path) => !path.startsWith("com/github/ghik") }
-      },
+      }
     )
   )
 
