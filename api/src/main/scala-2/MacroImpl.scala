@@ -376,7 +376,7 @@ private[api] class MacroImpl(val c: Context) {
       val sym = tpe match {
         case SingleType(_, sym) => sym
         case TypeRef(_, sym, _) => sym
-        case _ =>
+        case _                  =>
           abort(s"Something weird is going on with '$tpe'. Should be a singleton but can't parse it")
       }
 

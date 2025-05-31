@@ -2228,7 +2228,7 @@ private[api] object MacroImpl:
                         using pTpe
                       ) match {
                         case Some(w) => w
-                        case None =>
+                        case None    =>
                           report.errorAndAbort(s"No implicit found for '${prettyType(tpr)}.$pname': ${classOf[BSONWriter[_]].getName}[${prettyType(pt)}]")
                       }
 
