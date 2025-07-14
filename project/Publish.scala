@@ -21,7 +21,7 @@ object Publish extends AutoPlugin {
       env("PUBLISH_REPO_ID"),
       env("PUBLISH_USER"),
       env("PUBLISH_PASS")
-    ),
+     ),
     pomIncludeRepository := { _ => false },
     pomPostProcess := {
       val ver = scalaBinaryVersion.value
@@ -53,5 +53,5 @@ object Publish extends AutoPlugin {
         </developers>)
   )
 
-  @inline private def env(n: String): String = sys.env.get(n).getOrElse(n)
+  @inline def env(n: String): String = sys.env.get(n).getOrElse(n)
 }
