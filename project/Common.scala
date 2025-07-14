@@ -52,8 +52,17 @@ object Common extends AutoPlugin {
         opts ++ Seq("-skip-packages", "highlightextractor", "-implicits")
       }
     },
-    resolvers ++= Resolver.sonatypeOssRepos("staging"),
-    resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
+    credentials ++= Seq(
+      Credentials(
+        "", // Empty realm credential - this one is actually used by Coursier!
+        "central.sonatype.com",
+        Publish.env("SONATYPE_USER"),
+        Publish.env("SONATYPE_PASS")
+      )
+    ),
+    resolvers ++= Seq(
+      "Central Testing repository" at "https://central.sonatype.com/api/v1/publisher/deployments/download"
+    ),
     resolvers += Resolver.typesafeRepo("releases"),
     mimaFailOnNoPrevious := false,
     mimaPreviousArtifacts := {
