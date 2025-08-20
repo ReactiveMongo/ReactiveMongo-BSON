@@ -11,9 +11,12 @@ fi
 
 export PUBLISH_USER
 
-echo "Password: "
-read PASS
-export PUBLISH_PASS="$PASS"
+if [ -z "$PUBLISH_PASS" ]; then
+  echo "Password: "
+  read PUBLISH_PASS
+fi
+
+export PUBLISH_PASS
 
 sbt +publish
 

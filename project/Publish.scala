@@ -7,7 +7,7 @@ object Publish extends AutoPlugin {
   override def requires = JvmPlugin
 
   private val repoName = env("PUBLISH_REPO_NAME")
-  private val repoUrl = env("PUBLISH_REPO_URL")
+  val repoUrl = env("PUBLISH_REPO_URL")
 
   override def projectSettings = Seq(
     licenses := Seq(
