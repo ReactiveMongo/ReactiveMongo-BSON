@@ -24,13 +24,7 @@ source "$SCRIPT_DIR/jvmopts.sh"
 export JVM_OPTS
 export SBT_OPTS
 
-TEST_ARGS=";error ;test:compile ;mimaReportBinaryIssues ;warn"
-
-if [ ! `echo "n$SCALA_VERSION" | sed -e 's/2.13.*/o/'` = "no" ]; then
-  TEST_ARGS="$TEST_ARGS ;msbCompat/testOnly"
-fi
-
-TEST_ARGS="$TEST_ARGS ;doc"
+TEST_ARGS=";error ;test:compile ;mimaReportBinaryIssues ;warn ;testOnly ;doc"
 
 cat > /dev/stdout <<EOF
 - JVM options: $JVM_OPTS
