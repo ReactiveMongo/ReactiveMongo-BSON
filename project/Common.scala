@@ -47,7 +47,7 @@ object Common extends AutoPlugin {
       ) ++ Opts.doc.title(name.value)
 
       if (scalaBinaryVersion.value startsWith "3") {
-        opts ++ Seq("-skip-by-id", "com.github.ghik.silencer")
+        opts ++ Seq("-skip-by-id:com.github.ghik.silencer")
       } else {
         opts ++ Seq("-skip-packages", "highlightextractor", "-implicits")
       }
@@ -61,9 +61,10 @@ object Common extends AutoPlugin {
       )
     ),
     resolvers ++= Seq(
-      "Central Testing repository" at "https://central.sonatype.com/api/v1/publisher/deployments/download"
+      "Central Testing repository" at "https://central.sonatype.com/api/v1/publisher/deployments/download",
+      "Sonatype Snapshots" at "https://central.sonatype.com/repository/maven-snapshots/",
+      Resolver.typesafeRepo("releases")
     ),
-    resolvers += Resolver.typesafeRepo("releases"),
     mimaFailOnNoPrevious := false,
     mimaPreviousArtifacts := {
       if (scalaBinaryVersion.value startsWith "2.") {

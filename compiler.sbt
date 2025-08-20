@@ -1,10 +1,12 @@
 ThisBuild / scalaVersion := "2.12.20"
 
+val scala3Lts = "3.3.6"
+
 ThisBuild / crossScalaVersions := Seq(
   "2.11.12",
   scalaVersion.value,
-  "2.13.15",
-  "3.6.3"
+  "2.13.16",
+  scala3Lts
 )
 
 crossVersion := CrossVersion.binary
@@ -26,6 +28,8 @@ ThisBuild / scalacOptions ++= {
     )
   } else {
     Seq(
+      "-Wconf:msg=.*unused.*:s",
+      "-Wconf:msg=.*duplicated\\ at\\ each\\ inline\\ site.*:s",
       "-Wconf:msg=.*should\\ not\\ .*infix\\ operator.*:s",
       "-Wconf:msg=.*vararg\\ splices.*:s",
       "-Wconf:msg=.*with\\ as\\ a\\ type\\ operator.*:s",
