@@ -954,7 +954,7 @@ final class MacroSpec
         reader1.readTry(expectedDoc) must beFailedTry
           .withThrowable[HandlerException]( // As status is asymetric ...
             // ... with just a custom @Writer but no corresponding @Reader
-            "Fails\\ to\\ handle\\ '.*\\.score':\\ BSONString\\ !=\\ <float>"
+            "Fails\\ to\\ handle\\ 'MacroTest\\.PerField1\\[String\\]\\.score':\\ BSONString\\ !=\\ <float>"
           )
       } and {
         // Define a BSONReader for 'score: Float' corresponding to @Writer
