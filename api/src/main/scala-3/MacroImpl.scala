@@ -1314,7 +1314,8 @@ private[api] object MacroImpl:
                 ${ get }.recoverWith {
                   case cause =>
                     TryFailure[p](
-                      exceptions.HandlerException(${ Expr(pname) }, cause)
+                      exceptions
+                        .HandlerException(${ Expr(s"${aTpe}.$pname") }, cause)
                     )
                 }
               }
@@ -2138,7 +2139,7 @@ private[api] object MacroImpl:
                   ${ res }.fold[Unit](
                     { e =>
                       ${ bufErr } += HandlerException(
-                        ${ Expr(param.name) },
+                        ${ Expr(s"${aTpe}.${param.name}") },
                         e
                       )
                       ()

@@ -44,7 +44,7 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
         "if it's defined a well-typed ProductOf" >> {
           val expected = List(
             "(val name,List(),TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class scala)),object Predef),type String))",
-            "(val age,List(Apply(TypeApply(Select(New(Select(Select(Ident(Macros),Annotations),DefaultValue)),<init>),List(TypeTree[TypeVar(TypeParamRef(T) -> TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int))])),List(Literal(Constant(18))))),TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),class Int))"
+            "(val age,List(Apply(TypeApply(Select(New(Select(Select(Ident(Macros),Annotations),DefaultValue)),<init>),List(TypeTree[TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int)])),List(Literal(Constant(18))))),TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class <root>)),object scala),class Int))"
           )
 
           "by import" in {

@@ -8,9 +8,10 @@ import scala.util.{
 
 import scala.deriving.Mirror.ProductOf
 import scala.quoted.{ Expr, Quotes, Type }
+import scala.reflect.TypeTest
 
 private[bson] trait QuotesHelper {
-  protected type Q <: Quotes
+  type Q <: Quotes
 
   protected val quotes: Q
 
@@ -174,6 +175,18 @@ private[bson] trait QuotesHelper {
       }
     }
 
+  private object TypTree {
+
+    def unapply(tree: Tree): Option[TypeTree] = {
+      // Reflect workaround as pattern `_: TypeTree` is not working
+      if (tree.getClass.getName endsWith "TypeTree") {
+        Some(tree.asInstanceOf[TypeTree])
+      } else {
+        None
+      }
+    }
+  }
+
   /**
    * Returns the elements type for `product`.
    *
@@ -281,9 +294,9 @@ private[bson] trait QuotesHelper {
             members.collect {
               case TypeDef(
                     n @ ("MirroredElemTypes" | "MirroredElemLabels"),
-                    tt: TypeTree
-                  ) if (tt.tpe <:< TypeRepr.of[Product]) =>
-                n -> tt.tpe
+                    TypTree(rhs)
+                  ) if rhs.tpe <:< TypeRepr.of[Product] =>
+                n -> rhs.tpe
             }.sortBy(_._1) match {
               case (_, elmLabels) :: (_, elmTypes) :: Nil =>
                 Option(prepare(elmLabels, elmTypes))

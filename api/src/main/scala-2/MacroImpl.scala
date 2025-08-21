@@ -665,11 +665,13 @@ private[api] class MacroImpl(val c: Context) {
             }
           }
 
+          val parentName = c.Expr[String](q"${tpe.toString}")
+
           q"""${get} match {
               case ${utilPkg}.Success($rt) => ${vt}.take($rt); ()
 
               case ${utilPkg}.Failure($errName) => 
-                ${bufErr} += ${exceptionsPkg}.HandlerException($pname, $errName)
+                ${bufErr} += ${exceptionsPkg}.HandlerException($parentName + '.' + $pname, $errName)
             }"""
         }
 
@@ -727,11 +729,13 @@ private[api] class MacroImpl(val c: Context) {
             }
           }
 
+          val parentName = c.Expr[String](q"${tpe.toString}")
+
           q"""${get} match {
               case ${utilPkg}.Success($rt) => ${vt}.take($rt); ()
 
               case ${utilPkg}.Failure($errName) => 
-                ${bufErr} += ${exceptionsPkg}.HandlerException($pname, $errName)
+                ${bufErr} += ${exceptionsPkg}.HandlerException($parentName + '.' + $pname, $errName)
             }"""
         }
 
@@ -1096,6 +1100,8 @@ private[api] class MacroImpl(val c: Context) {
             appendCall
           }
 
+          val parentName = c.Expr[String](q"${tpe.toString}")
+
           q"""${writeCall} match {
             case ${utilPkg}.Success(
               $vt: ${bsonPkg}.BSONDocument) => $appendDocCall; ()
@@ -1103,7 +1109,7 @@ private[api] class MacroImpl(val c: Context) {
             case ${utilPkg}.Success($vt) => $appendCall; ()
 
             case ${utilPkg}.Failure($errName) => 
-              ${bufErr} += ${exceptionsPkg}.HandlerException($pname, $errName)
+              ${bufErr} += ${exceptionsPkg}.HandlerException($parentName + '.' + $pname, $errName)
               ()
           }"""
       }
@@ -1125,16 +1131,19 @@ private[api] class MacroImpl(val c: Context) {
           val bt = TermName(c.freshName("bson"))
           val vt = TermName(c.freshName(pname))
 
-          def writeCall(wr: Tree) =
-            q"""($wr.writeTry($vt): ${utilPkg}.Try[${bsonPkg}.BSONValue]) match {
-            case ${utilPkg}.Success(${bt}) =>
-              ${bufOk} += ${bsonPkg}.BSONElement($field, $bt)
-              ()
+          def writeCall(wr: Tree) = {
+            val parentName = c.Expr[String](q"${tpe.toString}")
 
-            case ${utilPkg}.Failure(${errName}) =>
-              ${bufErr} += ${exceptionsPkg}.HandlerException($pname, $errName)
-              ()
-          }"""
+            q"""($wr.writeTry($vt): ${utilPkg}.Try[${bsonPkg}.BSONValue]) match {
+              case ${utilPkg}.Success(${bt}) =>
+                ${bufOk} += ${bsonPkg}.BSONElement($field, $bt)
+                ()
+
+              case ${utilPkg}.Failure(${errName}) =>
+                ${bufErr} += ${exceptionsPkg}.HandlerException($parentName + '.' + $pname, $errName)
+                ()
+            }"""
+          }
 
           def empty =
             q"${bufOk} += ${bsonPkg}.BSONElement($field, ${bsonPkg}.BSONNull)"
