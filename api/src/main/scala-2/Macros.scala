@@ -27,8 +27,8 @@ object Macros extends MacroAnnotations {
   import language.experimental.macros
 
   /**
-   * $readerMacro.
-   * $defaultCfg.
+   * Creates a [[BSONDocumentReader]] for type `A`.
+   * The default [[MacroConfiguration]] is used (see [[Macros.configured]]).
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONDocumentReader, Macros }
@@ -38,15 +38,16 @@ object Macros extends MacroAnnotations {
    * val reader: BSONDocumentReader[Foo] = Macros.reader
    * }}}
    *
-   * $tparam
+   * @tparam A the type of the value represented as BSON
    */
   @SuppressWarnings(Array("NullParameter"))
   def reader[A]: BSONDocumentReader[A] =
     macro MacroImpl.reader[A, MacroOptions.Default]
 
   /**
-   * $readerMacro.
-   * $defaultCfg, with given additional options.
+   * Creates a [[BSONDocumentReader]] for type `A`.
+   * The default [[MacroConfiguration]] is used (see [[Macros.configured]]),
+   * with given additional options.
    *
    * {{{
    * import reactivemongo.api.bson.{ Macros, MacroOptions }
@@ -56,8 +57,8 @@ object Macros extends MacroAnnotations {
    * val reader = Macros.readerOpts[Foo, MacroOptions.Verbose]
    * }}}
    *
-   * $tparam
-   * $tparamOpts
+   * @tparam A the type of the value represented as BSON
+   * @tparam Opts the compile-time options
    */
   @SuppressWarnings(Array("NullParameter"))
   def readerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentReader[A] =
@@ -83,8 +84,8 @@ object Macros extends MacroAnnotations {
     macro MacroImpl.valueReader[A, MacroOptions.Default]
 
   /**
-   * $writerMacro.
-   * $defaultCfg.
+   * Creates a [[BSONDocumentWriter]] for type `A`.
+   * The default [[MacroConfiguration]] is used (see [[Macros.configured]]).
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONDocumentWriter, Macros }
@@ -94,7 +95,7 @@ object Macros extends MacroAnnotations {
    * val writer: BSONDocumentWriter[Foo] = Macros.writer
    * }}}
    *
-   * $tparam
+   * @tparam A the type of the value represented as BSON
    */
   @SuppressWarnings(Array("NullParameter"))
   def writer[A]: BSONDocumentWriter[A] =
@@ -120,8 +121,9 @@ object Macros extends MacroAnnotations {
     macro MacroImpl.valueWriter[A, MacroOptions.Default]
 
   /**
-   * $writerMacro.
-   * $defaultCfg, with given additional options.
+   * Creates a [[BSONDocumentWriter]] for type `A`.
+   * The default [[MacroConfiguration]] is used (see [[Macros.configured]]),
+   * with given additional options.
    *
    * {{{
    * import reactivemongo.api.bson.{ Macros, MacroOptions }
@@ -131,16 +133,16 @@ object Macros extends MacroAnnotations {
    * val writer = Macros.writerOpts[Foo, MacroOptions.DisableWarnings]
    * }}}
    *
-   * $tparam
-   * $tparamOpts
+   * @tparam A the type of the value represented as BSON
+   * @tparam Opts the compile-time options
    */
   @SuppressWarnings(Array("NullParameter"))
   def writerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentWriter[A] =
     macro MacroImpl.writer[A, Opts]
 
   /**
-   * $handlerMacro.
-   * $defaultCfg.
+   * Creates a [[BSONDocumentHandler]] for type `A`.
+   * The default [[MacroConfiguration]] is used (see [[Macros.configured]]).
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONDocumentHandler, Macros }
@@ -150,15 +152,16 @@ object Macros extends MacroAnnotations {
    * val handler: BSONDocumentHandler[Foo] = Macros.handler
    * }}}
    *
-   * $tparam
+   * @tparam A the type of the value represented as BSON
    */
   @SuppressWarnings(Array("NullParameter"))
   def handler[A]: BSONDocumentHandler[A] =
     macro MacroImpl.handler[A, MacroOptions.Default]
 
   /**
-   * $handlerMacro.
-   * $defaultCfg, with given additional options.
+   * Creates a [[BSONDocumentHandler]] for type `A`.
+   * The default [[MacroConfiguration]] is used (see [[Macros.configured]]),
+   * with given additional options.
    *
    * {{{
    * import reactivemongo.api.bson.{ Macros, MacroOptions }
@@ -168,8 +171,8 @@ object Macros extends MacroAnnotations {
    * val handler = Macros.handlerOpts[Foo, MacroOptions.Default]
    * }}}
    *
-   * $tparam
-   * $tparamOpts
+   * @tparam A the type of the value represented as BSON
+   * @tparam Opts the compile-time options
    */
   @SuppressWarnings(Array("NullParameter"))
   def handlerOpts[A, Opts <: MacroOptions.Default]: BSONDocumentHandler[A] =
@@ -204,7 +207,7 @@ object Macros extends MacroAnnotations {
   /**
    * Returns macros using the current BSON configuration.
    *
-   * $tparamOpts
+   * @tparam Opts the compile-time options
    *
    * {{{
    * import reactivemongo.api.bson.{
@@ -231,7 +234,7 @@ object Macros extends MacroAnnotations {
    * Returns an inference context to call the BSON macros,
    * using explicit compile-time options.
    *
-   * $tparamOpts
+   * @tparam Opts the compile-time options
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONDocumentWriter, Macros, MacroOptions }
@@ -266,27 +269,27 @@ object Macros extends MacroAnnotations {
     // ---
 
     /**
-     * $readerMacro.
+     * Creates a [[BSONDocumentReader]] for type `A`.
      *
-     * $tparam
+     * @tparam A the type of the value represented as BSON
      */
     @SuppressWarnings(Array("NullParameter"))
     def reader[A]: BSONDocumentReader[A] =
       macro MacroImpl.configuredReader[A, Opts]
 
     /**
-     * $writerMacro.
+     * Creates a [[BSONDocumentWriter]] for type `A`.
      *
-     * $tparam
+     * @tparam A the type of the value represented as BSON
      */
     @SuppressWarnings(Array("NullParameter"))
     def writer[A]: BSONDocumentWriter[A] =
       macro MacroImpl.configuredWriter[A, Opts]
 
     /**
-     * $handlerMacro.
+     * Creates a [[BSONDocumentHandler]] for type `A`.
      *
-     * $tparam
+     * @tparam A the type of the value represented as BSON
      */
     @SuppressWarnings(Array("NullParameter"))
     def handler[A]: BSONDocumentHandler[A] =

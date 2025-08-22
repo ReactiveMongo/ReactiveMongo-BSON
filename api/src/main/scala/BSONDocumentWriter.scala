@@ -31,12 +31,13 @@ trait BSONDocumentWriter[T] extends BSONWriter[T] { self =>
  * [[BSONDocumentWriter]] factories.
  *
  * @define createWriterBasedOn Creates a [[BSONDocumentWriter]] based on
- * @define valueDoesNotMatchException A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
+ * @define valueDoesNotMatchThrown A [[exceptions.ValueDoesNotMatchException]] is thrown for any value that is not matched by the `write` function
+ * @define valueDoesNotMatchFailure A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
  */
 object BSONDocumentWriter {
 
   /**
-   * $createWriterBasedOn the given `write` function.
+   * Creates a [[BSONDocumentWriter]] based on the given `write` function.
    * This function is called within a [[scala.util.Try]].
    *
    * {{{
@@ -83,7 +84,7 @@ object BSONDocumentWriter {
   }
 
   /**
-   * $createWriterBasedOn the given `write` safe function.
+   * Creates a [[BSONDocumentWriter]] based on the given `write` safe function.
    *
    * {{{
    * import scala.util.Success
@@ -106,9 +107,10 @@ object BSONDocumentWriter {
   }
 
   /**
-   * $createWriterBasedOn the given partial function.
+   * Creates a [[BSONDocumentWriter]] based on the given partial function.
    *
-   * $valueDoesNotMatchException.
+   * A [[exceptions.ValueDoesNotMatchException]] is thrown for any value
+   * that is not matched by the `write` function.
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONDocument, BSONDocumentWriter }
@@ -131,10 +133,11 @@ object BSONDocumentWriter {
     }
 
   /**
-   * '''EXPERIMENTAL:''' $createWriterBasedOn the given
+   * '''EXPERIMENTAL:''' Creates a [[BSONDocumentWriter]] based on the given
    * partially safe `write` function.
    *
-   * $valueDoesNotMatchException.
+   * A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure`
+   * for any value that is not matched by the `write` function.
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONDocument, BSONDocumentWriter }

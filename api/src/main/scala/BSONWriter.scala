@@ -115,7 +115,7 @@ trait BSONWriter[T] {
 object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
 
   /**
-   * $createWriterBasedOn the given `write` function.
+   * Creates a [[BSONWriter]] based on the given `write` function.
    * This function is called within a [[scala.util.Try]].
    *
    * {{{
@@ -141,7 +141,7 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
     }
 
   /**
-   * $createWriterBasedOn the given `write` function.
+   * Creates a [[BSONWriter]] based on the given `write` function.
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONWriter, BSONInteger }
@@ -169,7 +169,7 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
   }
 
   /**
-   * $createWriterBasedOn the given safe `write` function.
+   * Creates a [[BSONWriter]] based on the given safe `write` function.
    *
    * {{{
    * import scala.util.{ Failure, Success }
@@ -200,10 +200,11 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
   }
 
   /**
-   * '''EXPERIMENTAL:''' $createWriterBasedOn the given
+   * '''EXPERIMENTAL:''' Creates a [[BSONWriter]] based on the given
    * partially safe `write` function.
    *
-   * $valueDoesNotMatchException.
+   * A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure`
+   * for any value that is not matched by the `write` function.
    *
    * {{{
    * import scala.util.Success
@@ -231,9 +232,10 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
     }
 
   /**
-   * $createWriterBasedOn the given partial function.
+   * Creates a [[BSONWriter]] based on the given partial function.
    *
-   * $valueDoesNotMatchException.
+   * A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure`
+   * for any value that is not matched by the `write` function.
    *
    * {{{
    * import reactivemongo.api.bson.{ BSONWriter, BSONInteger }

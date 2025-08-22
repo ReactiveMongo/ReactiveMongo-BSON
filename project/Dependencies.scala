@@ -5,7 +5,7 @@ object Dependencies {
 
   val specsVer = Def.setting {
     if (scalaBinaryVersion.value == "2.11") "4.10.6"
-    else "4.19.0"
+    else "4.21.0"
   }
 
   val specsDeps = Def.setting {
