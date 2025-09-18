@@ -21,7 +21,7 @@ object Publish extends AutoPlugin {
       env("PUBLISH_REPO_ID"),
       env("PUBLISH_USER"),
       env("PUBLISH_PASS")
-     ),
+    ),
     pomIncludeRepository := { _ => false },
     pomPostProcess := {
       val ver = scalaBinaryVersion.value
