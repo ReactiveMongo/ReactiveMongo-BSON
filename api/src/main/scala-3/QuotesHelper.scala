@@ -70,7 +70,13 @@ private[bson] trait QuotesHelper {
                 tpeSym.flags.is(Flags.Trait))
             ) {
               // Ignore sub-trait itself, but check the sub-sub-classes
-              subclasses(tpeSym.children.map(_.tree) ::: children.tail, out)
+              subclasses(
+                tpeSym.children
+                  .filterNot(_ == tpeSym)
+                  .map(_.tree) ::: children.tail,
+                out
+              )
+
             } else {
               subclasses(children.tail, child :: out)
             }

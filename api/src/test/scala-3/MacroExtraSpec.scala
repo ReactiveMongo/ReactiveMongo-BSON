@@ -33,6 +33,12 @@ trait MacroExtraSpec { self: MacroSpec =>
       )
     }
 
+    "fail with BSONDocument" in {
+      typecheck(
+        "Macros.reader[_root_.reactivemongo.api.bson.BSONDocument]"
+      ) must failWith(".*Conversion.*BSONDocument.*")
+    }
+
     "be handled with more than 22 fields" in {
       val handler = Macros.handler[BigFat]
 

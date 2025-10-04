@@ -18,6 +18,6 @@ fi
 
 export PUBLISH_PASS
 
-sbt +publish
+sbt clean +publish
 
-REACTIVEMONGO_SHADED=false sbt +publish
+REACTIVEMONGO_SHADED=false sbt clean +publish

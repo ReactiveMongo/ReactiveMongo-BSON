@@ -89,7 +89,6 @@ private[bson] trait MacroHelpers[A] extends OptionSupport with MacroLogging {
 
   protected final lazy val subTypes: Option[(List[TypeRepr], /* exhaustive: */ Boolean)] = {
     lazy val subClasses = knownSubclasses(aTpeRepr)
-
     val restricted = parseRestrictedSubTypes
 
     restricted match {
