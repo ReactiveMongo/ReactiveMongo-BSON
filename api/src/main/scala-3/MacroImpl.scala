@@ -774,7 +774,6 @@ private[api] object MacroImpl:
         macroVal: Expr[BSONDocument],
         forwardExpr: Expr[BSONDocumentReader[A]]
       ): Expr[TryResult[A]] = withMacroCfg { config =>
-
       def readClass: Expr[TryResult[A]] =
         readBodyConstruct(config, macroVal, forwardExpr)(using aTpe)
 
