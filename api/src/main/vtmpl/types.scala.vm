@@ -479,6 +479,7 @@ object BSONString {
  * }}}
  *
  * @define indexParam the index to be found in the array (`0` being the first)
+ * @define factoryDescr Creates a new [[BSONArray]] containing all the `values`
  */
 sealed abstract class BSONArray extends BSONValue {
   /** The BSON values */
@@ -1976,6 +1977,8 @@ object BSONMaxKey extends BSONMaxKey {
  * be maintained through the operations.
  *
  * @define keyParam the key to be found in the document
+ * @define elementsFactoryDescr Creates a new [[BSONDocument]] containing the unique elements from the given collection (only one instance of a same element, same name & value, is kept)
+ * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the last is kept for a same name). Then append operations on such document will maintain element unicity by field name (see `BSONStrictDocument.++`)
  */
 sealed abstract class BSONDocument
   extends BSONValue with ElementProducer with SafeProducer[BSONElement]
@@ -2597,8 +2600,7 @@ private[bson] trait BSONStrictDocumentLowPriority {
  * }}}
  *
  * @define elementsFactoryDescr Creates a new [[BSONDocument]] containing the unique elements from the given collection (only one instance of a same element, same name & value, is kept)
- *
- * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the last is kept for a same name). Then append operations on such document will maintain element unicity by field name (see `BSONStrictDocument.++`).
+ * @define strictFactoryDescr Creates a new [[BSONDocument]] containing the elements deduplicated by name from the given collection (only the last is kept for a same name). Then append operations on such document will maintain element unicity by field name (see `BSONStrictDocument.++`)
  */
 object BSONDocument {
   /**

@@ -198,12 +198,71 @@ lazy val msbCompat = (project in file("msb-compat"))
   )
   .dependsOn(api)
 
+lazy val builder = (project in file("builder"))
+  .settings(
+    commonSettings ++ Seq(
+      name := s"${baseArtifact}-builder",
+      description := "BSON builder utilities",
+      mimaPreviousArtifacts := Set.empty,
+      scalacOptions := scalacOptions.value.filter { o =>
+        o != "-Ywarn-unused" && !o.startsWith("-Xlint")
+      },
+      scalacOptions ++= {
+        if (scalaBinaryVersion.value == "2.13") {
+          Seq(
+            "-Wconf:msg=.*parameter\\ (i[0-9]|head|tail|notOption)\\ .*is\\ never\\ used:s"
+          )
+        } else {
+          Seq.empty
+        }
+      },
+      scaladocExtractorIncludes := {
+        if (scalaBinaryVersion.value startsWith "2.") {
+          "*.scala"
+        } else {
+          "*Compat.scala"
+        }
+      },
+      doc / includeFilter := {
+        if (scalaBinaryVersion.value startsWith "2.") {
+          "*.md"
+        } else {
+          "*.disabled"
+        }
+      },
+      Test / scalacOptions ++= {
+        if (scalaBinaryVersion.value == "2.13") {
+          Seq(
+            "-Wconf:msg=.*local\\ val\\ .*is\\ never\\ used:s"
+          )
+        } else {
+          Seq.empty
+        }
+      },
+      libraryDependencies ++= {
+        if (scalaBinaryVersion.value startsWith "2.") {
+          Seq(
+            "com.chuusai" %% "shapeless" % "2.3.3"
+          )
+        } else {
+          Seq.empty
+        }
+      },
+      libraryDependencies ++= Seq(
+        "org.specs2" %% "specs2-scalacheck" % specsVer.value,
+        "org.specs2" %% "specs2-matcher-extra" % specsVer.value
+      ).map(_.cross(CrossVersion.for3Use2_13) % Test)
+    )
+  )
+  .dependsOn(api)
+
 lazy val root = (project in file("."))
+  .disablePlugins(HighlightExtractorPlugin)
   .settings(
     publish := ({}),
     publishTo := None,
     mimaPreviousArtifacts := Set.empty
   )
-  .aggregate(api, specs2, benchmarks, msbCompat, geo, monocle)
+  .aggregate(api, specs2, benchmarks, msbCompat, geo, monocle, builder)
   .dependsOn(api, specs2 /* for compiled code samples */ )
 // !! Do not aggregate msbCompat as not 2.13

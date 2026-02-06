@@ -41,7 +41,7 @@ EOF
   done
 }
 
-SCALA_MODULES="api:reactivemongo-bson-api specs2:reactivemongo-bson-specs2 msb-compat:reactivemongo-bson-msb-compat geo:reactivemongo-bson-geo monocle:reactivemongo-bson-monocle"
+SCALA_MODULES="api:reactivemongo-bson-api specs2:reactivemongo-bson-specs2 msb-compat:reactivemongo-bson-msb-compat geo:reactivemongo-bson-geo monocle:reactivemongo-bson-monocle builder:reactivemongo-bson-builder"
 SCALA_VERSIONS="2.11 2.12 2.13 3.3.6"
 BASES=""
 
