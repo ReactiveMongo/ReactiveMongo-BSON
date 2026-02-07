@@ -1,6 +1,8 @@
 package reactivemongo.api.bson.builder
 
-import java.time.temporal.Temporal
+import java.time.temporal.{ Temporal => JTemporal }
+
+import scala.util.{ Success, Try }
 
 import scala.collection.mutable.{ Builder, Map => MMap }
 
@@ -13,10 +15,9 @@ import reactivemongo.api.bson.{
   BSONString,
   BSONValue,
   BSONWriter,
+  ElementProducer,
   Producer
 }
-
-//import shapeless._
 
 /**
  * Mutable builder (based on `scala.collection.mutable.Builder`)
@@ -25,11 +26,9 @@ import reactivemongo.api.bson.{
  * Useful to prepare BSON filters consistent with existing type.
  */
 final class FilterBuilder[T] private[builder] (
-    private[builder] val clauses: MMap[String, BSONValue],
+    private[builder] val clauses: MMap[String, () => Try[BSONValue]],
     protected val prefix: Seq[String])
     extends FilterCompat[T] { self =>
-
-  @inline def untyped: MMap[String, BSONValue] = clauses
 
   protected def unsafeFilter[A](
       field: String,
@@ -42,56 +41,121 @@ final class FilterBuilder[T] private[builder] (
 
     val fieldOps: BSONDocument = clauses
       .get(bsonPath)
-      .collect { case doc: BSONDocument => doc }
+      .flatMap {
+        _() match {
+          case Success(doc: BSONDocument) =>
+            Some(doc)
+
+          case _ =>
+            None
+        }
+      }
       .getOrElse(BSONDocument.empty)
 
-    clauses += bsonPath -> (fieldOps ++ (op -> value))
+    clauses += bsonPath -> (() => Success(fieldOps ++ (op -> value)))
 
     this
   }
 
   /** Add a `$$comment` */
   def comment(text: String): FilterBuilder[T] = {
-    clauses += f"$$comment" -> BSONString(text)
+    clauses += f"$$comment" -> (() => Success(BSONString(text)))
+
+    this
+  }
+
+  /**
+   * Adds a filter using MongoDB's `$$expr` operator to evaluate aggregation expressions.
+   *
+   * The `$$expr` operator allows the use of aggregation expressions within the query language,
+   * enabling complex filtering logic including arithmetic operations, conditionals,
+   * string manipulations, array operations, and comparisons between document fields.
+   *
+   * {{{
+   * import reactivemongo.api.bson.builder.{ ExprBuilder, FilterBuilder }
+   *
+   * case class Product(name: String, stock: Int, reserved: Int, minThreshold: Int)
+   *
+   * val exprBuilder = ExprBuilder.empty[Product]
+   * val stock = exprBuilder.select(Symbol("stock"))
+   * val reserved = exprBuilder.select(Symbol("reserved"))
+   * val minThreshold = exprBuilder.select(Symbol("minThreshold"))
+   *
+   * // Calculate available stock and filter where it's below minimum threshold
+   * val available = exprBuilder.subtract(stock, reserved)
+   * val lowStock = exprBuilder.lt(available, minThreshold)
+   *
+   * val filter = FilterBuilder.empty[Product]
+   *   .eq(Symbol("name"), "Widget")
+   *   .expr(lowStock)
+   *   .and()
+   * // Result: {
+   * //   "$$and": [
+   * //     { "name": { "$$eq": "Widget" } },
+   * //     { "$$expr": { "$$lt": [{ "$$subtract": ["$$stock", "$$reserved"] }, "$$minThreshold"] } }
+   * //   ]
+   * // }
+   * }}}
+   *
+   * @param value the boolean expression to evaluate
+   * @return this builder for method chaining
+   * @see [[ExprBuilder]] for creating typed aggregation expressions
+   */
+  def expr(value: Expr[T, Boolean]): FilterBuilder[T] = {
+    clauses += f"$$expr" -> value.writes
 
     this
   }
 
   /** Returns the filters. */
-  def result(): BSONDocument = BSONDocument(clauses.result())
+  def result(): BSONDocument = {
+    implicit def w: BSONWriter[() => Try[BSONValue]] = lazyValueWriter
+
+    BSONDocument(clauses.toSeq.map { implicitly[ElementProducer](_) }: _*)
+  }
 
   /**
    * Combine the filters with the `and` semantic.
    * If there is only one single filter, then it is directly returned.
    */
-  def and(): BSONDocument = clauses.result().toSeq match {
-    case Seq() =>
-      BSONDocument.empty
+  def and(): BSONDocument = {
+    implicit def w: BSONWriter[() => Try[BSONValue]] = lazyValueWriter
 
-    case Seq(single @ (_, _)) =>
-      BSONDocument(single)
+    clauses.result().toSeq match {
+      case Seq() =>
+        BSONDocument.empty
 
-    case fs =>
-      BSONDocument(f"$$and" -> BSONArray(fs.map {
-        case (path, expr) => BSONDocument(path -> expr)
-      }))
+      case Seq(single @ (_, _)) =>
+        BSONDocument(single)
+
+      case fs =>
+        println(s"clauses = $clauses")
+
+        BSONDocument(f"$$and" -> BSONArray(fs.map {
+          case (path, expr) => BSONDocument(path -> expr)
+        }))
+    }
   }
 
   /**
    * Combine the filters with the `or` semantic.
    * If there is only one single filter, then it is directly returned.
    */
-  def or(): BSONDocument = clauses.result().toSeq match {
-    case Seq() =>
-      BSONDocument.empty
+  def or(): BSONDocument = {
+    implicit def w: BSONWriter[() => Try[BSONValue]] = lazyValueWriter
 
-    case Seq(single @ (_, _)) =>
-      BSONDocument(single)
+    clauses.result().toSeq match {
+      case Seq() =>
+        BSONDocument.empty
 
-    case fs =>
-      BSONDocument(f"$$or" -> BSONArray(fs.map {
-        case (path, expr) => BSONDocument(path -> expr)
-      }))
+      case Seq(single @ (_, _)) =>
+        BSONDocument(single)
+
+      case fs =>
+        BSONDocument(f"$$or" -> BSONArray(fs.map {
+          case (path, expr) => BSONDocument(path -> expr)
+        }))
+    }
   }
 }
 
@@ -301,7 +365,7 @@ object FilterBuilder {
   @implicitNotFound(msg = "Type ${T} cannot be used with ordering operator")
   trait Ordered[T]
 
-  object Ordered {
+  object Ordered extends FilterOrderedCompat {
 
     @SuppressWarnings(Array("AsInstanceOf"))
     implicit def numeric[T](
@@ -310,9 +374,9 @@ object FilterBuilder {
       ): Ordered[T] = unsafe.asInstanceOf[Ordered[T]]
 
     @SuppressWarnings(Array("AsInstanceOf"))
-    implicit def temporal[T <: Temporal]: Ordered[T] =
+    implicit def temporal[T <: JTemporal]: Ordered[T] =
       unsafe.asInstanceOf[Ordered[T]]
 
-    private val unsafe = new Ordered[Nothing] {}
+    private[builder] val unsafe = new Ordered[Nothing] {}
   }
 }

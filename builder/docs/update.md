@@ -37,6 +37,8 @@ This guide covers how to use the `UpdateBuilder` API to construct type-safe Mong
 - [Untyped Operations](#untyped-operations)
 - [Update Operators Reference](#update-operators-reference)
 
+// TODO: Section about using expression with UpdateBuilder
+
 ## Basic Update Operations
 
 ### Setting Field Values

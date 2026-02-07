@@ -1,10 +1,18 @@
 package reactivemongo.api.bson.builder
 
+import scala.util.{ Success, Try }
+
 import scala.collection.mutable.{ Builder, Map as MMap }
 
 import scala.annotation.unused
 
-import reactivemongo.api.bson.{ BSONArray, BSONDocument, BSONWriter }
+import reactivemongo.api.bson.{
+  BSONArray,
+  BSONDocument,
+  BSONValue,
+  BSONWriter,
+  ElementProducer
+}
 
 private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
 
@@ -269,26 +277,30 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
       input: Iterable[U]
     )(f: (FilterBuilder[T], U) => FilterBuilder[T]
     ): FilterBuilder[T] = {
+    given w: BSONWriter[() => Try[BSONValue]] = lazyValueWriter
+
     val nested = new FilterBuilder[T](MMap.empty, prefix)
     val orClauses: Builder[BSONDocument, Seq[BSONDocument]] = Seq.newBuilder
 
     input.foreach { v =>
       val _ = f(nested, v)
-      val clause = nested.clauses.result().toSeq
+      val clause = nested.clauses.result().toSeq.map {
+        implicitly[ElementProducer](_)
+      }
 
       clause match {
         case Seq(single) =>
           orClauses += BSONDocument(single)
 
         case _ =>
-          orClauses += BSONDocument(f"$$and" -> BSONDocument(clause))
+          orClauses += BSONDocument(f"$$and" -> BSONDocument(clause: _*))
       }
 
       // !! Re-use private mutable
       nested.clauses.clear()
     }
 
-    clauses += f"$$or" -> BSONArray(orClauses.result())
+    clauses += f"$$or" -> (() => Success(BSONArray(orClauses.result())))
 
     this
   }
@@ -317,7 +329,9 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
     val addClause: BSONDocument => FilterBuilder[T] = { preparedOps =>
       val bsonPath = (self.prefix :+ field).mkString(".")
 
-      self.clauses += bsonPath -> BSONDocument(f"$$not" -> preparedOps)
+      self.clauses += bsonPath -> (() =>
+        Try(BSONDocument(f"$$not" -> preparedOps))
+      )
 
       self
     }
@@ -343,10 +357,12 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
    * }}}
    */
   def or(f: FilterBuilder[T]*): FilterBuilder[T] = {
+    given w: BSONWriter[() => Try[BSONValue]] = lazyValueWriter
+
     val bsonClauses =
       f.flatMap(_.clauses.result()).map { case (k, v) => BSONDocument(k -> v) }
 
-    clauses += f"$$or" -> BSONArray(bsonClauses)
+    clauses += f"$$or" -> (() => Success(BSONArray(bsonClauses)))
 
     this
   }
@@ -405,24 +421,18 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
     private def pathToSeq(path: Tuple): Seq[String] =
       path.productIterator.map(_.asInstanceOf[String]).toSeq
 
-    def apply(
-      )(using
-        i0: BsonPath.Lookup[T, EmptyTuple, ?]
-      ): FilterBuilder.Nested[T, i0.Inner] = {
-      def in = new FilterBuilder[i0.Inner](self.clauses, prefix = self.prefix)
-      new FilterBuilder.Nested[T, i0.Inner](in, self)
-    }
-
     def apply[K1 <: String & Singleton](
         k1: K1
       )(using
         i0: BsonPath.Lookup[T, K1 *: EmptyTuple, ?]
       ): FilterBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq(k1 *: EmptyTuple)
+
       def in = new FilterBuilder[i0.Inner](
         self.clauses,
         prefix = self.prefix ++ pathSeq
       )
+
       new FilterBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -433,10 +443,12 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2), ?]
       ): FilterBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2))
+
       def in = new FilterBuilder[i0.Inner](
         self.clauses,
         prefix = self.prefix ++ pathSeq
       )
+
       new FilterBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -451,10 +463,12 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3), ?]
       ): FilterBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3))
+
       def in = new FilterBuilder[i0.Inner](
         self.clauses,
         prefix = self.prefix ++ pathSeq
       )
+
       new FilterBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -471,10 +485,12 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4), ?]
       ): FilterBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4))
+
       def in = new FilterBuilder[i0.Inner](
         self.clauses,
         prefix = self.prefix ++ pathSeq
       )
+
       new FilterBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -493,10 +509,12 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5), ?]
       ): FilterBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5))
+
       def in = new FilterBuilder[i0.Inner](
         self.clauses,
         prefix = self.prefix ++ pathSeq
       )
+
       new FilterBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -517,11 +535,21 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6), ?]
       ): FilterBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6))
+
       def in = new FilterBuilder[i0.Inner](
         self.clauses,
         prefix = self.prefix ++ pathSeq
       )
+
       new FilterBuilder.Nested[T, i0.Inner](in, self)
     }
   }
+}
+
+private[builder] trait FilterOrderedCompat { self: FilterBuilder.Ordered.type =>
+
+  @SuppressWarnings(Array("AsInstanceOf"))
+  given expr[E <: Expr[_, _]]: FilterBuilder.Ordered[E] =
+    unsafe.asInstanceOf[FilterBuilder.Ordered[E]]
+
 }

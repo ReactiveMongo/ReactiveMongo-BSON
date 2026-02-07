@@ -25,7 +25,7 @@ object MongoComparable extends LowPriorityComparable {
         K
       ] <:< Iterable[V]
     ): MongoComparable[T, K, V] =
-    unsafe.asInstanceOf[MongoComparable[T, K, V]]
+    apply[T, K, V]
 
   /**
    * Scala 3 specific numeric implicit.
@@ -40,7 +40,7 @@ object MongoComparable extends LowPriorityComparable {
         BsonPath.FindFieldType[m.MirroredElemLabels, m.MirroredElemTypes, K]
       ]
     ): MongoComparable[T, K, V] =
-    unsafe.asInstanceOf[MongoComparable[T, K, V]]
+    apply[T, K, V]
 
   /**
    * Scala 3 specific wildcard implicit.
@@ -63,6 +63,9 @@ object MongoComparable extends LowPriorityComparable {
       BsonPath.FindFieldType[m.MirroredElemLabels, m.MirroredElemTypes, K]
     ]]
 
+  protected[builder] inline def apply[T, K, V] =
+    unsafe.asInstanceOf[MongoComparable[T, K, V]]
+
   protected[builder] val unsafe =
     new MongoComparable[Nothing, Nothing, Nothing] {}
 }
@@ -73,6 +76,5 @@ private[builder] sealed trait LowPriorityComparable {
   given strictly[T <: Product, K <: String & Singleton, V](
       using
       @unused i0: BsonPath.Exists[T, K, V]
-    ): MongoComparable[T, K, V] =
-    unsafe.asInstanceOf[MongoComparable[T, K, V]]
+    ): MongoComparable[T, K, V] = apply[T, K, V]
 }

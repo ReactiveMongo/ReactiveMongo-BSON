@@ -82,10 +82,11 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
    */
   def inc[A](
       field: Witness.Lt[Symbol],
-      value: A // TODO: Check A is numeric
+      value: A
     )(implicit
       /*@unused */ i0: MongoComparable[T, field.T, A],
-      i1: BSONWriter[A]
+      /*@unused */ i1: IsNumeric[A],
+      i2: BSONWriter[A]
     ): UpdateBuilder[T] = {
     val path = fieldPath(field.value.name)
     val doc = operations.getOrElse(f"$$inc", BSONDocument.empty)
@@ -112,10 +113,11 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
    */
   def mul[A](
       field: Witness.Lt[Symbol],
-      value: A // TODO: Check A is numeric
+      value: A
     )(implicit
       /*@unused */ i0: MongoComparable[T, field.T, A],
-      i1: BSONWriter[A]
+      /*@unused */ i1: IsNumeric[A],
+      i2: BSONWriter[A]
     ): UpdateBuilder[T] = {
     val path = fieldPath(field.value.name)
     val doc = operations.getOrElse(f"$$mul", BSONDocument.empty)
@@ -228,7 +230,8 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         T,
         field.T,
         A
-      ] // TODO: Check A is date/time type
+      ],
+      /* @unused */ i1: Temporal[A]
     ): UpdateBuilder[T] = {
     val value = dateType match {
       case UpdateBuilder.CurrentDateType.Date =>

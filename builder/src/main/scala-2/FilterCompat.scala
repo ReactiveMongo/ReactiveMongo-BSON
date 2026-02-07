@@ -1,8 +1,16 @@
 package reactivemongo.api.bson.builder
 
+import scala.util.Try
+
 import scala.collection.mutable.{ Builder, Map => MMap }
 
-import reactivemongo.api.bson.{ BSONArray, BSONDocument, BSONWriter }
+import reactivemongo.api.bson.{
+  BSONArray,
+  BSONDocument,
+  BSONValue,
+  BSONWriter,
+  ElementProducer
+}
 
 import shapeless.{ ::, HList, HNil, SingletonProductArgs, Witness }
 import shapeless.ops.hlist.ToTraversable
@@ -270,26 +278,30 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
       input: Iterable[U]
     )(f: (FilterBuilder[T], U) => FilterBuilder[T]
     ): FilterBuilder[T] = {
+    implicit def w: BSONWriter[() => Try[BSONValue]] = lazyValueWriter
+
     val nested = new FilterBuilder[T](MMap.empty, prefix)
     val orClauses: Builder[BSONDocument, Seq[BSONDocument]] = Seq.newBuilder
 
     input.foreach { v =>
       val _ = f(nested, v)
-      val clause = nested.clauses.result().toSeq
+      val clause = nested.clauses.result().toSeq.map {
+        implicitly[ElementProducer](_)
+      }
 
       clause match {
         case Seq(single) =>
           orClauses += BSONDocument(single)
 
         case _ =>
-          orClauses += BSONDocument(f"$$and" -> BSONDocument(clause))
+          orClauses += BSONDocument(f"$$and" -> BSONDocument(clause: _*))
       }
 
       // !! Re-use private mutable
       nested.clauses.clear()
     }
 
-    clauses += f"$$or" -> BSONArray(orClauses.result())
+    clauses += f"$$or" -> (() => Try(BSONArray(orClauses.result())))
 
     this
   }
@@ -318,7 +330,9 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
     val addClause: BSONDocument => FilterBuilder[T] = { preparedOps =>
       val bsonPath = (self.prefix :+ field.value.name).mkString(".")
 
-      self.clauses += bsonPath -> BSONDocument(f"$$not" -> preparedOps)
+      self.clauses += bsonPath -> (() =>
+        Try(BSONDocument(f"$$not" -> preparedOps))
+      )
 
       self
     }
@@ -344,10 +358,12 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
    * }}}
    */
   def or(f: FilterBuilder[T]*): FilterBuilder[T] = {
+    implicit def w: BSONWriter[() => Try[BSONValue]] = lazyValueWriter
+
     val bsonClauses =
       f.flatMap(_.clauses.result()).map { case (k, v) => BSONDocument(k -> v) }
 
-    clauses += f"$$or" -> BSONArray(bsonClauses)
+    clauses += f"$$or" -> (() => Try(BSONArray(bsonClauses)))
 
     this
   }
@@ -407,7 +423,7 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
         path: P
       )(implicit
         /* @unused */ i0: BsonPath.Lookup[T, P, A],
-        i2: ToTraversable.Aux[P, List, Symbol]
+        i1: ToTraversable.Aux[P, List, Symbol]
       ): FilterBuilder.Nested[T, i0.Inner] = {
       def in = new FilterBuilder[i0.Inner](
         self.clauses,
@@ -417,4 +433,12 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
       new FilterBuilder.Nested[T, i0.Inner](in, self)
     }
   }
+}
+
+private[builder] trait FilterOrderedCompat { self: FilterBuilder.Ordered.type =>
+
+  @SuppressWarnings(Array("AsInstanceOf"))
+  implicit def expr[E <: Expr[_, _]]: FilterBuilder.Ordered[E] =
+    unsafe.asInstanceOf[FilterBuilder.Ordered[E]]
+
 }

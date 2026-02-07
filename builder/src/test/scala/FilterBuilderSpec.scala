@@ -1,12 +1,13 @@
 import reactivemongo.api.bson.{ BSONArray, BSONDocument, BSONString }
-import reactivemongo.api.bson.builder.{ FilterBuilder, Foo }
-import reactivemongo.api.bson.builder.TestUtils.symbol
+import reactivemongo.api.bson.builder.{ FilterBuilder, Foo, TestUtils }
 
 final class FilterBuilderSpec
     extends org.specs2.mutable.Specification
     with FilterBuilderSpecCompat {
 
-  "FilterBuilder".title
+  "Filter builder".title
+
+  import TestUtils.symbol
 
   "Typed filters" should {
     "support operator" >> {
@@ -265,30 +266,6 @@ final class FilterBuilderSpec
           BSONDocument(f"$$comment" -> "This is a test filter"),
           BSONDocument("id" -> BSONDocument(f"$$eq" -> "test-id"))
         )
-      )
-    }
-  }
-
-  "Untyped operations" should {
-    "allow custom BSON documents" in {
-      val builder = FilterBuilder.empty[Foo]
-      val customFilter = BSONDocument(f"$$gt" -> 50.0)
-
-      builder.untyped += "score" -> customFilter
-
-      builder.result() must_=== BSONDocument(
-        "score" -> BSONDocument(f"$$gt" -> 50.0)
-      )
-    }
-
-    "support combining untyped with typed operations" in {
-      val builder = FilterBuilder.empty[Foo].eq(symbol("id"), "test-id")
-
-      builder.untyped += "score" -> BSONDocument(f"$$gt" -> 100.0)
-
-      builder.result() must_=== BSONDocument(
-        "score" -> BSONDocument(f"$$gt" -> 100.0),
-        "id" -> BSONDocument(f"$$eq" -> "test-id")
       )
     }
   }
