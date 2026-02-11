@@ -56,7 +56,13 @@ Match values greater than a specified value:
 ```scala
 import reactivemongo.api.bson.builder.FilterBuilder
 
-case class Product(name: String, price: Float, quantity: Int)
+case class Product(
+  name: String,
+  price: Float,
+  quantity: Int,
+  stock: Int,
+  reserved: Int,
+  minThreshold: Int)
 
 FilterBuilder.empty[Product]
   .gt(Symbol("price"), 100)
@@ -466,6 +472,49 @@ Operators work with the following type classes:
 - **`Ordered[A]`**: Required for comparison operators (`$gt`, `$gte`, `$lt`, `$lte`)
   - Implemented for `Numeric[T]` types (Int, Long, Double, BigDecimal, etc.)
   - Implemented for `Temporal` types (java.time types)
+
+## Using with ExprBuilder
+
+The `FilterBuilder` works seamlessly with `ExprBuilder` to create complex computed filter conditions using MongoDB aggregation expressions. This is particularly useful when you need to filter based on derived values, field comparisons, or complex calculations.
+
+```scala
+import reactivemongo.api.bson.builder.{ Expr, ExprBuilder, FilterBuilder }
+
+{
+  val exprBuilder = ExprBuilder.empty[Product]
+  
+  // Calculate available stock: stock - reserved
+  val stock = exprBuilder.select(Symbol("stock"))
+  val reserved = exprBuilder.select(Symbol("reserved"))
+  val minThreshold = exprBuilder.select(Symbol("minThreshold"))
+  val available = exprBuilder.subtract(stock, reserved)
+  
+  // Create a computed threshold (minThreshold * 1.5)
+  val multiplier = exprBuilder.from(1.5)
+  val adjustedThreshold = exprBuilder.multiply(minThreshold, multiplier)
+
+  // Instance of MongoComparable required to use Expr with builder
+  import Expr.implicits.mongoComparable
+  
+  // Filter: name = "Widget" AND quantity > adjustedThreshold AND available < minThreshold
+  val filter = FilterBuilder.empty[Product]
+    .eq(Symbol("name"), "Widget")
+    .gt(Symbol("quantity"), adjustedThreshold)  // Expr used as comparison value
+    .expr(exprBuilder.lt(available, minThreshold))  // Expr used in expr()
+    .and()
+  // Result: { 
+  //   "$and": [
+  //     { "name": { "$eq": "Widget" } }, 
+  //     { "quantity": { "$gt": { "$multiply": ["$minThreshold", 1.5] } } },
+  //     { "$expr": { "$lt": [{ "$subtract": ["$stock", "$reserved"] }, "$minThreshold"] } }
+  //   ]
+  // }
+}
+```
+
+This demonstrates combining regular field comparisons with computed expression filters. Expressions built with `ExprBuilder` can be used in two ways: directly as comparison values in methods like `gt()`, `eq()`, etc., or within the `expr()` method for complex expression-based filters. This enables flexible filtering logic including arithmetic operations, conditionals, string manipulations, array operations, and nested field access.
+
+For detailed documentation on all available expression operations, see [Expressions Documentation](./expr.md)
 
 ## See Also
 

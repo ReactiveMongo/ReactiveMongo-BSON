@@ -447,7 +447,7 @@ Extract specific nested information:
 ```scala
 import reactivemongo.api.bson.builder.ProjectionBuilder
 
-case class OrderItem(productId: String, quantity: Int, price: Double)
+case class OrderItem(productId: String, quantity: Int, price: Double, tax: Double)
 
 case class ShippingAddress(
   street: String,
@@ -460,6 +460,10 @@ case class Order(
   orderId: String,
   userId: String,
   items: Seq[OrderItem],
+  id: String,
+  quantity: Int,
+  price: Double,
+  tax: Double,
   shippingAddress: ShippingAddress,
   billingAddress: ShippingAddress,
   totalAmount: Double)
@@ -505,6 +509,48 @@ val shippingLabelProjection = ProjectionBuilder.empty[Order]
 | **Positional** | `.positional()` | Project first matching array element (`$`) |
 | **Nested Field** | `.nestedField()` | Navigate into single nested object |
 | **Nested Path** | `.nested()` | Navigate through multiple nesting levels |
+
+## Using with ExprBuilder
+
+The `ProjectionBuilder` integrates with `ExprBuilder` to create computed or derived fields in query results using MongoDB aggregation expressions. This allows you to transform, calculate, and combine field values within the projection stage.
+
+```scala
+import reactivemongo.api.bson.builder.{ ExprBuilder, ProjectionBuilder }
+
+{
+  val exprBuilder = ExprBuilder.empty[Order]
+  
+  // Calculate total: quantity * price
+  val quantity = exprBuilder.select(Symbol("quantity"))
+  val price = exprBuilder.select(Symbol("price"))
+  val total = exprBuilder.multiply(quantity, price)
+  
+  // Calculate tax amount: total * tax
+  val tax = exprBuilder.select(Symbol("tax"))
+  val taxAmount = exprBuilder.multiply(total, tax)
+  
+  // Calculate grand total: total + taxAmount
+  val grandTotal = exprBuilder.add(total, taxAmount)
+  
+  // Create projection with calculated fields
+  val projection = ProjectionBuilder.empty[Order]
+    .includes(Symbol("id"))
+    .project("total", total)
+    .project("taxAmount", taxAmount)
+    .project("grandTotal", grandTotal)
+    .result()
+  // Result: { 
+  //   "id": 1,
+  //   "total": { "$multiply": ["$quantity", "$price"] },
+  //   "taxAmount": { "$multiply": [{ "$multiply": ["$quantity", "$price"] }, "$tax"] },
+  //   "grandTotal": { "$add": [{ "$multiply": ["$quantity", "$price"] }, { "$multiply": [{ "$multiply": ["$quantity", "$price"] }, "$tax"] }] }
+  // }
+}
+```
+
+This demonstrates adding computed fields to projections. The `project()` method accepts a field name and any expression built with `ExprBuilder`, enabling field transformations including arithmetic operations, conditionals, string manipulations, array operations, and nested field calculations. This allows server-side computation and reduced network traffic by calculating derived values in MongoDB before returning results.
+
+For detailed documentation on all available expression operations, see [Expressions Documentation](./expr.md)
 
 ## Performance Considerations
 

@@ -1,5 +1,7 @@
 package reactivemongo.api.bson.builder
 
+import scala.util.Success
+
 import reactivemongo.api.bson.{ BSONInteger, BSONValue }
 
 import shapeless.{ ::, HList, HNil, SingletonProductArgs, Witness }
@@ -50,7 +52,7 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
     val path = fieldPath(field)
     val value: BSONValue = BSONInteger(if (flag) 1 else 0)
 
-    clauses += path -> value
+    clauses += path -> (() => Success(value))
 
     this
   }
@@ -126,8 +128,8 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
    * @param expr A BSON expression defining how to project this field
    * @return A reference to this builder for method chaining
    */
-  def project(path: String, expr: BSONValue): ProjectionBuilder[T] = {
-    clauses += path -> expr
+  def project(path: String, expr: Expr.Opaque[T]): ProjectionBuilder[T] = {
+    clauses += path -> expr.writes
     this
   }
 
@@ -159,7 +161,7 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
     )(implicit
       i0: BsonPath.Exists[T, field.T, _ <: Iterable[_]]
     ): ProjectionBuilder[T] = {
-    clauses += (fieldPath(field) + f".$$") -> BSONInteger(1)
+    clauses += (fieldPath(field) + f".$$") -> (() => Success(BSONInteger(1)))
     this
   }
 

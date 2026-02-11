@@ -81,10 +81,11 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
    */
   def inc[A](
       field: String & Singleton,
-      value: A // TODO: Check A is numeric
+      value: A
     )(implicit
       @unused i0: MongoComparable[T, field.type, A],
-      i1: BSONWriter[A]
+      @unused i1: IsNumeric[A],
+      i2: BSONWriter[A]
     ): UpdateBuilder[T] = {
     val path = fieldPath(field)
     val doc = operations.getOrElse(f"$$inc", BSONDocument.empty)
@@ -111,10 +112,11 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
    */
   def mul[A](
       field: String & Singleton,
-      value: A // TODO: Check A is numeric
+      value: A
     )(implicit
       @unused i0: MongoComparable[T, field.type, A],
-      i1: BSONWriter[A]
+      @unused i1: IsNumeric[A],
+      i2: BSONWriter[A]
     ): UpdateBuilder[T] = {
     val path = fieldPath(field)
     val doc = operations.getOrElse(f"$$mul", BSONDocument.empty)
@@ -227,7 +229,8 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         T,
         field.type,
         A
-      ] // TODO: Check A is date/time type
+      ],
+      @unused i1: Temporal[A]
     ): UpdateBuilder[T] = {
     val value = dateType match {
       case UpdateBuilder.CurrentDateType.Date =>
@@ -598,24 +601,18 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
     private def pathToSeq(path: Tuple): Seq[String] =
       path.productIterator.map(_.asInstanceOf[String]).toSeq
 
-    def apply(
-      )(using
-        i0: BsonPath.Lookup[T, EmptyTuple, ?]
-      ): UpdateBuilder.Nested[T, i0.Inner] = {
-      def in = new UpdateBuilder[i0.Inner](operations, prefix = self.prefix)
-      new UpdateBuilder.Nested[T, i0.Inner](in, self)
-    }
-
     def apply[K1 <: String & Singleton](
         k1: K1
       )(using
         i0: BsonPath.Lookup[T, K1 *: EmptyTuple, ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq(k1 *: EmptyTuple)
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -626,10 +623,12 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2), ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2))
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -644,10 +643,12 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3), ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3))
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -664,10 +665,12 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4), ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4))
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -686,10 +689,12 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5), ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5))
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -736,10 +741,12 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6, K7), ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6, k7))
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -764,10 +771,12 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6, K7, K8), ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6, k7, k8))
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -794,10 +803,12 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6, K7, K8, K9), ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6, k7, k8, k9))
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -826,10 +837,12 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6, K7, K8, K9, K10), ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6, k7, k8, k9, k10))
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
   }

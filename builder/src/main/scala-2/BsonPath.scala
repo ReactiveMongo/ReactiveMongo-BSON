@@ -97,7 +97,7 @@ object BsonPath {
     implicit def deriveHNil[T, K, V](
         implicit
         /* @unused */ head: Exists[T, K, V],
-        /* @unused */ notOption: <:!<[V, Option[_]]
+        /* @unused */ notOption: V <:!< Option[_]
       ): Lookup.Aux[T, K :: HNil, V, V] = new Lookup[T, K :: HNil, V] {
       type Inner = V
     }

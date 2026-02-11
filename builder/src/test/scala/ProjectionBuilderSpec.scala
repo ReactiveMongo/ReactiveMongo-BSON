@@ -1,12 +1,13 @@
 import reactivemongo.api.bson.BSONDocument
-import reactivemongo.api.bson.builder.ProjectionBuilder
-import reactivemongo.api.bson.builder.TestUtils.symbol
+import reactivemongo.api.bson.builder.{ Expr, ProjectionBuilder, TestUtils }
 
 final class ProjectionBuilderSpec
     extends org.specs2.mutable.Specification
     with ProjectionBuilderSpecCompat {
 
-  "ProjectionBuilder".title
+  "Projection builder".title
+
+  import TestUtils.symbol
 
   "Basic projection operations" should {
     "include single field" in {
@@ -60,7 +61,10 @@ final class ProjectionBuilderSpec
     "support custom BSON expressions" in {
       ProjectionBuilder
         .empty[User]
-        .project("displayName", BSONDocument(f"$$toUpper" -> f"$$name"))
+        .project(
+          "displayName",
+          Expr.unsafe[User, String](BSONDocument(f"$$toUpper" -> f"$$name"))
+        )
         .result() must_=== BSONDocument(
         "displayName" -> BSONDocument(f"$$toUpper" -> f"$$name")
       )
@@ -69,7 +73,10 @@ final class ProjectionBuilderSpec
     "support array slice expressions" in {
       ProjectionBuilder
         .empty[User]
-        .project("items", BSONDocument(f"$$slice" -> 5))
+        .project(
+          "items",
+          Expr.unsafe[User, Seq[String]](BSONDocument(f"$$slice" -> 5))
+        )
         .result() must_=== BSONDocument(
         "items" -> BSONDocument(f"$$slice" -> 5)
       )

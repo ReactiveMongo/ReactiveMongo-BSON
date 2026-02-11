@@ -1,8 +1,15 @@
 package reactivemongo.api.bson.builder
 
+import scala.util.Try
+
 import scala.collection.mutable.{ Map => MMap }
 
-import reactivemongo.api.bson.{ BSONDocument, BSONValue }
+import reactivemongo.api.bson.{
+  BSONDocument,
+  BSONValue,
+  BSONWriter,
+  ElementProducer
+}
 
 /**
  * A builder for creating MongoDB projection documents with compile-time field verification.
@@ -19,7 +26,7 @@ import reactivemongo.api.bson.{ BSONDocument, BSONValue }
  */
 final class ProjectionBuilder[T] private[builder] (
     protected val prefix: Seq[String],
-    protected val clauses: MMap[String, BSONValue])
+    protected val clauses: MMap[String, () => Try[BSONValue]])
     extends ProjectionCompat[T] { self =>
 
   /**
@@ -50,7 +57,11 @@ final class ProjectionBuilder[T] private[builder] (
    * If the same field is projected multiple times with different values,
    * the last value will be used in the final document.
    */
-  def result(): BSONDocument = BSONDocument(clauses.toSeq)
+  def result(): BSONDocument = {
+    implicit def w: BSONWriter[() => Try[BSONValue]] = lazyValueWriter
+
+    BSONDocument(clauses.toSeq.map { implicitly[ElementProducer](_) }: _*)
+  }
 }
 
 object ProjectionBuilder {

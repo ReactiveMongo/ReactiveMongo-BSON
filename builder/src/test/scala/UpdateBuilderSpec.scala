@@ -6,7 +6,7 @@ import reactivemongo.api.bson.{
   BSONInteger,
   BSONString
 }
-import reactivemongo.api.bson.builder.{ Foo, UpdateBuilder }
+import reactivemongo.api.bson.builder.{ DetectedAt, Foo, UpdateBuilder }
 import reactivemongo.api.bson.builder.TestUtils.{ symbol, typecheck }
 
 import org.specs2.matcher.TypecheckMatchers._
@@ -102,28 +102,28 @@ final class UpdateBuilderSpec
 
     f"support $$currentDate with date type" in {
       UpdateBuilder
-        .empty[Foo]
+        .empty[DetectedAt]
         .currentDate(
-          symbol("id"),
+          symbol("updated"),
           UpdateBuilder.CurrentDateType.Date
         )
         .result() must_=== BSONDocument(
         f"$$currentDate" -> BSONDocument(
-          "id" -> BSONDocument(f"$$type" -> "date")
+          "updated" -> BSONDocument(f"$$type" -> "date")
         )
       )
     }
 
     f"support $$currentDate with timestamp type" in {
       UpdateBuilder
-        .empty[Foo]
+        .empty[DetectedAt]
         .currentDate(
-          symbol("id"),
+          symbol("updated"),
           UpdateBuilder.CurrentDateType.Timestamp
         )
         .result() must_=== BSONDocument(
         f"$$currentDate" -> BSONDocument(
-          "id" -> BSONDocument(f"$$type" -> "timestamp")
+          "updated" -> BSONDocument(f"$$type" -> "timestamp")
         )
       )
     }
@@ -248,7 +248,6 @@ final class UpdateBuilderSpec
     }
 
     f"support $$pull with expression" in {
-      // TODO: Expr
       val condition = BSONDocument(f"$$gte" -> 100)
 
       UpdateBuilder

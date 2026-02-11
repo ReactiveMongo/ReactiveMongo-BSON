@@ -1,5 +1,7 @@
 package reactivemongo.api.bson.builder
 
+import scala.util.Success
+
 import scala.annotation.unused
 
 import reactivemongo.api.bson.{ BSONInteger, BSONValue }
@@ -49,7 +51,7 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
     val path = fieldPath(field)
     val value: BSONValue = BSONInteger(if (flag) 1 else 0)
 
-    clauses += path -> value
+    clauses += path -> (() => Success(value))
 
     this
   }
@@ -125,8 +127,8 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
    * @param expr A BSON expression defining how to project this field
    * @return A reference to this builder for method chaining
    */
-  def project(path: String, expr: BSONValue): ProjectionBuilder[T] = {
-    clauses += path -> expr
+  def project(path: String, expr: Expr.Opaque[T]): ProjectionBuilder[T] = {
+    clauses += path -> expr.writes
     this
   }
 
@@ -158,7 +160,7 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
     )(implicit
       i0: BsonPath.Exists[T, field.type, _ <: Iterable[_]]
     ): ProjectionBuilder[T] = {
-    clauses += (fieldPath(field) + f".$$") -> BSONInteger(1)
+    clauses += (fieldPath(field) + f".$$") -> (() => Success(BSONInteger(1)))
     this
   }
 
@@ -235,21 +237,15 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
     private def pathToSeq(path: Tuple): Seq[String] =
       path.productIterator.map(_.asInstanceOf[String]).toSeq
 
-    def apply(
-      )(using
-        i0: BsonPath.Lookup[T, EmptyTuple, ?]
-      ): ProjectionBuilder.Nested[T, i0.Inner] = {
-      def in = new ProjectionBuilder[i0.Inner](self.prefix, clauses)
-      new ProjectionBuilder.Nested[T, i0.Inner](in, self)
-    }
-
     def apply[K1 <: String & Singleton](
         k1: K1
       )(using
         i0: BsonPath.Lookup[T, K1 *: EmptyTuple, ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq(k1 *: EmptyTuple)
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -260,7 +256,9 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2), ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2))
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -275,7 +273,9 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3), ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3))
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -292,7 +292,9 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4), ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4))
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -311,7 +313,9 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5), ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5))
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -332,7 +336,9 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6), ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6))
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -355,7 +361,9 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6, K7), ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6, k7))
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -380,7 +388,9 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6, K7, K8), ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6, k7, k8))
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -407,7 +417,9 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6, K7, K8, K9), ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6, k7, k8, k9))
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
 
@@ -436,7 +448,9 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6, K7, K8, K9, K10), ?]
       ): ProjectionBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6, k7, k8, k9, k10))
+
       def in = new ProjectionBuilder[i0.Inner](self.prefix ++ pathSeq, clauses)
+
       new ProjectionBuilder.Nested[T, i0.Inner](in, self)
     }
   }
