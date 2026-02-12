@@ -592,5 +592,5 @@ val coveredProjection = ProjectionBuilder.empty[Product]
 ## See Also
 
 - [Filters Documentation](./filters.md) - Building type-safe MongoDB query filters
-- [BSON Documentation](../README.md) - Overview of BSON handling in ReactiveMongo
-- [Builder Documentation](./README.md) - General builder patterns in ReactiveMongo
+- [BSON Documentation](http://reactivemongo.org/) - Overview of BSON handling in ReactiveMongo
+- [Builder Documentation](./index.md) - General builder patterns in ReactiveMongo

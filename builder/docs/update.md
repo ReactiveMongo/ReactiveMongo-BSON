@@ -1186,6 +1186,6 @@ UpdateBuilder.empty[User]
 
 ## Next Steps
 
-- Learn about [Filter Operations](filters.md) for querying documents
-- Explore [Projection Operations](projection.md) for controlling returned fields
-- Study the ReactiveMongo documentation for more advanced use cases
+- Learn about [Filter Operations](./filters.md) for querying documents
+- Explore [Projection Operations](./projection.md) for controlling returned fields
+- Study the [ReactiveMongo documentation](http://reactivemongo.org/) for more advanced use cases

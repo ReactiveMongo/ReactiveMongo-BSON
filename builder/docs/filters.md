@@ -518,5 +518,5 @@ For detailed documentation on all available expression operations, see [Expressi
 
 ## See Also
 
-- [BSON Documentation](../README.md) - Overview of BSON handling
-- [Builder Documentation](./README.md) - General builder patterns in ReactiveMongo
+- [BSON Documentation](http://reactivemongo.org/) - Overview of BSON handling
+- [Builder Documentation](./index.md) - General builder patterns in ReactiveMongo
