@@ -5,7 +5,7 @@ resolvers ++= Seq(
 
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.6")
 
-addSbtPlugin("cchantep" % "sbt-scaladoc-compiler" % "0.5")
+addSbtPlugin("cchantep" % "sbt-scaladoc-compiler" % "0.6")
 
 addSbtPlugin("cchantep" % "sbt-hl-compiler" % "0.10")
 
