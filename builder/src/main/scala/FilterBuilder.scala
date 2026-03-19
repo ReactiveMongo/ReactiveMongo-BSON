@@ -129,8 +129,6 @@ final class FilterBuilder[T] private[builder] (
         BSONDocument(single)
 
       case fs =>
-        println(s"clauses = $clauses")
-
         BSONDocument(f"$$and" -> BSONArray(fs.map {
           case (path, expr) => BSONDocument(path -> expr)
         }))

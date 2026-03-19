@@ -6,7 +6,7 @@ commands:
     parameters:
       sbt_version:
         type: string
-        default: "1.11.4"
+        default: "1.12.6"
     steps:
       - restore_cache:
           keys:
@@ -31,7 +31,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-          - &scala_cache_key scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "version.sbt" }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}
+          - &scala_cache_key scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "version.sbt" }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}-{{ checksum "project/plugins.sbt" }}
 
       - run:
           name: Build & Run tests

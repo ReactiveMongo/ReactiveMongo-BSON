@@ -8,8 +8,15 @@ cd "$SCRIPT_DIR/.."
 
 SBT_TASK="scalafmtCheckAll"
 
-if [ "v${SCALA_VERSION}" != "v2.11.12" ]; then
+SV="v${SCALA_VERSION/2.11.*/2.11}"
+
+if [ "$SV" != "v2.11" ]; then
     SBT_TASK="$SBT_TASK ;scalafixAll -check"
+
+    source "$SCRIPT_DIR/jvmopts.sh"
+    
+    export JVM_OPTS
+    export SBT_OPTS
 fi
 
 sbt ++$SCALA_VERSION "$SBT_TASK" || (
@@ -19,10 +26,12 @@ sbt ++$SCALA_VERSION "$SBT_TASK" || (
   false
 )
 
-source "$SCRIPT_DIR/jvmopts.sh"
-
-export JVM_OPTS
-export SBT_OPTS
+if [ "$SV" = "v2.11" ]; then
+    source "$SCRIPT_DIR/jvmopts.sh"
+    
+    export JVM_OPTS
+    export SBT_OPTS
+fi
 
 TEST_ARGS=";error ;test:compile ;mimaReportBinaryIssues ;warn ;testOnly ;doc"
 
