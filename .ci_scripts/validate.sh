@@ -8,14 +8,16 @@ cd "$SCRIPT_DIR/.."
 
 SBT_TASK="scalafmtCheckAll"
 
-if [ "v${SCALA_VERSION}" != "v2.11.12" ]; then
+SV="v${SCALA_VERSION/2.11.*/2.11}"
+
+if [ "$SV" != "v2.11" ]; then
     SBT_TASK="$SBT_TASK ;scalafixAll -check"
+
+    source "$SCRIPT_DIR/jvmopts.sh"
+    
+    export JVM_OPTS
+    export SBT_OPTS
 fi
-
-source "$SCRIPT_DIR/jvmopts.sh"
-
-export JVM_OPTS
-export SBT_OPTS
 
 sbt ++$SCALA_VERSION "$SBT_TASK" || (
   echo "ERROR: Scalafmt check failed, see differences above."
@@ -23,6 +25,13 @@ sbt ++$SCALA_VERSION "$SBT_TASK" || (
   echo "Additionally, please squash your commits (eg, use git commit --amend) if you're going to update this pull request."
   false
 )
+
+if [ "$SV" = "v2.11" ]; then
+    source "$SCRIPT_DIR/jvmopts.sh"
+    
+    export JVM_OPTS
+    export SBT_OPTS
+fi
 
 TEST_ARGS=";error ;test:compile ;mimaReportBinaryIssues ;warn ;testOnly ;doc"
 
