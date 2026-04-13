@@ -3,7 +3,7 @@ resolvers ++= Seq(
   "Tatami Releases" at "https://raw.github.com/cchantep/tatami/master/releases"
 )
 
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.6")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.6.0")
 
 addSbtPlugin("cchantep" % "sbt-scaladoc-compiler" % "0.6")
 
