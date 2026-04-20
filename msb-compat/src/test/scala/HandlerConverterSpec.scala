@@ -41,6 +41,7 @@ final class HandlerConverterSpec
 
   "Default codec registry" should {
     import HandlerConverters.DefaultCodecRegistry
+
     val codecReg = implicitly[CodecRegistry]
 
     Fragment.foreach(

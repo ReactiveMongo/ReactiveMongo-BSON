@@ -25,6 +25,7 @@ private[reactivemongo] trait BufferHandler {
 
       case BSONJavaScriptWS(v, s) => {
         buffer writeBsonString v
+
         writeDocument(s, buffer)
       }
 
@@ -41,22 +42,28 @@ private[reactivemongo] trait BufferHandler {
   private[bson] def deserialize(buffer: ReadableBuffer): Try[BSONValue] =
     Try(readValue(buffer, code = buffer.readByte().toInt))
 
-  def writeArray(vs: IndexedSeq[BSONValue], buffer: WritableBuffer) = {
+  def writeArray(
+      vs: IndexedSeq[BSONValue],
+      buffer: WritableBuffer
+    ): WritableBuffer = {
     val szBefore = buffer.size()
 
     buffer.writeInt(0) // initial BSON size
 
     var i = 0
+
     vs.foreach { v =>
       buffer.writeByte(v.code)
       buffer.writeCString(i.toString)
       serialize(v, buffer)
+
       i += 1
     }
 
     buffer.setInt(szBefore, (buffer.size() - szBefore + 1)) // reset size
 
     buffer.writeByte(0) // writeArray#write_1
+
     buffer
   }
 
@@ -69,10 +76,11 @@ private[reactivemongo] trait BufferHandler {
     buffer.writeInt(0) // initial (unknown:0) document size
 
     document.elements.foreach {
-      case BSONElement(k, v) =>
+      case BSONElement(k, v) => {
         buffer.writeByte(v.code)
         buffer.writeCString(k)
         serialize(v, buffer)
+      }
 
       case _ =>
     }
@@ -113,7 +121,9 @@ private[reactivemongo] trait BufferHandler {
         builder += readValue(buffer, code.toInt)
 
         makeSeq()
-      } else builder.result()
+      } else {
+        builder.result()
+      }
     }
 
     BSONArray(makeSeq())
@@ -143,13 +153,11 @@ private[reactivemongo] trait BufferHandler {
     }
   }
 
-  protected def readBoolean(buffer: ReadableBuffer): BSONBoolean = {
+  protected def readBoolean(buffer: ReadableBuffer): BSONBoolean =
     BSONBoolean(buffer.readByte() == (0x01: Byte))
-  }
 
-  protected def readDateTime(buffer: ReadableBuffer): BSONDateTime = {
+  protected def readDateTime(buffer: ReadableBuffer): BSONDateTime =
     BSONDateTime(buffer.readLong())
-  }
 
   def writeRegex(regex: BSONRegex, buffer: WritableBuffer) = {
     buffer writeCString regex.value
@@ -160,29 +168,24 @@ private[reactivemongo] trait BufferHandler {
     BSONRegex(buffer.readCString(), buffer.readCString())
   }
 
-  protected def readJavaScript(buffer: ReadableBuffer): BSONJavaScript = {
+  protected def readJavaScript(buffer: ReadableBuffer): BSONJavaScript =
     BSONJavaScript(buffer.readBsonString())
-  }
 
-  protected def readSymbol(buffer: ReadableBuffer): BSONSymbol = {
+  protected def readSymbol(buffer: ReadableBuffer): BSONSymbol =
     BSONSymbol(buffer.readBsonString())
-  }
 
   protected def readJavaScriptWS(buffer: ReadableBuffer): BSONJavaScriptWS = {
     BSONJavaScriptWS(buffer.readBsonString(), readDocument(buffer))
   }
 
-  protected def readInteger(buffer: ReadableBuffer): BSONInteger = {
+  protected def readInteger(buffer: ReadableBuffer): BSONInteger =
     BSONInteger(buffer.readInt())
-  }
 
-  protected def readTimestamp(buffer: ReadableBuffer): BSONTimestamp = {
+  protected def readTimestamp(buffer: ReadableBuffer): BSONTimestamp =
     BSONTimestamp(buffer.readLong())
-  }
 
-  protected def readLong(buffer: ReadableBuffer): BSONLong = {
+  protected def readLong(buffer: ReadableBuffer): BSONLong =
     BSONLong(buffer.readLong())
-  }
 
   @inline def writeDecimal(
       decimal: BSONDecimal,
@@ -250,6 +253,7 @@ private[reactivemongo] trait PlainBufferHandler { self: BufferHandler =>
         val v = readValue(buffer, code.toInt)
 
         elms += BSONElement(name, v)
+
         fields.put(name, v)
 
         read()

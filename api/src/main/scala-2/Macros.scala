@@ -319,6 +319,7 @@ object Macros extends MacroAnnotations {
 
     def take(value: T): LocalVar[T] = {
       underlying = value
+
       this
     }
 

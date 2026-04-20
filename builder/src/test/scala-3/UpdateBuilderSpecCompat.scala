@@ -40,7 +40,9 @@ trait UpdateBuilderSpecCompat { self: UpdateBuilderSpec =>
       // Create computed expressions using arithmetic operators
       val incrementedCounter =
         exprBuilder.add(counterExpr, exprBuilder.from(10))
+
       val doubledScore = exprBuilder.multiply(scoreExpr, exprBuilder.from(2.0))
+
       val adjustedQuantity = exprBuilder.subtract(
         quantityExpr,
         exprBuilder.from(5L)

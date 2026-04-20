@@ -16,6 +16,7 @@ object TestUtils {
       ev: MongoComparable[T, k.T, V]
     ) = {
     val _ = v
+
     ev
   }
 
@@ -30,6 +31,7 @@ object TestUtils {
         ev: MongoComparable[T, k.T, V]
       ) = {
       val _ = v
+
       ev
     }
   }

@@ -284,6 +284,7 @@ private[builder] trait FilterCompat[T] { self: FilterBuilder[T] =>
 
     input.foreach { v =>
       val _ = f(nested, v)
+
       val clause = nested.clauses.result().toSeq.map {
         implicitly[ElementProducer](_)
       }

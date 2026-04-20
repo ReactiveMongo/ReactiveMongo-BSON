@@ -12,6 +12,12 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
 
   import TestMacros._
 
+  private def normalizeDefaultValueTypeTree(str: String): String =
+    str.replace(
+      "TypeTree[TypeVar(TypeParamRef(T) -> TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int))]",
+      "TypeTree[TypeRef(ThisType(TypeRef(NoPrefix,module class scala)),class Int)]"
+    )
+
   "Product" should {
     "be inspected for elements" >> {
       "when Foo" in {
@@ -50,13 +56,15 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
           "by import" in {
             import TestUnion.Implicits.productOfUC
 
-            testProductElements[TestUnion.UC] must_=== expected
+            testProductElements[TestUnion.UC]
+              .map(normalizeDefaultValueTypeTree) must_=== expected
           }
 
           "by local val" in {
             implicit val pof = TestUnion.ProductOfUC
 
-            testProductElements[TestUnion.UC] must_=== expected
+            testProductElements[TestUnion.UC]
+              .map(normalizeDefaultValueTypeTree) must_=== expected
           }
         }
       }
@@ -102,6 +110,7 @@ final class QuotesSpec extends org.specs2.mutable.Specification:
 
         "be successful when conversion is provided" in {
           import TestUnion.Implicits.productOfUC
+
           implicit val conv = TestUnion.ucAsProduct
 
           testWithTuple(

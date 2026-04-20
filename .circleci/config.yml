@@ -31,7 +31,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-          - &scala_cache_key scala-{{ .Environment.CIRCLE_JOB }}-{{ checksum "version.sbt" }}-{{ checksum "build.sbt" }}-{{ checksum "project/Dependencies.scala" }}-{{ checksum "project/plugins.sbt" }}
+          - &scala_cache_key scala-1-{{ .Environment.CIRCLE_JOB }}-{{ checksum "version.sbt" }}-{{ checksum "build.sbt" }}-{{ checksum "project/build.properties" }}-{{ checksum "project/Dependencies.scala" }}-{{ checksum "project/plugins.sbt" }}
 
       - run:
           name: Build & Run tests
@@ -113,9 +113,9 @@ jobs:
       - store_test_results:
           path: test-reports
 
-  scala212_jdk8:
+  scala212_jdk11:
     docker:
-      - image: cimg/openjdk:8.0
+      - image: cimg/openjdk:11.0
 
     working_directory: ~/repo
 
@@ -147,9 +147,9 @@ jobs:
       - store_test_results:
           path: test-reports
 
-  scala3_jdk11:
+  scala3_jdk17:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:17.0.17
 
     working_directory: ~/repo
     
@@ -199,9 +199,9 @@ workflows:
   main_suite:
     jobs:
       - scala211_jdk11
-      - scala212_jdk8
+      - scala212_jdk11
       - scala213_jdk11
-      - scala3_jdk11
+      - scala3_jdk17
 
       - publish_snapshots:
           filters:
@@ -210,9 +210,9 @@ workflows:
                 - master
           requires:
             - scala211_jdk11
-            - scala212_jdk8
+            - scala212_jdk11
             - scala213_jdk11
-            - scala3_jdk11
+            - scala3_jdk17
 
       - trigger_dependent_builds:
           filters:

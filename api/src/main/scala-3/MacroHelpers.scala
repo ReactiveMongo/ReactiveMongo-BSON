@@ -52,6 +52,7 @@ private[bson] trait MacroHelpers[A] extends OptionSupport with MacroLogging {
       body: Expr[MacroConfiguration] => Expr[T]
     ): Expr[T] = '{
     val config: MacroConfiguration = ${ macroCfgInit }
+
     ${ body('config) }
   }
 
@@ -139,7 +140,9 @@ private[bson] trait MacroHelpers[A] extends OptionSupport with MacroLogging {
           case _ =>
             None
         }
-      } else None
+      } else {
+        None
+      }
     }
   }
 }
@@ -243,21 +246,25 @@ private[bson] trait MacroLogging { _self: OptionSupport =>
 
   // --- Context helpers ---
 
+  // format: off
   /* Prints a compilation warning, if allowed. */
   final lazy val warn: String => Unit = {
-    if (hasOption[MacroOptions.DisableWarnings]) { (_: String) => () }
-    else {
+    if (hasOption[MacroOptions.DisableWarnings]) {
+      (_: String) => ()
+    } else {
       report.warning(_: String)
     }
   }
 
   /* Prints debug entry, if allowed. */
   final lazy val debug: String => Unit = {
-    if (!hasOption[MacroOptions.Verbose]) { (_: String) => () }
-    else {
+    if (!hasOption[MacroOptions.Verbose]) {
+      (_: String) => ()
+    } else {
       report.info(_: String)
     }
   }
+  // format: on
 }
 
 private[bson] trait OptionSupport {

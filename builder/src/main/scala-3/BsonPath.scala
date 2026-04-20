@@ -174,7 +174,17 @@ object BsonPath {
      * Uses match types to unwrap the Option and return the inner type.
      * This is equivalent to Scala 2's `Exists[T, K, _ <: Option[V]]` pattern.
      */
-    inline given deriveHNilOption[T <: Product, K <: String & Singleton](
+    inline given deriveHNilOption[T, K <: String & Singleton, V](
+        using
+        @unused head: Exists[T, K, ? <: Option[V]]
+      ): Aux[T, K *: EmptyTuple, V, V] =
+      new Lookup[T, K *: EmptyTuple, V] {
+        type Inner = V
+      }
+
+    // Compatibility helper: keep explicit `Lookup.deriveHNilOption[T, K]`
+    // invocations (used in tests) while deriving via Exists-based givens.
+    inline def deriveHNilOption[T <: Product, K <: String & Singleton](
         using
         m: Mirror.ProductOf[T],
         @unused ev: IsOptionField[
@@ -198,22 +208,14 @@ object BsonPath {
       }
 
     inline given deriveConsOption[
-        T <: Product,
+        T,
         KH <: String & Singleton,
         KT <: Tuple,
+        V0,
         V1
       ](using
-        m: Mirror.ProductOf[T],
-        @unused ev: IsOptionField[
-          m.MirroredElemLabels,
-          m.MirroredElemTypes,
-          KH
-        ] =:= true,
-        tail: Lookup[
-          UnwrapFieldOption[m.MirroredElemLabels, m.MirroredElemTypes, KH],
-          KT,
-          V1
-        ]
+        @unused head: Exists[T, KH, ? <: Option[V0]],
+        tail: Lookup[V0, KT, V1]
       ): Aux[T, KH *: KT, V1, V1] = new Lookup[T, KH *: KT, V1] {
       type Inner = V1
     }
@@ -282,10 +284,12 @@ object BsonPath {
           case _: (V *: _) => true
           case _           => false
         }
+
       case _: (_ *: labelTail) =>
         inline erasedValue[Types] match {
           case _: (_ *: typeTail) =>
             checkFieldType[T, labelTail, typeTail, K, V]
+
           case _ => false
         }
     }
@@ -305,10 +309,12 @@ object BsonPath {
           case _: (Option[V] *: _) => true
           case _                   => false
         }
+
       case _: (_ *: labelTail) =>
         inline erasedValue[Types] match {
           case _: (_ *: typeTail) =>
             checkFieldOptionType[T, labelTail, typeTail, K, V]
+
           case _ => false
         }
     }

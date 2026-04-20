@@ -62,6 +62,8 @@ ThisBuild / libraryDependencies ++= {
   }
 }
 
+ThisBuild / scalafixDependencies += "io.github.cchantep" %% "offler-rules" % "1.0.1-SNAPSHOT"
+
 lazy val api = (project in file("api"))
   .enablePlugins(VelocityPlugin)
   .settings(

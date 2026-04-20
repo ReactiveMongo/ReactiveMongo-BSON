@@ -16,6 +16,7 @@ object TestUtils {
         ev: MongoComparable[T, k.type, V]
       ) = {
       val _ = v
+
       ev
     }
   }

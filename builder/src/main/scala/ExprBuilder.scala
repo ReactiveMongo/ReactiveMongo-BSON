@@ -1033,6 +1033,7 @@ final class ExprBuilder[T] private[builder] (
     ): Expr[T, R] = {
     def doc = BSONDocument("input" -> input, "to" -> to)
     def withError = onError.fold(doc)(e => doc ++ BSONDocument("onError" -> e))
+
     def withNull =
       onNull.fold(withError)(n => withError ++ BSONDocument("onNull" -> n))
 
@@ -1210,7 +1211,7 @@ final class ExprBuilder[T] private[builder] (
       start: Int = 0,
       end: Option[Int] = None
     ): Expr[T, Int] = {
-    val args = end match {
+    val args: BSONArray = end match {
       case Some(e) => BSONArray(string, substring, start, e)
       case None    => BSONArray(string, substring, start)
     }
@@ -1246,11 +1247,15 @@ final class ExprBuilder[T] private[builder] (
       regex: String,
       options: String = ""
     ): Expr[T, Boolean] = {
-    val doc = if (options.isEmpty) {
-      BSONDocument("input" -> input, "regex" -> regex)
-    } else {
-      BSONDocument("input" -> input, "regex" -> regex, "options" -> options)
+    val doc: BSONDocument = {
+      if (options.isEmpty) {
+        BSONDocument("input" -> input, "regex" -> regex)
+      } else {
+        BSONDocument("input" -> input, "regex" -> regex, "options" -> options)
+      }
+
     }
+
     new Expr[T, Boolean](() => Try(BSONDocument(f"$$regexMatch" -> doc)))
   }
 

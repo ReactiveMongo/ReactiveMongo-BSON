@@ -44,15 +44,15 @@ private[specs2] sealed trait LowPriorityImplicits {
 }
 
 private final class DiffableValue[T <: BSONValue] extends Diffable[T] {
-  @inline private def nullValue: BSONValue = null
+  @inline private def nullValue = null
 
   def diff(actual: T, expected: T): ComparisonResult = {
     if (actual == nullValue && expected == nullValue) {
       PrimitiveIdentical(actual)
     } else if (actual == nullValue || expected == nullValue) {
       PrimitiveDifference(actual, expected)
-    } else
-      (actual, expected) match {
+    } else {
+      (actual -> expected) match {
         case (actualDoc: BSONDocument, expectedDoc: BSONDocument) =>
           DiffableDocument.diff(actualDoc, expectedDoc)
 
@@ -62,6 +62,7 @@ private final class DiffableValue[T <: BSONValue] extends Diffable[T] {
         case _ =>
           Diffable.fallbackDiffable.diff(actual, expected)
       }
+    }
   }
 }
 
@@ -124,7 +125,7 @@ private final class DocumentDifference(
     s"'${element.name}': ${BSONValue pretty element.value}"
 
   def renderChange(indent: String)(change: (String, ComparisonResult)): String =
-    s"'${change._1}': ${change._2.render(indent)}"
+    s"'${change._1}': ${change._2 render indent}"
 
 }
 

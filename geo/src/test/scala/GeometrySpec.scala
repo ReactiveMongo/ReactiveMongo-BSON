@@ -90,7 +90,10 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
   }
 
   "Linear ring" should {
-    def specs(bson: BSONArray, ring: GeoLinearRing) = {
+    def specs(
+        bson: BSONArray,
+        ring: GeoLinearRing
+      ): org.specs2.specification.core.Fragment = {
       "be equal" in {
         ring must_=== GeoLinearRing(ring._1, ring._2, ring._3, ring.more)
       }
@@ -173,7 +176,10 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
   }
 
   "Polygon" should {
-    def spec(bson: BSONDocument, polygon: GeoPolygon) = {
+    def spec(
+        bson: BSONDocument,
+        polygon: GeoPolygon
+      ): org.specs2.specification.core.Fragment = {
       "be equal" in {
         polygon must_=== GeoPolygon(polygon.exterior, polygon.interior: _*)
       }
@@ -252,7 +258,8 @@ final class GeometrySpec extends org.specs2.mutable.Specification {
       )
 
       val polygon = singleRingPolygon ++ interiorRing
-      val bson = {
+
+      val bson: BSONDocument = {
         val addInterior = monocle.field[BSONArray]("coordinates").modify {
           _.++(values = interiorBson)
         }

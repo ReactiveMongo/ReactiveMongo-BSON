@@ -10,14 +10,14 @@ class BSONTimestampBenchmark {
   private val ordinal = -1368554632
 
   @Benchmark
-  def fromTimeMS() = {
+  def fromTimeMS(): Unit = {
     val ts = BSONTimestamp(timeMs)
 
     assert(ts.time == timeSec && ts.ordinal == ordinal && ts.value == timeMs)
   }
 
   @Benchmark
-  def fromSecOrdinal() = {
+  def fromSecOrdinal(): Unit = {
     val ts = BSONTimestamp(timeSec, ordinal)
 
     assert(ts.time == timeSec && ts.ordinal == ordinal && ts.value == timeMs)

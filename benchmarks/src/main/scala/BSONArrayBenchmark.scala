@@ -49,9 +49,10 @@ class BSONArrayBenchmark {
         bigSetValues = bigSet.values.toList
 
         bigSetValues match {
-          case _1 :: _2 :: _ =>
+          case _1 :: _2 :: _ => {
             value1 = _1
             value2 = _2
+          }
 
           case _ =>
         }
@@ -61,6 +62,7 @@ class BSONArrayBenchmark {
 
       case _ => {
         fixtures = gen()
+
         setup()
       }
     }
@@ -124,6 +126,7 @@ class BSONArrayBenchmark {
   @Benchmark
   final def readArray(): Unit = {
     val arr = buffer.DefaultBufferHandler.readArray(serializedBuffer)
+
     assert(arr == bsonArray)
   }
 
@@ -145,7 +148,7 @@ class BSONArrayBenchmark {
   }
 
   @Benchmark
-  def writeFromList() = {
+  def writeFromList(): Unit = {
     assert(
       collectionWriter[BSONValue, IndexedSeq[BSONValue]]
         .writeTry(smallSet.values)
@@ -156,9 +159,11 @@ class BSONArrayBenchmark {
 
 object BSONArrayBenchmark {
 
-  private[bson] def bigArray() = {
+  private[bson] def bigArray(): BSONArray = {
     val s = List.newBuilder[BSONValue]
+
     def randomValues() = Random.shuffle(BSONValueFixtures.bsonValueFixtures)
+
     var vs = randomValues().iterator
 
     (0 to 128).foreach { _ =>

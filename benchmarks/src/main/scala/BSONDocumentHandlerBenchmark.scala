@@ -17,24 +17,28 @@ class BSONDocumentHandlerBenchmark {
   @Benchmark
   def mapReaderSmallDoc(): Unit = {
     val res = mapReader[BSONValue].readTry(smallDoc)
+
     assert(res.isSuccess)
   }
 
   @Benchmark
   def mapReaderBigDoc(): Unit = {
     val res = mapReader[BSONValue].readTry(bigDoc)
+
     assert(res.isSuccess)
   }
 
   @Benchmark
   def identityReaderDoc(): Unit = {
     val res = implicitly[BSONReader[BSONDocument]].readTry(bigDoc)
+
     assert(res.isSuccess)
   }
 
   @Benchmark
   def identityReader(): Unit = {
     val res = implicitly[BSONReader[BSONValue]].readTry(smallDoc)
+
     assert(res.isSuccess)
   }
 }

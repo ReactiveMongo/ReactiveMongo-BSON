@@ -1,6 +1,6 @@
 package reactivemongo.api.bson
 
-import java.util.{ Locale, UUID }
+import java.util.{ Arrays, Locale, UUID }
 
 import java.net.{ URI, URL }
 
@@ -16,6 +16,7 @@ import java.time.{
 
 import scala.util.{ Failure, Success }
 
+import org.specs2.matcher.MatchResult
 import org.specs2.specification.core.Fragments
 
 final class HandlerSpec
@@ -128,7 +129,9 @@ final class HandlerSpec
         val before: PartialFunction[BSONDocument, BSONDocument] = {
           case _: BSONDocument => BSONDocument("name" -> "John")
         }
+
         val reader2: BSONDocumentReader[String] = reader1.beforeRead(before)
+
         val reader3: BSONDocumentReader[String] =
           reader1.beforeReadTry(_ => Success(BSONDocument("name" -> "John")))
 
@@ -139,6 +142,7 @@ final class HandlerSpec
 
         // Make sure the type BSONDocumentHandler is preserved
         val handler2: BSONDocumentHandler[String] = handler1.beforeRead(before)
+
         val handler3: BSONDocumentHandler[String] =
           handler1.beforeReadTry { (_: BSONDocument) =>
             Success(BSONDocument("name" -> "John"))
@@ -162,12 +166,15 @@ final class HandlerSpec
       val writer1 = BSONDocumentWriter { (s: String) =>
         BSONDocument(f"$$foo" -> s)
       }
+
       val expected1 = BSONDocument(f"$$foo" -> "bar")
 
       val zero = BSONDocument("_value" -> "zero")
       val one = BSONDocument("_value" -> "one")
 
-      def partialSpec(w: BSONDocumentWriter[Int]) = {
+      def partialSpec(
+          w: BSONDocumentWriter[Int]
+        ): MatchResult[_] = {
         w.writeTry(0) must beSuccessfulTry(zero) and {
           w.writeOpt(0) must beSome(zero)
         } and {
@@ -192,6 +199,7 @@ final class HandlerSpec
         }
       } and {
         val expected = BSONDocument("lorem" -> "ipsum")
+
         val writer3: BSONDocumentWriter[String] = writer1.afterWrite {
           case _ => expected
         }
@@ -346,6 +354,7 @@ final class HandlerSpec
 
     "with structured values" >> {
       case class Foo(label: String, count: Int)
+
       implicit val fooWriter: BSONDocumentWriter[Foo] =
         BSONDocumentWriter[Foo] { foo =>
           BSONDocument("label" -> foo.label, "count" -> foo.count)
@@ -364,6 +373,7 @@ final class HandlerSpec
           "a" -> BSONDocument("label" -> "foo", "count" -> 10),
           "b" -> BSONDocument("label" -> "foo2", "count" -> 20)
         )
+
         val input = Map("a" -> Foo("foo", 10), "b" -> Foo("foo2", 20))
         val result = mapWriter[Foo].writeTry(input)
 
@@ -372,10 +382,12 @@ final class HandlerSpec
 
       "read" in {
         val expectedResult = Map("a" -> Foo("foo", 10), "b" -> Foo("foo2", 20))
+
         val input = BSONDocument(
           "a" -> BSONDocument("label" -> "foo", "count" -> 10),
           "b" -> BSONDocument("label" -> "foo2", "count" -> 20)
         )
+
         val handler = implicitly[BSONReader[Map[String, Foo]]]
 
         handler.readTry(input) must_=== Success(expectedResult)
@@ -386,6 +398,7 @@ final class HandlerSpec
           "a" -> BSONDocument("label" -> "foo", "count" -> 10),
           "b" -> BSONDocument("wrong" -> "foo2")
         )
+
         val handler = implicitly[BSONReader[Map[String, Foo]]]
 
         handler.readTry(input) must beFailedTry
@@ -433,6 +446,7 @@ final class HandlerSpec
     val instant = Instant.ofEpochMilli(time)
     val defaultZone = ZoneId.systemDefault
     val offset = defaultZone.getRules.getOffset(instant)
+
     val localDateTime =
       LocalDateTime.ofEpochSecond(time / 1000, instant.getNano, offset)
 
@@ -463,6 +477,7 @@ final class HandlerSpec
     "as LocalDate" >> {
       val handler = implicitly[BSONHandler[LocalDate]]
       val localDate = localDateTime.toLocalDate
+
       val dateBson =
         BSONDateTime(localDate.atStartOfDay.toEpochSecond(offset) * 1000)
 
@@ -934,6 +949,7 @@ final class HandlerSpec
 
   "Custom class" should {
     case class Foo(bar: String)
+
     implicit val w = BSONWriter[Foo] { f => BSONString(f.bar) }
     implicit val r = BSONReader.collect[Foo] { case BSONString(s) => Foo(s) }
 
@@ -961,7 +977,9 @@ final class HandlerSpec
     }
 
     "be handled" >> {
-      def spec(h: BSONHandler[Foo]) = {
+      def spec(
+          h: BSONHandler[Foo]
+        ): MatchResult[_] = {
         h.writeTry(foo) must beSuccessfulTry(bson) and {
           h.writeOpt(foo) must beSome(bson)
         } and {
@@ -976,7 +994,6 @@ final class HandlerSpec
       }
 
       "using safe functions" in {
-        import scala.util.{ Failure, Success }
 
         spec(
           BSONHandler.from[Foo](
@@ -1112,11 +1129,14 @@ final class HandlerSpec
 
     "be widened" >> {
       trait Foo
+
       case class Bar(v: Int) extends Foo
+
       val bar = Bar(0)
 
       "as BSONReader" in {
         val barReader = BSONReader[Bar] { _ => bar }
+
         val barHandler = BSONHandler.provided(
           barReader,
           BSONWriter[Bar](b => BSONInteger(b.v))
@@ -1136,6 +1156,7 @@ final class HandlerSpec
 
       "as BSONDocumentReader" in {
         val barReader = BSONDocumentReader[Bar] { _ => bar }
+
         val barHandler = BSONDocumentHandler.provided(
           barReader,
           BSONDocumentWriter[Bar](_ => BSONDocument.empty)
@@ -1157,7 +1178,9 @@ final class HandlerSpec
 
   "Writer" should {
     {
-      def partialSpec(w: BSONWriter[String]) = {
+      def partialSpec(
+          w: BSONWriter[String]
+        ): MatchResult[_] = {
         w.writeTry("zero") must beSuccessfulTry(BSONInteger(0)) and {
           w.writeTry("one") must beSuccessfulTry(BSONInteger(1))
         } and {
@@ -1189,11 +1212,14 @@ final class HandlerSpec
 
     "be narrowed" >> {
       trait Foo
+
       case class Bar(v: Int) extends Foo
+
       val bar = Bar(0)
 
       "as BSONWriter" in {
         val fooWriter = BSONWriter[Foo](_ => BSONInteger(1))
+
         val fooHandler =
           BSONHandler.provided(BSONReader[Foo](_ => bar), fooWriter)
 
@@ -1212,6 +1238,7 @@ final class HandlerSpec
       "as BSONDocumentWriter" in {
         val doc = BSONDocument("bar" -> 1)
         val fooWriter = BSONDocumentWriter[Foo](_ => doc)
+
         val fooHandler = BSONDocumentHandler.provided(
           BSONDocumentReader[Foo](_ => bar),
           fooWriter
@@ -1427,31 +1454,26 @@ final class HandlerSpec
 
   // ---
 
-  lazy val doc = {
-    @SuppressWarnings(Array("TryGet"))
-    def bson = BSONDocument(
-      "name" -> "James",
-      "age" -> 27,
-      "surname1" -> Some("Jim"),
-      "surname2" -> None,
-      "surname3" -> Option.empty[String],
-      "score" -> 3.88,
-      "online" -> true,
-      "_id" -> BSONObjectID.parse("5117c6391aa562a90098f621").get,
-      "contact" -> BSONDocument(
-        "emails" -> BSONArray(
-          Some("james@example.org"),
-          None,
-          Some("spamaddrjames@example.org")
-        ),
-        "adress" -> BSONString("coucou")
+  lazy val doc: BSONDocument = BSONDocument(
+    "name" -> "James",
+    "age" -> 27,
+    "surname1" -> Some("Jim"),
+    "surname2" -> None,
+    "surname3" -> Option.empty[String],
+    "score" -> 3.88,
+    "online" -> true,
+    "_id" -> BSONObjectID.parse("5117c6391aa562a90098f621").get,
+    "contact" -> BSONDocument(
+      "emails" -> BSONArray(
+        Some("james@example.org"),
+        None,
+        Some("spamaddrjames@example.org")
       ),
-      "lastSeen" -> BSONLong(1360512704747L),
-      "missing" -> BSONNull
-    )
-
-    bson
-  }
+      "adress" -> BSONString("coucou")
+    ),
+    "lastSeen" -> BSONLong(1360512704747L),
+    "missing" -> BSONNull
+  )
 
   lazy val array = BSONArray(
     BSONString("elem0"),
@@ -1475,7 +1497,7 @@ final class HandlerSpec
       new Album(
         "Everybody Knows this is Nowhere",
         1969,
-        Some("hello".getBytes("UTF-8")),
+        Some("hello" getBytes "UTF-8"),
         List(
           "Cinnamon Girl",
           "Everybody Knows this is Nowhere",
@@ -1556,6 +1578,7 @@ final class HandlerSpec
   ]
 }""".replaceAll("\r", "") and {
             val ny2 = BSON.readDocument[Artist](doc)
+
             def allSongs = doc
               .getAsOpt[List[Album]]("albums")
               .getOrElse(List.empty)
@@ -1586,14 +1609,17 @@ final class Album(
     val certificate: Option[Array[Byte]],
     val tracks: List[String]) {
 
-  import java.util.Arrays
-
   override def hashCode: Int =
-    (name, releaseYear, certificate.map(Arrays.hashCode(_)), tracks).hashCode
+    (
+      name,
+      releaseYear,
+      certificate.map(Arrays.hashCode(_)),
+      tracks
+    ).hashCode
 
   override def equals(that: Any): Boolean = that match {
     case a: Album =>
-      (certificate, a.certificate) match {
+      (certificate -> a.certificate) match {
         case (None, None) =>
           Tuple3(name, releaseYear, tracks) == Tuple3(
             a.name,

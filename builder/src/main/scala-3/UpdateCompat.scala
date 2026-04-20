@@ -232,7 +232,7 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
       ],
       @unused i1: Temporal[A]
     ): UpdateBuilder[T] = {
-    val value = dateType match {
+    val value: BSONValue = dateType match {
       case UpdateBuilder.CurrentDateType.Date =>
         BSONDocument(f"$$type" -> "date")
 
@@ -326,7 +326,7 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
     )(implicit
       @unused i0: BsonPath.Exists[T, field.type, _ <: Iterable[_]]
     ): UpdateBuilder[T] = {
-    val value = strategy match {
+    val value: BSONValue = strategy match {
       case UpdateBuilder.PopStrategy.First => BSONInteger(-1)
       case UpdateBuilder.PopStrategy.Last  => BSONInteger(1)
     }
@@ -357,7 +357,9 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
     ): UpdateBuilder[T] = {
     val path = fieldPath(field)
     val doc = operations.getOrElse(f"$$pull", BSONDocument.empty)
+
     operations += f"$$pull" -> (doc ++ (path -> value))
+
     this
   }
 
@@ -408,6 +410,7 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
     val bsonValues = BSONArray(
       values.toSeq.map(v => BSONValue.valueProducer(v)(i1)): _*
     )
+
     val path = fieldPath(field)
     val doc = operations.getOrElse(f"$$pullAll", BSONDocument.empty)
 
@@ -439,7 +442,9 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
     ): UpdateBuilder[T] = {
     val path = fieldPath(field)
     val doc = operations.getOrElse(f"$$push", BSONDocument.empty)
+
     operations += f"$$push" -> (doc ++ (path -> value))
+
     this
   }
 
@@ -715,10 +720,12 @@ private[builder] trait UpdateCompat[T] { self: UpdateBuilder[T] =>
         i0: BsonPath.Lookup[T, (K1, K2, K3, K4, K5, K6), ?]
       ): UpdateBuilder.Nested[T, i0.Inner] = {
       val pathSeq = pathToSeq((k1, k2, k3, k4, k5, k6))
+
       def in = new UpdateBuilder[i0.Inner](
         operations,
         prefix = self.prefix ++ pathSeq
       )
+
       new UpdateBuilder.Nested[T, i0.Inner](in, self)
     }
 

@@ -266,7 +266,7 @@ final class UpdateBuilderSpec
         .pushEach(
           symbol("tags"),
           Seq("tag1", "tag2", "tag3"),
-          slice = Some(UpdateBuilder.PushSlice.Last(10))
+          slice = Some(UpdateBuilder.PushSlice Last 10)
         )
         .result() must_=== BSONDocument(
         f"$$push" -> BSONDocument(
@@ -338,7 +338,7 @@ final class UpdateBuilderSpec
         .pushEach(
           symbol("tags"),
           Seq("new1", "new2"),
-          slice = Some(UpdateBuilder.PushSlice.First(5)),
+          slice = Some(UpdateBuilder.PushSlice First 5),
           sort = Some(UpdateBuilder.PushSort.Ascending),
           position = Some(2)
         )

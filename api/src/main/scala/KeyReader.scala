@@ -55,7 +55,7 @@ object KeyReader {
           Success(key)
 
         case _ =>
-          Failure(exceptions.ValueDoesNotMatchException(value))
+          Failure(exceptions ValueDoesNotMatchException value)
       }
     }
 
@@ -89,7 +89,7 @@ object KeyReader {
     if (key.size == 1) {
       Success(key.head)
     } else {
-      Failure(exceptions.ValueDoesNotMatchException(s"Invalid character: $key"))
+      Failure(exceptions ValueDoesNotMatchException s"Invalid character: $key")
     }
   }
 

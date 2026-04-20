@@ -82,6 +82,7 @@ trait MacroExtraSpec { self: MacroSpec =>
   "Union types" should {
     "be supported" >> {
       val person = Person(firstName = "Foo", lastName = "Bar")
+
       val personDoc = BSONDocument(
         "className" -> "MacroTest.Person",
         "firstName" -> "Foo",
@@ -191,9 +192,11 @@ trait MacroExtraSpec { self: MacroSpec =>
 
     "be supported for custom Value class" in {
       given innerWriter: BSONWriter[FooVal] = Macros.valueWriter
+
       val writer = Macros.valueWriter[OpaqueFoo]
 
       given innerReader: BSONReader[FooVal] = Macros.valueReader
+
       val reader = Macros.valueReader[OpaqueFoo]
 
       val handler = Macros.valueHandler[OpaqueFoo]

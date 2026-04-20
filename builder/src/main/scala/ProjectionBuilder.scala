@@ -93,6 +93,7 @@ object ProjectionBuilder {
      */
     def at(f: ProjectionBuilder[U] => Any): ProjectionBuilder[T] = {
       f(in)
+
       out
     }
   }
@@ -115,6 +116,7 @@ object ProjectionBuilder {
      */
     def at(f: ProjectionBuilder[U] => Any): ProjectionBuilder[T] = {
       f(in)
+
       out
     }
   }

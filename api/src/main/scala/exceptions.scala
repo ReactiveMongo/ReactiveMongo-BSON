@@ -2,7 +2,7 @@ package reactivemongo.api.bson.exceptions
 
 import scala.util.control.NoStackTrace
 
-import reactivemongo.api.bson.BSONValue
+import reactivemongo.api.bson.{ BSONArray, BSONDocument, BSONValue }
 
 /** Formerly `DocumentKeyNotFoundException` */
 final class BSONValueNotFoundException private[exceptions] (
@@ -28,7 +28,6 @@ final class BSONValueNotFoundException private[exceptions] (
 }
 
 object BSONValueNotFoundException {
-  import reactivemongo.api.bson.{ BSONArray, BSONDocument }
 
   private[api] def apply(
       name: String,
@@ -75,7 +74,7 @@ final class TypeDoesNotMatchException private[api] (
 
   override def hashCode: Int = tupled.hashCode
 
-  override def toString: String = s"TypeDoesNotMatchException${tupled.toString}"
+  override def toString = s"TypeDoesNotMatchException${tupled.toString}"
 }
 
 /** [[TypeDoesNotMatchException]] factories */
@@ -205,7 +204,9 @@ object HandlerException {
 
   @inline def apply(expression: String, cause: Throwable): HandlerException = {
     val ex = new HandlerException(expression)
+
     ex.initCause(cause)
+
     ex
   }
 }

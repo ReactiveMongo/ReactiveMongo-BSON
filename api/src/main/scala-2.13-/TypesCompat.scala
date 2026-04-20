@@ -30,12 +30,14 @@ private[bson] trait Utils {
     val builder = cbf()
 
     @annotation.tailrec
-    def go(in: Iterator[A]): Try[Unit] =
-      if (!in.hasNext) Success({})
-      else {
+    def go(in: Iterator[A]): Try[Unit] = {
+      if (!in.hasNext) {
+        Success({})
+      } else {
         f(in.next) match {
           case Success(b) => {
             builder += b
+
             go(in)
           }
 
@@ -43,6 +45,7 @@ private[bson] trait Utils {
             Failure(e)
         }
       }
+    }
 
     go(in.iterator).map(_ => builder.result())
   }

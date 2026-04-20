@@ -82,6 +82,7 @@ class BSONDocumentBenchmark {
 
       case _ => {
         fixtures = gen()
+
         setup()
       }
     }
@@ -133,9 +134,10 @@ class BSONDocumentBenchmark {
   @Benchmark
   def opsBigSetMinusKey() = documentOps(bigSet -- key)
 
-  private def documentOps(doc: => BSONDocument) = {
+  private def documentOps(doc: => BSONDocument): Unit = {
     // removeSingleKey
     doc -- key -- "notFoundKey"
+
     doc.--("notFoundKey", key)
 
     // prettyPrintDocument
@@ -174,6 +176,8 @@ class BSONDocumentBenchmark {
 
     // byteSize
     doc.byteSize
+
+    ()
   }
 
   @Benchmark
@@ -274,6 +278,7 @@ class BSONDocumentBenchmark {
   @Benchmark
   def readDocument(): Unit = {
     val doc = DefaultBufferHandler.readDocument(serializedBuffer)
+
     assert(!doc.isEmpty)
   }
 
@@ -290,7 +295,7 @@ class BSONDocumentBenchmark {
   }
 
   @Benchmark
-  def getAsUnflattenedTry() = {
+  def getAsUnflattenedTry(): Unit = {
     assert(
       bigSet.getAsUnflattenedTry[BSONValue](key).toOption.flatten.isDefined
     )
@@ -339,7 +344,9 @@ object BSONDocumentBenchmark {
 
   private[bson] def bigDocument(): BSONDocument = {
     val m = Map.newBuilder[String, BSONValue]
+
     def values() = BSONValueFixtures.bsonValueFixtures.iterator
+
     var vs = values()
 
     (0 to 128).foreach { i =>

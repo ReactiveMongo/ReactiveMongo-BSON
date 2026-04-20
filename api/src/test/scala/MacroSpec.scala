@@ -128,6 +128,7 @@ final class MacroSpec
           "name" -> "some",
           "value" -> BSONDocument(f"$$str" -> "value")
         )
+
         val noneBson = BSONDocument("name" -> "none", "value" -> BSONNull)
 
         w.writeTry(some) must beSuccessfulTry(someBson) and {
@@ -352,6 +353,7 @@ final class MacroSpec
 
     "handle case class and handler inside trait" in {
       val t = new NestModule {}
+
       roundtrip(t.Nested("it works"), t.format)
     }
 
@@ -369,8 +371,11 @@ final class MacroSpec
 
     "handle case class inside trait with handler outside" in {
       val t = new NestModule {}
+
       import t._ // you need Nested in scope because t.Nested won't work
+
       val format = Macros.handler[Nested]
+
       roundtrip(Nested("it works"), format)
     }
 
@@ -400,7 +405,7 @@ final class MacroSpec
       def spec(
           handler: BSONDocumentHandler[Person],
           expectedBson: BSONDocument
-        ) = {
+        ): MatchResult[_] = {
         handler.writeTry(person) must beSuccessfulTry(expectedBson) and {
           handler.readTry(expectedBson) must beSuccessfulTry(person)
         }
@@ -471,6 +476,7 @@ final class MacroSpec
       "with simple type names" in {
         import Union._
         import MacroOptions._
+
         val a = UA(1)
         val b = UB("hai")
 
@@ -533,7 +539,9 @@ final class MacroSpec
         import InvalidUnion._
 
         implicit lazy val ah: BSONDocumentHandler[UA] = Macros.handler
+
         @silent implicit def bh[T]: BSONDocumentHandler[UB[T]] = ???
+
         implicit lazy val ch: BSONDocumentHandler[UC.type] = Macros.handler
 
         "without restriction" in {
@@ -640,6 +648,7 @@ final class MacroSpec
 
     "grab an implicit handler for type used in union" in {
       import TreeCustom._
+
       val tree: Tree = Node(Leaf("hi"), Node(Leaf("hello"), Leaf("world")))
       val serialized = BSON writeDocument tree
       val deserialized = serialized.flatMap(BSON.readDocument[Tree](_))
@@ -658,6 +667,7 @@ final class MacroSpec
 
     "do nothing with objects" in {
       val format = Macros.handler[EmptyObject.type]
+
       roundtrip(EmptyObject, format)
     }
 
@@ -704,6 +714,7 @@ final class MacroSpec
         implicit def bHandler: BSONDocumentHandler[UB] = Macros.handler[UB]
         implicit def cHandler: BSONDocumentHandler[UC] = Macros.handler[UC]
         implicit def dHandler: BSONDocumentHandler[UD] = Macros.handler[UD]
+
         implicit def eHandler: BSONDocumentHandler[UE.type] =
           Macros.handler[UE.type]
 
@@ -739,6 +750,7 @@ final class MacroSpec
     "support automatic implementations search with nested traits" in {
       import MacroOptions._
       import InheritanceModule._
+
       implicit val format = Macros.handlerOpts[T, AutomaticMaterialization]
 
       format
@@ -1088,6 +1100,7 @@ final class MacroSpec
         }
 
         val minimalDoc = BSONDocument("id" -> 1)
+
         val expected = WithDefaultValues1(id = 1)
 
         r1.readTry(minimalDoc) must beSuccessfulTry(expected) and {
@@ -1109,6 +1122,7 @@ final class MacroSpec
         }
 
         val minimalDoc = BSONDocument("id" -> 1)
+
         val expected = WithDefaultValues2(
           id = 1,
           title = "default2",

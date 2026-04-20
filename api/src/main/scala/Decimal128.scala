@@ -8,8 +8,8 @@ import scala.collection.immutable.Set
 
 private[bson] object Decimal128 {
   // Masks
-  val InfMask: Long = 0x7800000000000000L
-  val NaNMask: Long = 0x7c00000000000000L
+  val InfMask = 0x7800000000000000L
+  val NaNMask = 0x7c00000000000000L
   val SignBitMask: Long = 1L << 63
 
   // Factories
@@ -45,7 +45,9 @@ private[bson] object Decimal128 {
                 s"Exponent is out of range: $exponent"
               )
             )
-          } else Success(clamped.unscaledValue)
+          } else {
+            Success(clamped.unscaledValue)
+          }
         }
         _ <- {
           if (unscaled.bitLength > MaxBitLength) {
@@ -54,7 +56,9 @@ private[bson] object Decimal128 {
                 s"Unscaled clamped is out of range: $unscaled"
               )
             )
-          } else Success({})
+          } else {
+            Success({})
+          }
         }
       } yield {
         val significand: BigInteger = unscaled.abs
@@ -63,8 +67,9 @@ private[bson] object Decimal128 {
 
         @annotation.tailrec
         def computeLow(i: Int, localLow: Long): Long = {
-          if (i == lowLimit) localLow
-          else {
+          if (i == lowLimit) {
+            localLow
+          } else {
             val upd = {
               if (significand testBit i) localLow | (1L << i)
               else localLow
@@ -76,12 +81,15 @@ private[bson] object Decimal128 {
 
         @annotation.tailrec
         def computeHigh(i: Int, localHigh: Long): Long = {
-          if (i >= bitLength) localHigh
-          else {
+          if (i >= bitLength) {
+            localHigh
+          } else {
             val upd = {
               if (significand testBit i) {
                 localHigh | (1L << (i - 64))
-              } else localHigh
+              } else {
+                localHigh
+              }
             }
 
             computeHigh(i + 1, upd)
@@ -141,6 +149,7 @@ private[bson] object Decimal128 {
 
   def noNegativeZero(decimal: BSONDecimal): BigDecimal = {
     val hest = highest(decimal)
+
     val exponent: Long = {
       if (hest) {
         ((decimal.high & 0x1fffe00000000000L)
@@ -157,6 +166,7 @@ private[bson] object Decimal128 {
       BigDecimal.valueOf(0, scale)
     } else {
       val signum = if (decimal.isNegative) -1 else 1
+
       new BigDecimal(new BigInteger(signum, toBytes(decimal)), scale)
     }
   }
@@ -166,9 +176,12 @@ private[bson] object Decimal128 {
     val bytes = Array.ofDim[Byte](15)
 
     @annotation.tailrec
-    def lowBytes(i: Int, mask: Long): Unit = if (i >= 7) {
-      bytes(i) = ((decimal.low & mask) >>> ((14 - i) << 3)).toByte
-      lowBytes(i - 1, mask << 8)
+    def lowBytes(i: Int, mask: Long): Unit = {
+      if (i >= 7) {
+        bytes(i) = ((decimal.low & mask) >>> ((14 - i) << 3)).toByte
+
+        lowBytes(i - 1, mask << 8)
+      }
     }
 
     lowBytes(14, 0x00000000000000ff)
@@ -176,9 +189,12 @@ private[bson] object Decimal128 {
     highBytes(6, 0x00000000000000ff)
 
     @annotation.tailrec
-    def highBytes(i: Int, mask: Long): Unit = if (i >= 1) {
-      bytes(i) = ((decimal.high & mask) >>> ((6 - i) << 3)).toByte
-      highBytes(i - 1, mask << 8)
+    def highBytes(i: Int, mask: Long): Unit = {
+      if (i >= 1) {
+        bytes(i) = ((decimal.high & mask) >>> ((6 - i) << 3)).toByte
+
+        highBytes(i - 1, mask << 8)
+      }
     }
 
     bytes(0) = ((decimal.high & 0x0001000000000000L) >>> 48).toByte
@@ -225,7 +241,9 @@ private[bson] object Decimal128 {
           val sarray = significand.toArray
 
           buffer.appendAll(sarray, 0, -pad)
+
           buffer += '.'
+
           buffer.appendAll(sarray, -pad, exponent.abs) // -pad - exponent)
         }
       }
@@ -328,12 +346,12 @@ private[bson] object Decimal128 {
   // ---
 
   // Exponent range
-  val MinExponent: Int = -6176
-  val MaxExponent: Int = 6111
+  val MinExponent = -6176
+  val MaxExponent = 6111
 
   // Sizing
-  val ExponentOffset: Int = 6176
-  val MaxBitLength: Int = 113
+  val ExponentOffset = 6176
+  val MaxBitLength = 113
 
   // Infinity string representations
   val PositiveInfStrings = Set("inf", "+inf", "infinity", "+infinity")

@@ -42,6 +42,7 @@ final class ExprBuilderSpec
 
     "have implicit BSONWriter" in {
       val expr = Expr.unsafe[Foo, String](BSONString("test"))
+
       val writer =
         implicitly[reactivemongo.api.bson.BSONWriter[Expr[Foo, String]]]
 
@@ -352,6 +353,7 @@ final class ExprBuilderSpec
 
     "compare different ordered types for equality" in {
       val expr1 = Expr.unsafe[Foo, Int](BSONInteger(100))
+
       val expr2 =
         Expr.unsafe[Foo, Long](BSONDocument(f"$$toLong" -> f"$$value"))
 
@@ -708,6 +710,7 @@ final class ExprBuilderSpec
 
   "Date operators" should {
     val builder = ExprBuilder.empty[Foo]
+
     val dateExpr =
       Expr.unsafe[Foo, java.util.Date](BSONDocument(f"$$date" -> 1))
 
@@ -797,6 +800,7 @@ final class ExprBuilderSpec
         Expr.unsafe[Foo, Boolean](
           BSONDocument(f"$$gt" -> BSONArray(f"$$field", 10))
         )
+
       val ifTrue = Expr.unsafe[Foo, String](BSONString("high"))
       val ifFalse = Expr.unsafe[Foo, String](BSONString("low"))
 
@@ -834,11 +838,14 @@ final class ExprBuilderSpec
         Expr.unsafe[Foo, Boolean](
           BSONDocument(f"$$gt" -> BSONArray(f"$$field", 100))
         )
+
       val val1 = Expr.unsafe[Foo, String](BSONString("high"))
+
       val cond2 =
         Expr.unsafe[Foo, Boolean](
           BSONDocument(f"$$gt" -> BSONArray(f"$$field", 50))
         )
+
       val val2 = Expr.unsafe[Foo, String](BSONString("medium"))
       val default = Expr.unsafe[Foo, String](BSONString("low"))
 

@@ -72,7 +72,10 @@ final class UpdateBuilder[T] private[builder] (
    * }}}
    */
   def result(): BSONDocument =
-    BSONDocument(operations.toSeq.map { case (op, doc) => op -> doc })
+    BSONDocument(operations.toSeq map {
+      case (op, doc) =>
+        op -> doc
+    })
 
 }
 
