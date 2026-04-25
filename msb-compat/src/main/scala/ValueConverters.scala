@@ -60,7 +60,7 @@ trait ValueConverters extends ValueConvertersCompat with LowPriorityConverters {
   import JavaConverters._
 
   implicit final def toArray(bson: BsonArray): BSONArray =
-    BSONArray(iterableAsScalaIterable(bson.getValues).map(toValue))
+    BSONArray(iterableAsScalaIterable(bson.getValues) map toValue)
 
   implicit final def fromArray(array: BSONArray): BsonArray =
     new BsonArray(seqAsJavaList(array.values map fromValue))

@@ -23,6 +23,7 @@ object Foo {
 
   val notAnnotatedPersonWriter2: BSONDocumentWriter[NotAnnotatedPerson] = {
     implicit def iw: BSONWriter[Option[Int]] = oiw
+
     Macros.writer
   }
 
@@ -38,6 +39,7 @@ object Foo {
 
   val notAnnotatedPersonReader2: BSONDocumentReader[NotAnnotatedPerson] = {
     implicit def ir: BSONReader[Option[Int]] = oir
+
     Macros.reader
   }
 }

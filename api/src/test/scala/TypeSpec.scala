@@ -30,6 +30,7 @@ final class TypeSpec extends org.specs2.mutable.Specification {
 
     {
       type Foo = Tuple2[Int, String]
+
       implicit val failingWriter = BSONWriter[Foo] { _ =>
         throw new Exception("failing writer")
       }

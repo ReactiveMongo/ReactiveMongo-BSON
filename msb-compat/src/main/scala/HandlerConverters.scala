@@ -27,6 +27,7 @@ object HandlerConverters extends HandlerConverters {
       val ctx = EncoderContext.builder.build()
 
       writer.writeStartDocument
+
       writer.writeName("_conv")
 
       enc.encode(writer, value, ctx)
@@ -48,6 +49,7 @@ object HandlerConverters extends HandlerConverters {
       val ctx = DecoderContext.builder.build()
 
       reader.readStartDocument
+
       val _: String = reader.readName() // assert("_conv")
 
       dec.decode(reader, ctx)
@@ -100,6 +102,7 @@ trait HandlerConverters extends LowPriorityHandlerConverters1 {
 
     def get[T](clazz: Class[T], r: CodecRegistry): Codec[T] = {
       val _ = r
+
       get(clazz)
     }
 
@@ -135,7 +138,7 @@ trait HandlerConverters extends LowPriorityHandlerConverters1 {
       }
 
       @SuppressWarnings(Array("AsInstanceOf"))
-      def codec = c.asInstanceOf[Codec[T]]
+      def codec = c.asInstanceOf[Codec[T]] /* scalafix: ok */
 
       codec
     }
@@ -281,16 +284,19 @@ private[msb] sealed trait BSONDecoder[T] extends Decoder[T] {
 
       case BsonType.MAX_KEY => {
         reader.readMaxKey()
+
         BSONMaxKey
       }
 
       case BsonType.MIN_KEY => {
         reader.readMinKey()
+
         BSONMinKey
       }
 
       case BsonType.NULL => {
         reader.readNull()
+
         BSONNull
       }
 
@@ -311,6 +317,7 @@ private[msb] sealed trait BSONDecoder[T] extends Decoder[T] {
 
       case _ => {
         reader.readUndefined()
+
         BSONUndefined
       }
     }

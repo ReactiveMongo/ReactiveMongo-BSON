@@ -150,7 +150,7 @@ final class GeoLinearRing private[bson] (
 
   override lazy val hashCode: Int = tupled.hashCode
 
-  override def toString: String =
+  override def toString =
     s"""GeoLinearRing(${_1}, ${_2}, ${_3}${more.mkString(", ", ", ", "")})"""
 }
 
@@ -240,17 +240,18 @@ object GeoLinearRing {
         )
     }
 
-  private[bson] val safeWriter = {
+  private[bson] val safeWriter: BSONWriter[GeoLinearRing]
+    with SafeBSONWriter[GeoLinearRing] = {
     import GeoPosition.safeWriter.safeWrite
 
     BSONWriter.safe[GeoLinearRing] { ring =>
       if (ring.more.isEmpty) {
-        BSONArray(Seq(ring._1, ring._2, ring._3, ring._1).map(safeWrite))
+        BSONArray(Seq(ring._1, ring._2, ring._3, ring._1) map safeWrite)
 
       } else {
         safeWrite(ring._1) +: safeWrite(ring._2) +: safeWrite(
           ring._3
-        ) +: BSONArray((ring.more :+ ring._1).map(safeWrite))
+        ) +: BSONArray(ring.more :+ ring._1 map safeWrite)
       }
     }
   }

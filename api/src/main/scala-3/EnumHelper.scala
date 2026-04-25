@@ -158,6 +158,7 @@ object EnumHelper:
       case Some(nz) =>
         '{ (s: String) =>
           val in = ${ nz }(s)
+
           ${ mtch('in) }
         }
 

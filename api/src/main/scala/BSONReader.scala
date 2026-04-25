@@ -85,7 +85,7 @@ trait BSONReader[T] { self =>
             Success(result)
 
           case None =>
-            Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
+            Failure(exceptions ValueDoesNotMatchException s"${v}")
         }
       }
     }

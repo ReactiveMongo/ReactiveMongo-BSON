@@ -54,7 +54,8 @@ object MacroTest extends MacroTestCompat {
   object EmptyObject
 
   case class RenamedId(
-      @Key("_id") myID: BSONObjectID = BSONObjectID.generate(),
+      @Key("_id") myID: BSONObjectID = BSONObjectID
+        .generate() /* scalafix:ok OfflerGoodCodeSyntax.caseClassWithDefault */,
       @CustomAnnotation value: String)
 
   case class Foo[T](bar: T, lorem: String)
@@ -219,7 +220,10 @@ object MacroTest extends MacroTestCompat {
 
   case class NotIgnorable(@Ignore title: String, score: Int)
 
-  case class Pair(@Ignore left: String = "_left", right: String)
+  case class Pair(
+      @Ignore left: String =
+        "_left" /* scalafix:ok OfflerGoodCodeSyntax.caseClassWithDefault */,
+      right: String)
 
   case class IgnoredAndKey(
       @Ignore @DefaultValue(Person("first", "last")) a: Person,
@@ -248,9 +252,13 @@ object MacroTest extends MacroTestCompat {
 
   case class WithDefaultValues1(
       id: Int,
-      title: String = "default1",
-      score: MaybeFloat = Some(1.23F),
-      range: Range = Range(3, 5))
+      title: String =
+        "default1" /* scalafix:ok OfflerGoodCodeSyntax.caseClassWithDefault */,
+      score: MaybeFloat = Some(
+        1.23F
+      ) /* scalafix:ok OfflerGoodCodeSyntax.caseClassWithDefault */,
+      range: Range =
+        Range(3, 5) /* scalafix:ok OfflerGoodCodeSyntax.caseClassWithDefault */)
 
   case class WithDefaultValues2(
       id: Int,

@@ -122,12 +122,14 @@ trait ConverterFixtures {
     d.append("dt", ldt)
     d.append("sym", new BsonSymbol("bar"))
     d.append("ts", lts)
+
     d.append(
       "nested",
       new BsonDocument()
         .append("foo", new BsonString("bar"))
         .append("lorem", new BsonInt64(1L))
     )
+
     d.append("js", new BsonJavaScript("lorem()"))
     d.append("re", lre)
     d.append("array", larr)

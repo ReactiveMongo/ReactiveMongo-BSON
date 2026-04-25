@@ -7,7 +7,7 @@ private[bson] trait HandlerExtraSpec { self: HandlerSpec =>
           name: String,
           tuple: T,
           array: BSONArray
-        ) = s"for ${name}" in {
+        ): org.specs2.specification.core.Fragment = s"for ${name}" in {
 
         BSON.write(tuple) must beSuccessfulTry(array) and {
           array.asTry[T] must beSuccessfulTry(tuple)

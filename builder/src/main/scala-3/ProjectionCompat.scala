@@ -28,7 +28,7 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
     if (prefix.isEmpty) {
       fieldName
     } else {
-      s"${prefix.mkString(".")}.$fieldName"
+      s"${prefix mkString "."}.$fieldName"
     }
   }
 
@@ -129,6 +129,7 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
    */
   def project(path: String, expr: Expr.Opaque[T]): ProjectionBuilder[T] = {
     clauses += path -> expr.writes
+
     this
   }
 
@@ -161,6 +162,7 @@ private[builder] trait ProjectionCompat[T] { self: ProjectionBuilder[T] =>
       i0: BsonPath.Exists[T, field.type, _ <: Iterable[_]]
     ): ProjectionBuilder[T] = {
     clauses += (fieldPath(field) + f".$$") -> (() => Success(BSONInteger(1)))
+
     this
   }
 

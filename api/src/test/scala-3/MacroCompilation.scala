@@ -18,14 +18,21 @@ final class OtherCompilation {
 
   case class Product(
       _id: Int,
-      sku: Option[String] = None,
-      description: Option[String] = None,
-      instock: Option[Int] = None)
+      sku: Option[ /* scalafix:ok OfflerGoodCodeSyntax.caseClassWithDefault */
+        String
+      ] = None,
+      description: Option[ /* scalafix:ok OfflerGoodCodeSyntax.caseClassWithDefault */
+        String
+      ] = None,
+      instock: Option[ /* scalafix:ok OfflerGoodCodeSyntax.caseClassWithDefault */
+        Int
+      ] = None)
 
   def foo(): Unit = {
     // See https://github.com/ReactiveMongo/ReactiveMongo-BSON/commit/d1a776b19e6ee07e868d3baa16c0c1ade8799fad#r62747279
     implicit val productHandler: BSONDocumentHandler[Product] =
       Macros.handler[Product]
+
     ()
   }
 }

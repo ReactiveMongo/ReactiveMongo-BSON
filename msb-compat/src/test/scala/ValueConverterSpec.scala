@@ -185,8 +185,10 @@ final class ValueConverterSpec
 
     "support JavaScript/WS" >> {
       val raw = "bar(lorem)"
+
       val scope: BsonDocument = {
         val doc = new BsonDocument()
+
         doc.append("lorem", new BsonString("ipsum"))
       }
 

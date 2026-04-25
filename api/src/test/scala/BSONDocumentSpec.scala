@@ -11,12 +11,14 @@ import reactivemongo.api.bson.{
   ElementProducer
 }
 
+import org.specs2.matcher.MatchResult
+
 final class BSONDocumentSpec extends org.specs2.mutable.Specification {
   "BSONDocument".title
 
   "Empty document" should {
     "be created" in {
-      def spec(f: => BSONDocument) = {
+      def spec(f: => BSONDocument): MatchResult[_] = {
         val doc = f
 
         doc.elements must beEmpty and {
@@ -76,6 +78,7 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
     {
       type Foo = Tuple2[Int, String]
+
       implicit val failingWriter = BSONWriter[Foo] { _ =>
         throw new Exception("failing writer")
       }
@@ -132,7 +135,10 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
   "Append" should {
     "update list and map representation" in {
-      def spec(doc: BSONDocument, expected: BSONDocument) = {
+      def spec(
+          doc: BSONDocument,
+          expected: BSONDocument
+        ): MatchResult[_] = {
         val a = doc ++ BSONDocument("foo" -> 4)
         val b = doc ++ ("foo" -> 4)
         val c = doc ++ BSONElement("foo", BSONInteger(4))
@@ -259,7 +265,11 @@ final class BSONDocumentSpec extends org.specs2.mutable.Specification {
 
   // ---
 
-  @inline def eqSpec(d: BSONDocument, l: String, expected: BSONDocument) = {
+  @inline def eqSpec(
+      d: BSONDocument,
+      l: String,
+      expected: BSONDocument
+    ): MatchResult[_] = {
     d must_=== expected
   } and {
     import reactivemongo.api.bson.nameValueOrdering

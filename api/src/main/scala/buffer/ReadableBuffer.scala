@@ -21,6 +21,7 @@ private[reactivemongo] final class ReadableBuffer private[bson] (
   /** Fills the given array with the bytes read from this buffer. */
   def readBytes(bytes: Array[Byte]): ReadableBuffer = {
     buffer.get(bytes)
+
     this
   }
 
@@ -56,7 +57,9 @@ private[reactivemongo] final class ReadableBuffer private[bson] (
    */
   def readArray(length: Int): Array[Byte] = {
     val bytes = Array.ofDim[Byte](length)
+
     readBytes(bytes)
+
     bytes
   }
 
@@ -106,7 +109,9 @@ private[reactivemongo] final class ReadableBuffer private[bson] (
 
     if (byte == (0x00: Byte /* C end marker */ )) {
       array.toArray
-    } else takeUntilZero(array += byte)
+    } else {
+      takeUntilZero(array += byte)
+    }
   }
 }
 
@@ -115,6 +120,7 @@ private[reactivemongo] object ReadableBuffer {
   /** Returns a [[ReadableBuffer]] which source is the given `array`. */
   def apply(bytes: Array[Byte]): ReadableBuffer = {
     val buf = ByteBuffer.wrap(bytes)
+
     buf.order(ByteOrder.LITTLE_ENDIAN)
 
     new ReadableBuffer(buf)
@@ -126,6 +132,7 @@ private[reactivemongo] object ReadableBuffer {
    */
   def apply(buffer: ByteBuf): ReadableBuffer = {
     val buf = buffer.nioBuffer
+
     buf.order(ByteOrder.LITTLE_ENDIAN)
 
     new ReadableBuffer(buf)

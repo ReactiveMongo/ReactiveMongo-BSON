@@ -47,7 +47,7 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
     @meta.param // Scala 2
     @meta.field
     final class Ignore extends StaticAnnotation {
-      override def hashCode: Int = 1278101060
+      override def hashCode = 1278101060
 
       override def equals(that: Any): Boolean = that match {
         case _: this.type => true
@@ -80,7 +80,7 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
     @meta.param // Scala 2
     @meta.field
     final class Flatten extends StaticAnnotation {
-      override def hashCode: Int = 488571557
+      override def hashCode = 488571557
 
       override def equals(that: Any): Boolean = that match {
         case _: this.type => true
@@ -103,7 +103,7 @@ private[bson] trait MacroAnnotations { macros: Macros.type =>
     @meta.param // Scala 2
     @meta.field
     final class NoneAsNull extends StaticAnnotation {
-      override def hashCode: Int = 1667526726
+      override def hashCode = 1667526726
 
       override def equals(that: Any): Boolean = that match {
         case _: this.type => true

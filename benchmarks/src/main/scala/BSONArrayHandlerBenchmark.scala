@@ -17,12 +17,14 @@ class BSONArrayHandlerBenchmark {
   @Benchmark
   def seqReaderSmallArray(): Unit = {
     val res = collectionReader[Seq, BSONValue].readTry(smallArray)
+
     assert(res.isSuccess)
   }
 
   @Benchmark
   def listReaderBigArray(): Unit = {
     val res = collectionReader[List, BSONValue].readTry(bigArray)
+
     assert(res.isSuccess)
   }
 }

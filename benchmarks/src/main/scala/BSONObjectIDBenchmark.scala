@@ -28,7 +28,7 @@ class BSONObjectIDStringReprBenchmark {
 
   @Setup(Level.Iteration)
   def setup(): Unit = {
-    (fixtures.headOption, strings.headOption) match {
+    (fixtures.headOption -> strings.headOption) match {
       case (Some(v), Some(s)) => {
         oid = v
         str = s
@@ -40,6 +40,7 @@ class BSONObjectIDStringReprBenchmark {
       case _ => {
         fixtures = gen()
         strings = fixtures.map(_.stringify)
+
         setup()
       }
     }

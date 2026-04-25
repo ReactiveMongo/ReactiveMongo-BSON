@@ -128,6 +128,7 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
    */
   def apply[T](write: T => BSONValue): BSONWriter[T] = {
     @inline def w = write
+
     new FunctionalWriter[T] {
       val write = w
     }
@@ -163,6 +164,7 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
    */
   def option[T](write: T => Option[BSONValue]): BSONWriter[T] = {
     @inline def w = write
+
     new OptionalWriter[T] {
       val write = w
     }
@@ -194,6 +196,7 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
    */
   def from[T](write: T => Try[BSONValue]): BSONWriter[T] = {
     @inline def w = write
+
     new DefaultWriter[T] {
       val write = w
     }
@@ -227,7 +230,7 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
   def collectFrom[T](write: PartialFunction[T, Try[BSONValue]]): BSONWriter[T] =
     from[T] { (v: T) =>
       write.lift(v) getOrElse {
-        Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
+        Failure(exceptions ValueDoesNotMatchException s"${v}")
       }
     }
 
@@ -351,7 +354,7 @@ object BSONWriter extends BSONWriterCompat with BSONWriterInstances {
         Success(bson)
 
       case _ =>
-        Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
+        Failure(exceptions ValueDoesNotMatchException s"${v}")
     }
   }
 

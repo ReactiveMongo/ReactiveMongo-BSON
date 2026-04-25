@@ -27,6 +27,7 @@ final class BSONLawsSpecs
       def combine(x: BSONValue, y: BSONValue): BSONValue =
         BSONValue.Addition(x, y)
     }
+
     implicit val additive: AdditiveSemigroup[BSONValue] = Additive(semigroup)
 
     checkAll("BSONValue", GroupLaws[BSONValue].additiveSemigroup)

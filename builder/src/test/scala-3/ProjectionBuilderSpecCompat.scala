@@ -47,6 +47,7 @@ trait ProjectionBuilderSpecCompat { self: ProjectionBuilderSpec =>
       // 2. Conditional: if totalScore >= 100, use trackerId, else 0
       val threshold = exprBuilder.from(100.0)
       val zero = exprBuilder.from(0L)
+
       val conditionalId = exprBuilder.cond(
         exprBuilder.gte(totalScore, threshold),
         trackerId,

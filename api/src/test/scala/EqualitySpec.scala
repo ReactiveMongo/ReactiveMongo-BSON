@@ -22,6 +22,7 @@ final class EqualitySpec extends org.specs2.mutable.Specification {
     "retain equality through serialization/deserialization" in {
       val expected = bin()
       val writeBuffer = WritableBuffer.empty
+
       writeBinary(expected, writeBuffer)
 
       expected must_=== readBinary(writeBuffer.toReadableBuffer())
@@ -30,6 +31,7 @@ final class EqualitySpec extends org.specs2.mutable.Specification {
 
   "BSONObjectID" should {
     def oid() = BSONObjectID.parse("0102030405060708090a0b0c").get
+
     "permit equality to work" in {
       oid() must_=== oid()
     }
@@ -37,6 +39,7 @@ final class EqualitySpec extends org.specs2.mutable.Specification {
     "retain equality through serialization/deserialization" in {
       val boid1 = oid()
       val writeBuffer = WritableBuffer.empty
+
       writeObjectID(boid1, writeBuffer)
 
       boid1 must_=== readObjectID(writeBuffer.toReadableBuffer())
@@ -68,6 +71,7 @@ final class EqualitySpec extends org.specs2.mutable.Specification {
       )
 
       val writeBuffer = WritableBuffer.empty
+
       writeArray(ba1.values, writeBuffer)
 
       val input = writeBuffer.toReadableBuffer()
@@ -108,6 +112,7 @@ final class EqualitySpec extends org.specs2.mutable.Specification {
       )
 
       val writeBuffer = WritableBuffer.empty
+
       writeDocument(b1, writeBuffer)
 
       readDocument(writeBuffer.toReadableBuffer()) must_=== b1

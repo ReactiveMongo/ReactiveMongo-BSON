@@ -22,9 +22,7 @@ class ReadableBufferBenchmark {
   }
 
   @Benchmark
-  def readInt(): Unit = {
-    assert((input.readInt() - 1) == str.size)
-  }
+  def readInt(): Unit = assert((input.readInt() - 1) == str.size)
 
   @Benchmark
   def readString(): Unit =

@@ -57,13 +57,15 @@ object FieldNaming {
     def apply(property: String): String = {
       val length = property.length
       val result = new StringBuilder(length * 2)
+
       var resultLength = 0
       var wasPrevTranslated = false
 
       for (i <- 0 until length) {
         var c = property.charAt(i)
+
         if (i > 0 || i != '_') {
-          if (Character.isUpperCase(c)) {
+          if (Character isUpperCase c) {
             // append a underscore if the previous result wasn't translated
             if (
               !wasPrevTranslated && resultLength > 0 && result.charAt(
@@ -71,14 +73,18 @@ object FieldNaming {
               ) != '_'
             ) {
               result.append('_')
+
               resultLength += 1
             }
+
             c = Character.toLowerCase(c)
             wasPrevTranslated = true
           } else {
             wasPrevTranslated = false
           }
+
           result.append(c)
+
           resultLength += 1
         }
       }

@@ -32,6 +32,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
 
     "write BSON string" in {
       val str = "étoile du nord"
+
       val bytes = Array[Byte](16, 0, 0, 0, -61, -87, 116, 111, 105, 108, 101,
         32, 100, 117, 32, 110, 111, 114, 100, 0)
 
@@ -46,6 +47,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
 
     "write C string" in {
       val str = "étoile du nord"
+
       val bytes = Array[Byte](-61, -87, 116, 111, 105, 108, 101, 32, 100, 117,
         32, 110, 111, 114, 100, 0)
 
@@ -134,8 +136,10 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
 
       "when containing a double" in {
         val ddoub = BSONDocument("doo" -> BSONDouble(9))
+
         val expected = Array[Byte](18, 0, 0, 0, 1, 100, 111, 111, 0, 0, 0, 0, 0,
           0, 0, 34, 64, 0)
+
         val buffer = WritableBuffer.empty
 
         writeDocument(ddoub, buffer) must_=== buffer and {
@@ -145,8 +149,10 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
 
       "when containing an integer" in {
         val dint = BSONDocument("int" -> BSONInteger(8))
+
         val expected =
           Array[Byte](14, 0, 0, 0, 16, 105, 110, 116, 0, 8, 0, 0, 0, 0)
+
         val buffer = WritableBuffer.empty
 
         writeDocument(dint, buffer) must_=== (buffer) and {
@@ -156,8 +162,10 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
 
       "when containing a long" in {
         val dlong = BSONDocument("long" -> BSONLong(8888122134234L))
+
         val expected = Array[Byte](19, 0, 0, 0, 18, 108, 111, 110, 103, 0, -38,
           -50, 92, 109, 21, 8, 0, 0, 0)
+
         val buffer = WritableBuffer.empty
 
         writeDocument(dlong, buffer) must_=== (buffer) and {
@@ -167,9 +175,11 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
 
       "when containing a string" in {
         val dstr = BSONDocument("str" -> BSONString("étoile du nord"))
+
         val expected =
           Array[Byte](30, 0, 0, 0, 2, 115, 116, 114, 0, 16, 0, 0, 0, -61, -87,
             116, 111, 105, 108, 101, 32, 100, 117, 32, 110, 111, 114, 100, 0, 0)
+
         val buffer = WritableBuffer.empty
 
         writeDocument(dstr, buffer) must_=== buffer and {
@@ -194,8 +204,10 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
       "when containing a document containing a document" in {
         val docdoc =
           BSONDocument("doc" -> BSONDocument("str" -> BSONString("strv")))
+
         val expected = Array[Byte](29, 0, 0, 0, 3, 100, 111, 99, 0, 19, 0, 0, 0,
           2, 115, 116, 114, 0, 5, 0, 0, 0, 115, 116, 114, 118, 0, 0, 0)
+
         val buffer = WritableBuffer.empty
 
         writeDocument(docdoc, buffer) must_=== buffer and {
@@ -213,6 +225,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
             "address" -> BSONString("coucou")
           )
         )
+
         val expected = Array[Byte](110, 0, 0, 0, 3, 99, 111, 110, 116, 97, 99,
           116, 0, 96, 0, 0, 0, 4, 101, 109, 97, 105, 108, 115, 0, 63, 0, 0, 0,
           2, 48, 0, 18, 0, 0, 0, 106, 97, 109, 101, 115, 64, 101, 120, 97, 109,
@@ -220,6 +233,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
           97, 109, 97, 100, 100, 114, 106, 97, 109, 101, 115, 64, 101, 120, 97,
           109, 112, 108, 101, 46, 111, 114, 103, 0, 0, 2, 97, 100, 100, 114,
           101, 115, 115, 0, 7, 0, 0, 0, 99, 111, 117, 99, 111, 117, 0, 0, 0)
+
         val buffer = WritableBuffer.empty
 
         writeDocument(docarray, buffer) must_=== (buffer) and {
@@ -299,6 +313,7 @@ final class SerializationSpec extends org.specs2.mutable.Specification {
 
     def written(v: BSONValue): Int = {
       val buf = WritableBuffer.empty
+
       DefaultBufferHandler.serialize(v, buf)
       buf.size()
     }

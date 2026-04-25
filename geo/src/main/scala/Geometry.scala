@@ -275,13 +275,13 @@ final class GeoPolygon private[bson] (
 
   override lazy val hashCode: Int = tupled.hashCode
 
-  override def toString: String =
+  override def toString =
     s"""GeoPolygon(${exterior}${interior.mkString(", ", ", ", "")})"""
 }
 
 /** See [[GeoPolygon]] */
 object GeoPolygon {
-  val `type`: String = "Polygon"
+  val `type` = "Polygon"
 
   /**
    * Creates a [[https://docs.mongodb.com/manual/reference/geojson/#polygons-with-a-single-ring single ring]] polygon.
@@ -359,13 +359,13 @@ final class GeoMultiPoint private[api] (
 
   @inline override def hashCode: Int = coordinates.hashCode
 
-  override def toString: String =
+  override def toString =
     s"""GeoMultiPoint[${coordinates.mkString("[", ", ", "]")}]"""
 }
 
 /** See [[GeoMultiPoint]] */
 object GeoMultiPoint {
-  val `type`: String = "MultiPoint"
+  val `type` = "MultiPoint"
 
   /** Creates a new multi-point. */
   def apply(coordinates: Seq[GeoPosition]): GeoMultiPoint =
@@ -392,7 +392,7 @@ object GeoMultiPoint {
 
   implicit val writer: BSONDocumentWriter[GeoMultiPoint] =
     GeoGeometry.writer[GeoMultiPoint] { multi =>
-      BSONArray(multi.coordinates.map(GeoPosition.safeWriter.safeWrite))
+      BSONArray(multi.coordinates map GeoPosition.safeWriter.safeWrite)
     }
 
 }
@@ -415,14 +415,14 @@ final class GeoMultiLineString private[api] (
 
   @inline override def hashCode: Int = coordinates.hashCode
 
-  override def toString: String =
+  override def toString =
     s"""GeoMultiLineString[${coordinates.mkString("[", ", ", "]")}]"""
 
 }
 
 /** See [[GeoMultiLineString]] */
 object GeoMultiLineString {
-  val `type`: String = "MultiLineString"
+  val `type` = "MultiLineString"
 
   /** Creates a new multi-linestring. */
   def apply(coordinates: Seq[GeoLineString]): GeoMultiLineString =
@@ -470,7 +470,7 @@ object GeoMultiLineString {
 
   implicit val writer: BSONDocumentWriter[GeoMultiLineString] =
     GeoGeometry.writer[GeoMultiLineString] { multiLineString =>
-      BSONArray(multiLineString.coordinates.map(GeoLineString.writeCoordinates))
+      BSONArray(multiLineString.coordinates map GeoLineString.writeCoordinates)
     }
 
 }
@@ -493,13 +493,13 @@ final class GeoMultiPolygon private[api] (
 
   @inline override def hashCode: Int = coordinates.hashCode
 
-  override def toString: String =
+  override def toString =
     s"""GeoMultiPolygon[${coordinates.mkString("[", ", ", "]")}]"""
 }
 
 /** See [[GeoMultiPolygon]] */
 object GeoMultiPolygon {
-  val `type`: String = "MultiPolygon"
+  val `type` = "MultiPolygon"
 
   /** Creates a new multi-polygon. */
   def apply(coordinates: Seq[GeoPolygon]): GeoMultiPolygon =
@@ -546,7 +546,7 @@ object GeoMultiPolygon {
 
   implicit val writer: BSONDocumentWriter[GeoMultiPolygon] =
     GeoGeometry.writer[GeoMultiPolygon] { multiPolygon =>
-      BSONArray(multiPolygon.coordinates.map(GeoPolygon.writeCoordinates))
+      BSONArray(multiPolygon.coordinates map GeoPolygon.writeCoordinates)
     }
 
 }

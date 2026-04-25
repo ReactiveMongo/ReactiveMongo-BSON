@@ -17,8 +17,14 @@ object MacroCompilation {
     implicit def reader1: BSONDocumentReader[Member1] = Macros.reader[Member1]
     implicit def writer1: BSONDocumentWriter[Member1] = Macros.writer[Member1]
 
+    private val readerMember2: BSONDocumentReader[Member2.type] =
+      BSONDocumentReader.from(_ => scala.util.Success(Member2))
+
+    private val writerMember2: BSONDocumentWriter[Member2.type] =
+      BSONDocumentWriter.from(_ => scala.util.Success(BSONDocument.empty))
+
     implicit def handler2: BSONDocumentHandler[Member2.type] =
-      Macros.handler[Member2.type]
+      BSONDocumentHandler.provided(readerMember2, writerMember2)
 
     @com.github.ghik.silencer.silent(".*Member2.*\\ no\\ case\\ accessor.*")
     implicit def reader2: BSONDocumentReader[Family] = {

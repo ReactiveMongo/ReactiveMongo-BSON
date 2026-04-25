@@ -103,7 +103,7 @@ object BSONValueFixtures {
 
   val bsonConstFixtures = List(BSONNull, BSONMinKey, BSONMaxKey)
 
-  lazy val bsonValueFixtures =
+  lazy val bsonValueFixtures: List[BSONValue] =
     bsonDoubleFixtures ++ bsonStrFixtures ++ bsonIntFixtures ++ bsonArrayFixtures ++ bsonDocFixtures ++ bsonBinFixtures ++ bsonOidFixtures ++ bsonBoolFixtures ++ bsonDateTimeFixtures ++ bsonRegexFixtures ++ bsonJSFixtures ++ bsonJSWsFixtures ++ bsonTsFixtures ++ bsonLongFixtures ++ bsonDecimalFixtures
 
   lazy val elementProducerFixtures: List[ElementProducer] =

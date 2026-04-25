@@ -16,6 +16,7 @@ class WritableBufferBenchmark {
   @Setup(Level.Iteration)
   def setup(): Unit = {
     bytes = Array.ofDim[Byte](8096)
+
     Random.nextBytes(bytes)
 
     emptyBuffer = WritableBuffer.empty
@@ -59,7 +60,9 @@ class WritableBufferBenchmark {
   @Benchmark
   def array(): Array[Byte] = {
     val res = outputBuffer.array()
+
     assert(java.util.Arrays.equals(bytes, res))
+
     res
   }
 }

@@ -42,7 +42,7 @@ object TestMacros:
 
     val tpe = TypeRepr.of[T]
 
-    val names = Expr.summon[ProductOf[T]] match {
+    val names: List[String] = Expr.summon[ProductOf[T]] match {
       case Some(expr) =>
         helper
           .productElements(tpe, expr)
@@ -116,6 +116,7 @@ object TestMacros:
     }
 
     val tpe = TypeRepr.of[T]
+
     val tpeElements = Expr
       .summon[ProductOf[T]]
       .map {

@@ -51,6 +51,7 @@ object BSONDocumentWriter {
    */
   def apply[T](write: T => BSONDocument): BSONDocumentWriter[T] = {
     @inline def w = write
+
     new FunctionalWriter[T] {
       val write = w
     }
@@ -78,6 +79,7 @@ object BSONDocumentWriter {
    */
   def option[T](write: T => Option[BSONDocument]): BSONDocumentWriter[T] = {
     @inline def w = write
+
     new OptionalWriter[T] {
       val write = w
     }
@@ -101,6 +103,7 @@ object BSONDocumentWriter {
    */
   def from[T](write: T => Try[BSONDocument]): BSONDocumentWriter[T] = {
     @inline def w = write
+
     new DefaultWriter[T] {
       val write = w
     }
@@ -154,7 +157,7 @@ object BSONDocumentWriter {
       write: PartialFunction[T, Try[BSONDocument]]
     ): BSONDocumentWriter[T] = from[T] { (v: T) =>
     write.lift(v) getOrElse {
-      Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
+      Failure(exceptions ValueDoesNotMatchException s"${v}")
     }
   }
 
@@ -271,7 +274,7 @@ object BSONDocumentWriter {
         Success(bson)
 
       case _ =>
-        Failure(exceptions.ValueDoesNotMatchException(s"${v}"))
+        Failure(exceptions ValueDoesNotMatchException s"${v}")
     }
   }
 

@@ -40,7 +40,6 @@ trait BSONDocumentHandler[T]
 
 /** [[BSONDocumentHandler]] factories */
 object BSONDocumentHandler {
-  import scala.util.Try
 
   /**
    * Document handler factory.

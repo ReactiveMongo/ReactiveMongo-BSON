@@ -4,12 +4,10 @@ import reactivemongo.api.bson.{ BSONArray, BSONDouble, BSONInteger, BSONString }
 
 import org.specs2.matcher.TypecheckMatchers.*
 
-import TestUtils.typecheck
+import TestUtils.{ typecheck, symbol }
 
 final class MongoComparableSpec extends org.specs2.mutable.Specification {
   "Mongo comparable".title
-
-  import TestUtils.symbol
 
   val unknownSym = "unknown"
 

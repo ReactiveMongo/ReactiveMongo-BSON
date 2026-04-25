@@ -102,7 +102,9 @@ final class EnumHandlerSpec extends org.specs2.mutable.Specification {
         .map(BSONString(_)) ++ Seq(BSONString("D"), BSONInteger(2))
     }
 
-    def readTests(theReader: BSONReader[Dummy]) = {
+    def readTests(
+        theReader: BSONReader[Dummy]
+      ): Fragments = {
       "work with valid value" >> {
         Fragments.foreach(expectedReadSuccesses.toSeq) {
           case (k, v) =>
@@ -121,7 +123,9 @@ final class EnumHandlerSpec extends org.specs2.mutable.Specification {
       }
     }
 
-    def writeTests(theWriter: BSONWriter[Dummy]) =
+    def writeTests(
+        theWriter: BSONWriter[Dummy]
+      ): Fragments =
       "write enum value to BSONString" >> {
         Fragments.foreach(expectedWrites.toSeq) {
           case (k, v) =>
@@ -150,7 +154,9 @@ final class EnumHandlerSpec extends org.specs2.mutable.Specification {
       writer: KeyWriter[Dummy],
       expectedWrites: Map[Dummy, String]
     ): Unit = descriptor should {
-    def readTests(theReader: KeyReader[Dummy]) = {
+    def readTests(
+        theReader: KeyReader[Dummy]
+      ): Fragments = {
       "work with valid key" >> {
         Fragments.foreach(expectedReadSuccesses.toSeq) {
           case (k, v) =>
@@ -169,7 +175,9 @@ final class EnumHandlerSpec extends org.specs2.mutable.Specification {
       }
     }
 
-    def writeTests(theWriter: KeyWriter[Dummy]) =
+    def writeTests(
+        theWriter: KeyWriter[Dummy]
+      ): Fragments =
       "write enum values to String" >> {
         Fragments.foreach(expectedWrites.toSeq) {
           case (k, v) =>

@@ -176,6 +176,7 @@ private[bson] trait QuotesHelper {
       { (f: (Expr[U] => Expr[R])) =>
         '{
           val tuple: U = ${ toProduct }($in)
+
           ${ f('{ tuple }) }
         }
       }
@@ -231,6 +232,7 @@ private[bson] trait QuotesHelper {
     }
 
     val ownerSym = owner.typeSymbol
+
     val paramss = ownerSym.primaryConstructor.paramSymss.flatten.map { s =>
       s.name -> s
     }.toMap
@@ -250,14 +252,19 @@ private[bson] trait QuotesHelper {
       ).map {
         case (n, t) =>
           val csym = paramss.get(n)
+
+          def msym =
+            Option(ownerSym fieldMember n).filterNot(_ == Symbol.noSymbol)
+
           def fsym =
             Option(ownerSym declaredField n).filterNot(_ == Symbol.noSymbol)
 
-          val psym: Symbol = csym
+          val psym: Symbol = msym
             .orElse(fsym)
             .orElse {
               ownerSym.declaredMethod(n).headOption
             }
+            .orElse(csym)
             .getOrElse(
               Symbol.newVal(
                 ownerSym,
@@ -288,6 +295,7 @@ private[bson] trait QuotesHelper {
             TypeBounds(t2 @ TermRef(_, _), _)
           ) if {
             val emptyTupTpe = TypeRepr.of[EmptyTuple]
+
             (Ref.term(t1).tpe <:< emptyTupTpe && Ref
               .term(t2)
               .tpe <:< emptyTupTpe)
