@@ -68,6 +68,7 @@ commands:
     steps:
       - deploy:
           name: Publish artifacts to Sonatype Snapshots
+          no_output_timeout: 20m
           command: |
                     if [ ! "${CIRCLE_BRANCH}" = "master" ]; then
                       echo "Skipped on branch ${CIRCLE_BRANCH}"
@@ -172,8 +173,6 @@ jobs:
 
     working_directory: ~/repo
     
-    no_output_timeout: 20m
-
     steps:
       - checkout
       - setup_sbt
