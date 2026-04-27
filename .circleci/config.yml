@@ -172,6 +172,8 @@ jobs:
 
     working_directory: ~/repo
     
+    timeout: 20m
+
     steps:
       - checkout
       - setup_sbt
