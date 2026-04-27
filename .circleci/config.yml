@@ -65,10 +65,11 @@ commands:
       shaded:
         type: boolean
         default: true
+      scala_version:
+        type: string
     steps:
       - deploy:
           name: Publish artifacts to Sonatype Snapshots
-          no_output_timeout: 20m
           command: |
                     if [ ! "${CIRCLE_BRANCH}" = "master" ]; then
                       echo "Skipped on branch ${CIRCLE_BRANCH}"
@@ -94,7 +95,7 @@ commands:
                       exit 1
                     fi
                     
-                    sbt +publish
+                    sbt "++<< parameters.scala_version >>" publish
 
 jobs:
   scala211_jdk11:
@@ -177,9 +178,32 @@ jobs:
       - checkout
       - setup_sbt
 
-      - publish_snapshots
+      - publish_snapshots:
+          scala_version: "2.11"
 
       - publish_snapshots:
+          scala_version: "2.11"
+          shaded: false
+
+      - publish_snapshots:
+          scala_version: "2.12"
+
+      - publish_snapshots:
+          scala_version: "2.12"
+          shaded: false
+
+      - publish_snapshots:
+          scala_version: "2.13"
+
+      - publish_snapshots:
+          scala_version: "2.13"
+          shaded: false
+
+      - publish_snapshots:
+          scala_version: "3.4"
+
+      - publish_snapshots:
+          scala_version: "3.4"
           shaded: false
 
   trigger_dependent_builds:
