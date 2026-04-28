@@ -62,6 +62,9 @@ ThisBuild / libraryDependencies ++= {
   }
 }
 
+ThisBuild / libraryDependencySchemes +=
+  "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
+
 ThisBuild / scalafixDependencies += "io.github.cchantep" %% "offler-rules" % "1.0.1-SNAPSHOT"
 
 lazy val api = (project in file("api"))
@@ -154,7 +157,6 @@ lazy val benchmarks = (project in file("benchmarks"))
   .settings(
     mimaPreviousArtifacts := Set.empty,
     libraryDependencies ++= reactivemongoShaded.value,
-    libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always,
     scalacOptions ++= {
       if (scalaBinaryVersion.value startsWith "3") {
         Seq(

@@ -20,8 +20,9 @@ if [ "$SV" != "v2.11" ]; then
 fi
 
 sbt ++$SCALA_VERSION "$SBT_TASK" || (
-  echo "ERROR: Scalafmt check failed, see differences above."
-  echo "To fix, format your sources using ./build scalafmtAll before submitting a pull request."
+  echo "ERROR: SBT preliminary checks failed while running: $SBT_TASK"
+  echo "Please inspect the errors above to identify whether this is a formatting, scalafix, or dependency issue."
+  echo "If this is formatting-related, run ./build scalafmtAll before submitting a pull request."
   echo "Additionally, please squash your commits (eg, use git commit --amend) if you're going to update this pull request."
   false
 )
