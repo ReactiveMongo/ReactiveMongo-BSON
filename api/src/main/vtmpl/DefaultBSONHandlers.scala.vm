@@ -201,20 +201,20 @@ private[bson] trait DefaultBSONHandlers
     extends BSONHandler[URL] with SafeBSONWriter[URL] {
 
     def readTry(bson: BSONValue): Try[URL] = bson match {
-      case BSONString(repr) => Try(new URL(repr))
+      case BSONString(repr) => Try(new URI(repr).toURL)
 
       case _ => Failure(TypeDoesNotMatchException(
         "BSONString", bson.getClass.getSimpleName))
     }
 
     override def readOpt(bson: BSONValue): Option[URL] = bson match {
-      case BSONString(repr) => Some(new URL(repr))
+      case BSONString(repr) => Some(new URI(repr).toURL)
       case _ => None
     }
 
     override def readOrElse(bson: BSONValue, default: => URL): URL =
       bson match {
-        case BSONString(repr) => new URL(repr)
+        case BSONString(repr) => new URI(repr).toURL
         case _ => default
       }
 

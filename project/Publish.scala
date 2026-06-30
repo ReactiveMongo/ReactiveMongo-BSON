@@ -10,9 +10,7 @@ object Publish extends AutoPlugin {
   val repoUrl = env("PUBLISH_REPO_URL")
 
   override def projectSettings = Seq(
-    licenses := Seq(
-      "Apache 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")
-    ),
+    licenses := Seq(License.Apache2),
     publishMavenStyle := true,
     Test / publishArtifact := false,
     publishTo := Some(repoUrl).map(repoName at _),

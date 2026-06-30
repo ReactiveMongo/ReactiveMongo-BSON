@@ -540,7 +540,8 @@ final class MacroSpec
 
         implicit lazy val ah: BSONDocumentHandler[UA] = Macros.handler
 
-        @silent implicit def bh[T]: BSONDocumentHandler[UB[T]] = ???
+        @silent
+        implicit def bh[T]: BSONDocumentHandler[UB[T]] = ???
 
         implicit lazy val ch: BSONDocumentHandler[UC.type] = Macros.handler
 
@@ -721,7 +722,9 @@ final class MacroSpec
         implicit def fHandler: BSONDocumentHandler[UF.type] =
           Macros.handler[UF.type]
 
-        @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
+        @silent(
+          "Cannot handle object MacroTest\\.Union\\.UE" /*expected*/
+        )
         implicit val format: BSONDocumentHandler[UT] = {
           implicit val cfg: MacroConfiguration = MacroConfiguration(
             discriminator = "_type",
@@ -779,7 +782,9 @@ final class MacroSpec
         )
       )
 
-      @silent("Cannot handle object MacroTest\\.Union\\.UE" /*expected*/ )
+      @silent(
+        "Cannot handle object MacroTest\\.Union\\.UE" /*expected*/
+      )
       implicit val format: BSONDocumentHandler[UT] =
         configuredMacros.handler[UT]
 

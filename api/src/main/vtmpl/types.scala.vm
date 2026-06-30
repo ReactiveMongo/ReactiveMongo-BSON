@@ -1081,6 +1081,13 @@ object BSONObjectID {
     }
 
     // Check java policies
+    #if ($scalaVersion.startsWith("2.11"))
+    @com.github.ghik.silencer.silent("msg=.*(getSecurityManager|NetPermission).*deprecated")
+    #elseif ($scalaVersion.startsWith("2.12"))
+    @scala.annotation.nowarn("msg=(method getSecurityManager|class NetPermission)")
+    #elseif ($scalaVersion.startsWith("3"))
+    @scala.annotation.nowarn("msg=(method getSecurityManager|class NetPermission)")
+    #end
     def permitted = try {
       System.getSecurityManager().
         checkPermission(new NetPermission("getNetworkInformation"))
@@ -1115,6 +1122,13 @@ object BSONObjectID {
 
       Digest.md5(ha).take(3)
     } else {
+      #if ($scalaVersion.startsWith("2.11"))
+      @com.github.ghik.silencer.silent("msg=.*getId.*deprecated")
+      #elseif ($scalaVersion.startsWith("2.12"))
+      @scala.annotation.nowarn("msg=method getId")
+      #elseif ($scalaVersion.startsWith("3"))
+      @scala.annotation.nowarn("msg=method getId")
+      #end
       val threadId = Thread.currentThread.getId.toInt
 
       Array[Byte](
@@ -1204,6 +1218,13 @@ object BSONObjectID {
       id(6) = machineId(2)
 
       // 2 bytes of the pid or thread id. Thread id in our case. Low endian
+      #if ($scalaVersion.startsWith("2.11"))
+      @com.github.ghik.silencer.silent("msg=.*getId.*deprecated")
+      #elseif ($scalaVersion.startsWith("2.12"))
+      @scala.annotation.nowarn("msg=method getId")
+      #elseif ($scalaVersion.startsWith("3"))
+      @scala.annotation.nowarn("msg=method getId")
+      #end
       val threadId = Thread.currentThread.getId.toInt
       id(7) = (threadId & 0xFF).toByte
       id(8) = (threadId >> 8 & 0xFF).toByte

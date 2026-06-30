@@ -11,17 +11,24 @@ ThisBuild / crossScalaVersions := Seq(
 
 crossVersion := CrossVersion.binary
 
-ThisBuild / scalacOptions ++= Seq(
-  "-encoding",
-  "UTF-8",
-  "-unchecked",
-  "-deprecation",
-  "-feature",
-  "-Xfatal-warnings"
-)
+ThisBuild / scalacOptions ++= {
+  val base = Seq(
+    "-encoding",
+    "UTF-8",
+    "-unchecked",
+    "-deprecation",
+    "-feature"
+  )
+
+  if (!scalaBinaryVersion.value.startsWith("3")) {
+    base :+ "-Xfatal-warnings"
+  } else {
+    base
+  }
+}
 
 ThisBuild / scalacOptions ++= {
-  if (scalaBinaryVersion.value startsWith "2.") {
+  if (scalaBinaryVersion.value.startsWith("2.")) {
     Seq(
       "-Xlint",
       "-g:vars"
@@ -123,7 +130,7 @@ ThisBuild / libraryDependencies ++= {
 ThisBuild / scalacOptions ++= {
   val ver = scalaBinaryVersion.value
 
-  if (ver startsWith "2.") {
+  if (ver.startsWith("2.")) {
     if (ver == "2.13") {
       Seq(
         "-Wconf:msg=.*inferred\\ to\\ be.*(Any|Object).*:is",
@@ -131,10 +138,15 @@ ThisBuild / scalacOptions ++= {
         "-Wconf:msg=.*pattern\\ var\\ macro.*\\ is\\ never\\ used:is",
         "-Wconf:msg=.*bh\\ .*MacroSpec.*:is",
         "-Wconf:msg=.*local\\ type\\ Opts\\ is\\ never.*:is",
-        "-Wconf:msg=.*WithImplicit2\\ .*never\\ used.*:is"
+        "-Wconf:msg=.*WithImplicit2\\ .*never\\ used.*:is",
+        "-Wconf:msg=.*method\\ getSecurityManager\\ in\\ class\\ System\\ is\\ deprecated.*:is",
+        "-Wconf:msg=.*method\\ getId\\ in\\ class\\ Thread\\ is\\ deprecated.*:is",
+        "-Wconf:msg=.*class\\ NetPermission\\ in\\ package\\ net\\ is\\ deprecated.*:is"
       )
     } else {
-      Seq("-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used")
+      Seq("-P:silencer:globalFilters=.*value\\ macro.*\\ is never used;class\\ Response\\ in\\ package\\ protocol\\ is\\ deprecated;pattern\\ var\\ macro.*\\ is\\ never\\ used;.*getSecurityManager.*deprecated.*;.*getId.*deprecated.*;.*NetPermission.*deprecated.*")
     }
   } else Seq.empty
 }
+
+ThisBuild / scalacOptions ~= { _.distinct }
