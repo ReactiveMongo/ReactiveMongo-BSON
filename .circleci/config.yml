@@ -6,7 +6,7 @@ commands:
     parameters:
       sbt_version:
         type: string
-        default: "1.12.6"
+        default: "2.0.0"
     steps:
       - restore_cache:
           keys:
@@ -98,9 +98,9 @@ commands:
                     sbt "++<< parameters.scala_version >>" publish
 
 jobs:
-  scala211_jdk11:
+  scala211_jdk26:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:26.0
 
     working_directory: ~/repo
 
@@ -115,9 +115,9 @@ jobs:
       - store_test_results:
           path: test-reports
 
-  scala212_jdk11:
+  scala212_jdk26:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:26.0
 
     working_directory: ~/repo
 
@@ -132,9 +132,9 @@ jobs:
       - store_test_results:
           path: test-reports
 
-  scala213_jdk11:
+  scala213_jdk26:
     docker:
-      - image: cimg/openjdk:11.0
+      - image: cimg/openjdk:26.0
 
     working_directory: ~/repo
 
@@ -149,19 +149,19 @@ jobs:
       - store_test_results:
           path: test-reports
 
-  scala3_jdk17:
+  scala3_jdk26:
     docker:
-      - image: cimg/openjdk:17.0.17
+      - image: cimg/openjdk:26.0
 
     working_directory: ~/repo
-    
+     
     steps:
       - checkout
       - setup_sbt
       - run:
           name: 'Enforce Dotty version'
           command: |
-              export SCALA_VERSION=`sbt 'show api/crossScalaVersions' | grep '* 3.' | sed -e 's/^.*3\./3./'`
+              export SCALA_VERSION=`sbt --server 'show api/crossScalaVersions' | grep '* 3.' | sed -e 's/^.*3\./3./'`
               echo "Dotty version: $SCALA_VERSION"
       - build_n_tests
       - collect_test_reports
@@ -170,7 +170,7 @@ jobs:
 
   publish_snapshots:
     docker:
-      - image: cimg/openjdk:8.0
+      - image: cimg/openjdk:26.0
 
     working_directory: ~/repo
     
@@ -223,10 +223,10 @@ workflows:
 
   main_suite:
     jobs:
-      - scala211_jdk11
-      - scala212_jdk11
-      - scala213_jdk11
-      - scala3_jdk17
+      - scala211_jdk26
+      - scala212_jdk26
+      - scala213_jdk26
+      - scala3_jdk26
 
       - publish_snapshots:
           filters:
@@ -234,10 +234,10 @@ workflows:
               only:
                 - master
           requires:
-            - scala211_jdk11
-            - scala212_jdk11
-            - scala213_jdk11
-            - scala3_jdk17
+            - scala211_jdk26
+            - scala212_jdk26
+            - scala213_jdk26
+            - scala3_jdk26
 
       - trigger_dependent_builds:
           filters:

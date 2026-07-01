@@ -46,7 +46,7 @@ object Common extends AutoPlugin {
         "-deprecation"
       ) ++ Opts.doc.title(name.value)
 
-      if (scalaBinaryVersion.value startsWith "3") {
+      if (scalaBinaryVersion.value.startsWith("3")) {
         opts ++ Seq("-skip-by-id:com.github.ghik.silencer")
       } else {
         opts ++ Seq("-skip-packages", "highlightextractor", "-implicits")
@@ -67,7 +67,7 @@ object Common extends AutoPlugin {
     ),
     mimaFailOnNoPrevious := false,
     mimaPreviousArtifacts := {
-      if (scalaBinaryVersion.value startsWith "2.") {
+      if (scalaBinaryVersion.value.startsWith("2.")) {
         Set(organization.value %% name.value.toLowerCase % "1.0.0")
       } else {
         Set.empty

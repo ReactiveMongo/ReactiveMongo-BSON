@@ -84,7 +84,7 @@ lazy val api = (project in file("api"))
         "org.slf4j" % "slf4j-api" % slf4jVersion
       ),
       libraryDependencies ++= {
-        if (scalaBinaryVersion.value startsWith "2.") {
+        if (scalaBinaryVersion.value.startsWith("2.")) {
           Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
         } else {
           Seq(
@@ -106,6 +106,7 @@ lazy val api = (project in file("api"))
       },
       // Mock silencer for Scala3
       Test / doc / scalacOptions ++= List("-skip-packages", "com.github.ghik"),
+      Compile / exportJars := false,
       Compile / packageBin / mappings ~= {
         _.filter { case (_, path) => !path.startsWith("com/github/ghik") }
       }
@@ -158,7 +159,7 @@ lazy val benchmarks = (project in file("benchmarks"))
     mimaPreviousArtifacts := Set.empty,
     libraryDependencies ++= reactivemongoShaded.value,
     scalacOptions ++= {
-      if (scalaBinaryVersion.value startsWith "3") {
+      if (scalaBinaryVersion.value.startsWith("3")) {
         Seq(
           "-Wconf:msg=.*has\\ been\\ deprecated.*\\ uninitialized.*:s"
         )
@@ -221,14 +222,14 @@ lazy val builder = (project in file("builder"))
         }
       },
       scaladocExtractorIncludes := {
-        if (scalaBinaryVersion.value startsWith "2.") {
+        if (scalaBinaryVersion.value.startsWith("2.")) {
           "*.scala"
         } else {
           "*Compat.scala"
         }
       },
       doc / includeFilter := {
-        if (scalaBinaryVersion.value startsWith "2.") {
+        if (scalaBinaryVersion.value.startsWith("2.")) {
           "*.md"
         } else {
           "*.disabled"
@@ -244,7 +245,7 @@ lazy val builder = (project in file("builder"))
         }
       },
       libraryDependencies ++= {
-        if (scalaBinaryVersion.value startsWith "2.") {
+        if (scalaBinaryVersion.value.startsWith("2.")) {
           Seq(
             "com.chuusai" %% "shapeless" % "2.3.3"
           )
@@ -265,6 +266,7 @@ lazy val root = (project in file("."))
   .settings(
     publish := ({}),
     publishTo := None,
+    outputPath := "_none",
     mimaPreviousArtifacts := Set.empty
   )
   .aggregate(api, specs2, benchmarks, msbCompat, geo, monocle, builder)

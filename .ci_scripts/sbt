@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+# Wrapper script that uses sbtn (native thin client) for JDK 26+
+# This avoids the ArrayIndexOutOfBoundsException in JNI code when sbt starts server on JDK 26
+
+set -e
+
+# Source JVM options to detect JDK version
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$SCRIPT_DIR/jvmopts.sh"
+
+# Determine which sbt launcher to use
+SBT_LAUNCHER="sbt"
+JAVA_MAJOR_VERSION=$(java -version 2>&1 | grep version | sed -e 's/.*version "\([^.]*\).*/\1/' | sed -e 's/_[0-9]*$//')
+
+if [ "$JAVA_MAJOR_VERSION" -ge 26 ] 2>/dev/null; then
+    # JDK 26+: Use sbtn (native thin client) which doesn't start server
+    PLATFORM=$(uname -m)
+    
+    # Build list of potential sbtn locations
+    SBTN_CANDIDATES=()
+    case "$PLATFORM" in
+        x86_64)
+            SBTN_CANDIDATES=("$SCRIPT_DIR/../.sbt/bin/sbtn-x86_64-pc-linux" "/opt/sbt/bin/sbtn-x86_64-pc-linux" "sbtn-x86_64-pc-linux")
+            ;;
+        aarch64)
+            SBTN_CANDIDATES=("$SCRIPT_DIR/../.sbt/bin/sbtn-aarch64-pc-linux" "/opt/sbt/bin/sbtn-aarch64-pc-linux" "sbtn-aarch64-pc-linux")
+            ;;
+    esac
+    
+    # Find first available sbtn binary
+    for candidate in "${SBTN_CANDIDATES[@]}"; do
+        if [ -f "$candidate" ] && [ -x "$candidate" ]; then
+            SBT_LAUNCHER="$candidate"
+            break
+        fi
+        # Also check if it's in PATH
+        if command -v "$candidate" &> /dev/null; then
+            SBT_LAUNCHER="$candidate"
+            break
+        fi
+    done
+fi
+
+# Execute sbt with JVM options
+export JVM_OPTS
+export SBT_OPTS
+export _JAVA_OPTIONS
+
+exec "$SBT_LAUNCHER" "$@"
