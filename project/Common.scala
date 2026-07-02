@@ -16,6 +16,7 @@ object Common extends AutoPlugin {
   override def projectSettings = Seq(
     organization := "org.reactivemongo",
     autoAPIMappings := true,
+    semanticdbEnabled := scalaBinaryVersion.value != "2.11",
     useShaded := sys.env.get("REACTIVEMONGO_SHADED").fold(true)(_.toBoolean),
     version := {
       val ver = (ThisBuild / version).value

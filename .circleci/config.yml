@@ -68,7 +68,7 @@ commands:
       scala_version:
         type: string
     steps:
-      - deploy:
+      - run:
           name: Publish artifacts to Sonatype Snapshots
           command: |
                     if [ ! "${CIRCLE_BRANCH}" = "master" ]; then
@@ -76,12 +76,12 @@ commands:
                       exit 0
                     fi
 
-                    V=`sbt -J-Dsbt.log.noformat=true 'show version' 2>&1 | tail -n 2 | cut -d ']' -f 2 | grep SNAPSHOT | sed -e 's/[ \t]*//g'`
+                    V=`sbt -J-Dsbt.log.noformat=true 'show version' 2>&1 | grep -A1 version | tail -n 1 | cut -d ']' -f 2 | sed -e 's/[ \t]*//g'`
 
                     if [ `echo "$V" | grep -- '-SNAPSHOT' | wc -l` -eq 0 ]; then
                       S=`echo "$V" | perl -pe 's/([0-9]+)$/${\($1 + 1)}-SNAPSHOT/'`
                       echo "Cannot bump $V to $S"
-                      echo "version in ThisBuild := \"$S\"" > version.sbt
+                      echo "ThisBuild / version := \"$S\"" > version.sbt
                     fi
 
                     export REACTIVEMONGO_SHADED="<< parameters.shaded >>"

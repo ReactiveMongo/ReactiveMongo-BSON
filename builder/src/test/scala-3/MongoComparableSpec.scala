@@ -4,7 +4,7 @@ import reactivemongo.api.bson.{ BSONArray, BSONDouble, BSONInteger, BSONString }
 
 import org.specs2.matcher.TypecheckMatchers.*
 
-import TestUtils.{ typecheck, symbol }
+import TestUtils.{ symbol, typecheck }
 
 final class MongoComparableSpec extends org.specs2.mutable.Specification {
   "Mongo comparable".title
