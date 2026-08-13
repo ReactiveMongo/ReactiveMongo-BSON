@@ -199,10 +199,10 @@ jobs:
           shaded: false
 
       - publish_snapshots:
-          scala_version: "3.4"
+          scala_version: "3.3"
 
       - publish_snapshots:
-          scala_version: "3.4"
+          scala_version: "3.3"
           shaded: false
 
   trigger_dependent_builds:

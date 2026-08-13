@@ -1,6 +1,6 @@
 #! /bin/sh
 
-# curl -D - -X POST -u '...' "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/org.reactivemongo"
+# curl -D - -X POST -u "$SONATYPE_USERNAME:$SONATYPE_PASSWORD" "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/org.reactivemongo"
 
 REPO="https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/"
 
@@ -18,64 +18,64 @@ read -s PASS
 function deploy {
   BASE="$1"
   POM="$BASE.pom"
-  FILES="$BASE.jar $BASE-javadoc.jar:javadoc $BASE-sources.jar:sources"
 
-  for FILE in $FILES; do
-    JAR=`echo "$FILE" | cut -d ':' -f 1`
-    CLASSIFIER=`echo "$FILE" | cut -d ':' -f 2`
-
-    if [ ! "$CLASSIFIER" = "$JAR" ]; then
-      ARG="-Dclassifier=$CLASSIFIER"
-    else
-      ARG=""
-    fi
-
-    expect << EOF
+  expect << EOF
 set timeout 300
 log_user 0
-spawn mvn gpg:sign-and-deploy-file -Dkeyname=$KEY -Dpassphrase=$PASS -DpomFile=$POM -Dfile=$JAR $ARG -Durl=$REPO -DrepositoryId=sonatype-nexus-staging
+spawn mvn gpg:sign-and-deploy-file \
+  -Dkeyname=$KEY \
+  -Dpassphrase=$PASS \
+  -DpomFile=$POM \
+  -Dfile=$BASE.jar \
+  -Djavadoc=$BASE-javadoc.jar \
+  -Dsources=$BASE-sources.jar \
+  -Durl=$REPO \
+  -DrepositoryId=sonatype-nexus-staging
 log_user 1
 expect "BUILD SUCCESS"
 expect eof
 EOF
-  done
 }
 
-SCALA_MODULES="api:reactivemongo-bson-api specs2:reactivemongo-bson-specs2 msb-compat:reactivemongo-bson-msb-compat geo:reactivemongo-bson-geo monocle:reactivemongo-bson-monocle builder:reactivemongo-bson-builder"
-SCALA_VERSIONS="2.11 2.12 2.13 3.4.3"
+SCALA_MODULES="reactivemongo-bson-api reactivemongo-bson-specs2 reactivemongo-bson-msb-compat reactivemongo-bson-geo reactivemongo-bson-monocle reactivemongo-bson-builder"
+SCALA_VERSIONS="2.11 2.12 2.13 3.3.8"
 BASES=""
 
 QUALIFIER=""
 WO_QUALIFIER="$VERSION"
 
 if [ `expr index "$VERSION" '-'` -gt 0 ]; then
-  QUALIFIER=`echo "$VERSION" | cut -d '-' -f 2`
-  WO_QUALIFIER=`echo "$VERSION" | cut -d '-' -f 1`
+  QUALIFIER="${VERSION#*-}"
+  WO_QUALIFIER="${VERSION%%-*}"
 fi
 
 for V in $SCALA_VERSIONS; do
-  MV=`echo "$V" | sed -e 's/^3.*/3/'`
+  MV="${V/#3*/3}"
 
   for M in $SCALA_MODULES; do
-    B=`echo "$M" | cut -d ':' -f 1`
-    SDS="$B/target/shaded/scala-$V $B/target/noshaded/scala-$V"
+    SD=(target/out/jvm/scala-${V}*/$M/shaded)
+    SDS="$SD"
+    SD=(target/out/jvm/scala-${V}*/$M/noshaded)
+    SDS="$SDS $SD"
+
+    B=""
 
     for SCALA_DIR in $SDS; do
       if [ ! -d "$SCALA_DIR" ]; then
         echo "Skip Scala version $V for $M"
       else
-        N=`echo "$M" | cut -d ':' -f 2`
-
         if [ `echo "$SCALA_DIR" | grep noshaded | wc -l` -ne 0 ]; then
           if [ ! -z $QUALIFIER ]; then
-            BASES="$BASES $SCALA_DIR/$N"_"$MV-$WO_QUALIFIER-noshaded."`echo "$VERSION" | cut -d '-' -f 2`
+            B="$SCALA_DIR/$M"_"$MV-$WO_QUALIFIER-noshaded.${QUALIFIER}"
           else
-            BASES="$BASES $SCALA_DIR/$N"_"$MV-$VERSION-noshaded"
+            B="$SCALA_DIR/$M"_"$MV-${VERSION}-noshaded"
           fi
         else
-          BASES="$BASES $SCALA_DIR/$N"_$MV-$VERSION
+          B="$SCALA_DIR/$M"_$MV-$VERSION
         fi
       fi
+
+      BASES="$BASES $B"
     done
   done
 done

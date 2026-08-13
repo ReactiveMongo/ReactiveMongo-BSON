@@ -29,7 +29,7 @@ object Common extends AutoPlugin {
         ver
       } else {
         ver.span(_ != '-') match {
-          case (_, "") => s"${ver}.${suffix}"
+          case (_, "") => s"${ver}-${suffix}"
 
           case (a, b) =>
             s"${a}-${suffix}.${b drop 1}"
@@ -57,8 +57,8 @@ object Common extends AutoPlugin {
       Credentials(
         "", // Empty realm credential - this one is actually used by Coursier!
         "central.sonatype.com",
-        Publish.env("SONATYPE_USER"),
-        Publish.env("SONATYPE_PASS")
+        Publish.env("SONATYPE_USERNAME"),
+        Publish.env("SONATYPE_PASSWORD")
       )
     ),
     resolvers ++= Seq(
