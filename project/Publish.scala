@@ -36,7 +36,7 @@ object Publish extends AutoPlugin {
         }
       }
     },
-    homepage := Some(url("http://reactivemongo.org")),
+    homepage := Some(uri("http://reactivemongo.org")),
     autoAPIMappings := true,
     pomExtra := (<scm>
         <url>git://github.com/ReactiveMongo/ReactiveMongo-BSON.git</url>

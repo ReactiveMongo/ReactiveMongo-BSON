@@ -34,7 +34,7 @@ trait BSONDocumentWriter[T] extends BSONWriter[T] { self =>
  * @define valueDoesNotMatchThrown A [[exceptions.ValueDoesNotMatchException]] is thrown for any value that is not matched by the `write` function
  * @define valueDoesNotMatchFailure A [[exceptions.ValueDoesNotMatchException]] is returned as `Failure` for any value that is not matched by the `write` function
  */
-object BSONDocumentWriter {
+object BSONDocumentWriter extends BSONDocumentWriterCompat {
 
   /**
    * Creates a [[BSONDocumentWriter]] based on the given `write` function.

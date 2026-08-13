@@ -36,3 +36,14 @@ final class OtherCompilation {
     ()
   }
 }
+
+sealed trait FamilyWithDeriv derives BSONDocumentHandler
+
+object FamilyWithDeriv {
+
+  case class Member1(name: String) extends FamilyWithDeriv
+      derives BSONDocumentReader,
+        BSONDocumentWriter
+
+  object Member2 extends FamilyWithDeriv derives BSONDocumentHandler
+}
