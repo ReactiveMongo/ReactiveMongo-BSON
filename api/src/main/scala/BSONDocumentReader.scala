@@ -44,7 +44,7 @@ trait BSONDocumentReader[T] extends BSONReader[T] { self =>
 }
 
 /** [[BSONDocumentReader]] factories */
-object BSONDocumentReader {
+object BSONDocumentReader extends BSONDocumentReaderCompat {
 
   /**
    * Creates a [[BSONDocumentReader]] based on the given `read` function.

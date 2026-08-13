@@ -39,7 +39,7 @@ trait BSONDocumentHandler[T]
 }
 
 /** [[BSONDocumentHandler]] factories */
-object BSONDocumentHandler {
+object BSONDocumentHandler extends BSONDocumentHandlerCompat {
 
   /**
    * Document handler factory.
