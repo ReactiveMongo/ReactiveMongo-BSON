@@ -2268,6 +2268,38 @@ sealed abstract class BSONDocument
   }
 
   /**
+   * '''EXPERIMENTAL'''
+   *
+   * Gets the BSONValue associated with the given key, and converts it with
+   * the given implicit [[BSONReader]], or returns the given default value.
+   *
+   * If there is no matching value, or the value is [[BSONNull]], returns the
+   * default value.
+   *
+   * If the value is present and cannot be deserialized or converted, returns
+   * a Failure.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONDocument, BSONNull }
+   *
+   * val doc = BSONDocument("foo" -> 1, "bar" -> BSONNull)
+   *
+   * doc.getOrElseTry[Int]("foo", -1) // Success(1)
+   * doc.getOrElseTry[Int]("lorem", -1) // Success(-1), no 'lorem' key
+   * doc.getOrElseTry[Int]("bar", -1) // Success(-1), as BSONNull
+   * }}}
+   *
+   * @param key the key to be found in the document
+   * @param default the default value (must be safe)
+   */
+  final def getOrElseTry[T](key: String, default: => T)(
+    implicit reader: BSONReader[T]): Try[T] = get(key) match {
+    case Some(BSONNull) => Success(default)
+    case Some(value) => reader.readTry(value)
+    case _ => Success(default)
+  }
+
+  /**
    * Gets the [[BSONValue]] at the given `key`,
    * and converts it with the given implicit [[BSONReader]].
    *
@@ -2312,7 +2344,7 @@ sealed abstract class BSONDocument
    * if the key could not be found.
    *
    * Contrary to [[getAsTry]] (which must generally be preferred), 
-   * if the value is [[BSONNull]] it passed to the given `reader` (not skipped).
+   * if the value is [[BSONNull]] it is passed to the given `reader` (not skipped).
    *
    * @param key $keyParam
    */

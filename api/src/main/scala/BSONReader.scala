@@ -52,6 +52,36 @@ trait BSONReader[T] { self =>
     readTry(bson).getOrElse(default)
 
   /**
+   * '''EXPERIMENTAL'''
+   *
+   * Reads the given [[BSONValue]] with this reader, or returns the given
+   * default value if null is encountered.
+   *
+   * Contrary to [[readTry]], a failed read is replaced with a successful
+   * result containing the default value.
+   *
+   * {{{
+   * import reactivemongo.api.bson.{ BSONInteger, BSONNull, BSONReader }
+   *
+   * val reader = implicitly[BSONReader[Int]]
+   *
+   * reader.readOrElseTry(BSONInteger(1), -1) // Success(1)
+   * reader.readOrElseTry(BSONNull, -1) // Success(-1), as the value is BSONNull
+   * }}}
+   *
+   * @param bson the BSON value to be read
+   * @param default the default value (must be safe)
+   */
+  def readOrElseTry(bson: BSONValue, default: => T): Try[T] =
+    bson match {
+      case BSONNull =>
+        Success(default)
+
+      case v =>
+        readTry(v)
+    }
+
+  /**
    * Prepares a [[BSONReader]] that returns the result of applying `f`
    * on the result of this reader.
    *

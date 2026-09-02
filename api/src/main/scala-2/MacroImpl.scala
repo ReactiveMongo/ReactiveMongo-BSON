@@ -631,18 +631,7 @@ private[api] class MacroImpl(val c: Context) {
               default,
               reader
             ) => {
-
           val rt = TermName(c freshName "read")
-
-          def tryWithDefault(`try`: Tree, dv: Tree): Tree =
-            q"""${`try`} match {
-            case ${utilPkg}.Failure(
-              _: ${exceptionsPkg}.BSONValueNotFoundException) =>
-              ${utilPkg}.Success(${dv})
-
-            case result =>
-              result
-          }"""
 
           val get: Tree = {
             if (param.annotations.exists(_.tree.tpe =:= typeOf[Flatten])) {
@@ -656,21 +645,33 @@ private[api] class MacroImpl(val c: Context) {
                 abort(s"Cannot flatten reader '$reader' for '${tpe}.$pname': doesn't conform BSONDocumentReader")
               }
 
-              val readTry = q"${reader}.readTry(${id})"
+              default match {
+                case None =>
+                  q"${reader}.readTry(${id})"
 
-              default.fold(readTry) { dv => tryWithDefault(readTry, dv) }
+                case Some(dv) =>
+                  q"${reader}.readOrElseTry($id, $dv)"
+              }
             } else {
               val field = q"$macroCfg.fieldNaming($pname)"
 
-              val getAsTry: Tree = {
-                if (isOptionalType(sig)) {
-                  q"${id}.getRawAsTry($field)($reader)"
-                } else {
-                  q"${id}.getAsTry($field)($reader)"
+              default match {
+                case None => {
+                  if (isOptionalType(sig)) {
+                    q"${id}.getRawAsTry($field)($reader)"
+                  } else {
+                    q"${id}.getAsTry($field)($reader)"
+                  }
+                }
+
+                case Some(dv) => {
+                  if (isOptionalType(sig)) {
+                    q"${id}.getAsUnflattenedTry($field)($reader).map(_.getOrElse($dv))"
+                  } else {
+                    q"${id}.getOrElseTry($field, $dv)($reader)"
+                  }
                 }
               }
-
-              default.fold(getAsTry) { dv => tryWithDefault(getAsTry, dv) }
             }
           }
 
@@ -700,16 +701,6 @@ private[api] class MacroImpl(val c: Context) {
               abort(s"No implicit found for '${tpe}.${pname}': ${classOf[BSONWriter[_]].getName}[Option[${ot}]]")
           }
 
-          def tryWithDefault(`try`: Tree, dv: Tree): Tree =
-            q"""${`try`} match {
-            case ${utilPkg}.Failure(
-              _: ${exceptionsPkg}.BSONValueNotFoundException) =>
-              ${utilPkg}.Success(${dv})
-
-            case result =>
-              result
-          }"""
-
           val get: Tree = {
             if (param.annotations.exists(_.tree.tpe =:= typeOf[Flatten])) {
               if (reader.toString == "forwardBSONReader") {
@@ -722,9 +713,13 @@ private[api] class MacroImpl(val c: Context) {
                 abort(s"Cannot flatten reader '$reader' for '${tpe}.$pname': doesn't conform BSONDocumentReader")
               }
 
-              val readTry = q"${reader}.readTry(${id})"
+              default match {
+                case Some(dv) =>
+                  q"${reader}.readOrElseTry($id, $dv)"
 
-              default.fold(readTry) { dv => tryWithDefault(readTry, dv) }
+                case None =>
+                  q"${reader}.readTry(${id})"
+              }
             } else {
               val field = q"$macroCfg.fieldNaming($pname)"
 

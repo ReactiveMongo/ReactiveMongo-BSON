@@ -1236,37 +1236,6 @@ private[api] object MacroImpl:
 
       type ExceptionAcc = MBuilder[HandlerException, Seq[HandlerException]]
 
-      // For required field
-      def tryWithDefault[U: Type](
-          `try`: Expr[TryResult[U]],
-          default: Expr[U]
-        ): Expr[TryResult[U]] =
-        '{
-          ${ `try` } match {
-            case TryFailure(_: exceptions.BSONValueNotFoundException) =>
-              TrySuccess(${ default })
-
-            case result =>
-              result
-          }
-        }
-
-      // For optional field
-      def tryWithOptDefault[U: Type](
-          `try`: Expr[TryResult[Option[U]]],
-          default: Expr[Option[U]]
-        ): Expr[TryResult[Option[U]]] =
-        '{
-          ${ `try` } match {
-            case TryFailure(_: exceptions.BSONValueNotFoundException) |
-                TrySuccess(None) =>
-              TrySuccess(${ default })
-
-            case result =>
-              result
-          }
-        }
-
       val reqElmts: Seq[(Int, Expr[TryResult[_]])] = required.map {
         case OptionalReadableProperty(param, _, pt, _) =>
           report.errorAndAbort(
@@ -1290,15 +1259,20 @@ private[api] object MacroImpl:
             case ptpe @ '[p] =>
               val pname = param.name
 
-              val reader: Expr[BSONReader[p]] =
-                rdr.asExprOf[BSONReader[p]]
+              val reader: Expr[BSONReader[p]] = rdr.asExprOf[BSONReader[p]]
 
               val get: Expr[TryResult[p]] = {
                 if (mustFlatten(tpr, param, pt, reader)) {
-                  val readTry = '{ ${ reader }.readTry(${ macroVal }) }
+                  default match {
+                    case Some(dv) =>
+                      '{
+                        ${ reader }
+                          .readOrElseTry(${ macroVal }, ${ dv.asExprOf[p] })
+                      }
 
-                  default.fold(readTry) { dv =>
-                    tryWithDefault[p](readTry, dv.asExprOf[p])
+                    case None =>
+                      '{ ${ reader }.readTry(${ macroVal }) }
+
                   }
                 } else {
                   val field = fieldName(macroCfg, fieldKey(param))
@@ -1315,8 +1289,35 @@ private[api] object MacroImpl:
                     }
                   }
 
-                  default.fold(getAsTry) { dv =>
-                    tryWithDefault(getAsTry, dv.asExprOf[p])
+                  default match {
+                    case Some(dv) => {
+                      if (isOptionalType(pt)) {
+                        '{
+                          ${ macroVal }
+                            .getAsUnflattenedTry[p]($field)($reader)
+                            .map(_.getOrElse(${ dv.asExprOf[p] }))
+                        }
+                      } else {
+                        '{
+                          ${ macroVal }.getOrElseTry[p](
+                            $field,
+                            ${ dv.asExprOf[p] }
+                          )($reader)
+                        }
+                      }
+                    }
+
+                    case None => {
+                      if (isOptionalType(pt)) {
+                        '{
+                          ${ macroVal }.getRawAsTry[p]($field)($reader)
+                        }
+                      } else {
+                        '{
+                          ${ macroVal }.getAsTry[p]($field)($reader)
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -1399,9 +1400,35 @@ private[api] object MacroImpl:
                 }
               }
 
-              n -> default.fold(readTry) { dv =>
-                tryWithOptDefault[i](readTry, dv.asExprOf[p])
+              val read: Expr[TryResult[p]] = default match {
+                case Some(dv) => {
+                  if (mustFlatten(tpr, param, TypeRepr.of[p], reader)) {
+                    '{
+                      ${ reader }.readTry(${ macroVal }).map(Some(_): Option[i])
+                    }
+                  } else {
+                    '{
+                      ${ macroVal }
+                        .getAsUnflattenedTry[i]($field)(${ reader })
+                        .map(_.orElse(${ dv.asExprOf[p] }))
+                    }
+                  }
+                }
+
+                case None => {
+                  if (mustFlatten(tpr, param, TypeRepr.of[p], reader)) {
+                    '{
+                      ${ reader }.readTry(${ macroVal }).map(Some(_): Option[i])
+                    }
+                  } else {
+                    '{
+                      ${ macroVal }.getAsUnflattenedTry[i]($field)(${ reader })
+                    }
+                  }
+                }
               }
+
+              n -> read
           }
         }
       }

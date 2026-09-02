@@ -65,7 +65,6 @@ final class HandlerSpec
           "name",
           BSONInteger(-1)
         ) must_=== BSONInteger(-1)
-
       } and {
         doc.getAsTry[Int]("name") must beFailedTry
       } and {
@@ -73,7 +72,11 @@ final class HandlerSpec
       } and {
         doc.getOrElse[Int]("name", -1) must_=== -1
       } and {
+        doc.getOrElseTry[Int]("name", -1) must beFailedTry // try String as Int
+      } and {
         doc.getOrElse[String]("name", "foo") must_=== "James"
+      } and {
+        doc.getOrElseTry[String]("name", "foo") must beSuccessfulTry("James")
       } and {
         doc.getAsTry[BSONNumberLike]("name") must beFailedTry
       } and {
@@ -96,25 +99,33 @@ final class HandlerSpec
             Some("James")
           )
         }
+      } and {
+        doc.getOrElseTry[String]("missing", "default") must beSuccessfulTry(
+          "default"
+        )
       }
     }
 
     "have a score == 3.88" in {
-      doc.getAsTry[BSONDouble]("score") must beSuccessfulTry(BSONDouble(3.88))
-      doc.getAsTry[Double]("score") must beSuccessfulTry(3.88)
-
-      doc.getAsTry[BSONInteger]("score") must beFailedTry
-      doc.getAsTry[Int]("score") must beFailedTry
-
-      doc.getAsTry[BSONNumberLike]("score") must beSuccessfulTry.like {
-        case num =>
-          num.toDouble must beSuccessfulTry(3.88) and {
-            num.toFloat must beSuccessfulTry(3.88F)
-          } and {
-            num.toLong must beSuccessfulTry(3L)
-          } and {
-            num.toInt must beSuccessfulTry(3)
-          }
+      doc.getAsTry[BSONDouble]("score") must beSuccessfulTry(
+        BSONDouble(3.88)
+      ) and {
+        doc.getAsTry[Double]("score") must beSuccessfulTry(3.88)
+      } and {
+        doc.getAsTry[BSONInteger]("score") must beFailedTry
+      } and {
+        doc.getAsTry[Int]("score") must beFailedTry
+      } and {
+        doc.getAsTry[BSONNumberLike]("score") must beSuccessfulTry.like {
+          case num =>
+            num.toDouble must beSuccessfulTry(3.88) and {
+              num.toFloat must beSuccessfulTry(3.88F)
+            } and {
+              num.toLong must beSuccessfulTry(3L)
+            } and {
+              num.toInt must beSuccessfulTry(3)
+            }
+        }
       } and {
         doc
           .getAsTry[BSONBooleanLike]("score")
@@ -158,7 +169,7 @@ final class HandlerSpec
       } and {
         val reader3: BSONDocumentReader[Unit] = reader1.afterRead(_ => ())
 
-        reader3.readTry(doc) must_=== Success({})
+        reader3.readTry(doc) must beSuccessfulTry[Unit]({})
       }
     }
 
@@ -437,7 +448,7 @@ final class HandlerSpec
       ) must_=== Failure(
         TypeDoesNotMatchException("BSONDocument", "Array ([])")
       )
-    } tag "wip"
+    }
   }
 
   "BSONDateTime" should {
@@ -874,7 +885,7 @@ final class HandlerSpec
 
     "be read as URL" in {
       BSONString("http://reactivemongo.org").asTry[URL] must beSuccessfulTry(
-        new URL("http://reactivemongo.org")
+        new URI("http://reactivemongo.org").toURL
       )
     }
 
@@ -927,7 +938,7 @@ final class HandlerSpec
 
     "be written from URL" in {
       implicitly[BSONWriter[URL]].writeTry(
-        new URL("http://reactivemongo.org")
+        new URI("http://reactivemongo.org").toURL
       ) must beSuccessfulTry(BSONString("http://reactivemongo.org"))
     }
 
@@ -1272,11 +1283,18 @@ final class HandlerSpec
   "Field" should {
     "be read" in {
       val reader = BSONDocumentReader.field[String]("foo")
+      val doc = BSONDocument("foo" -> "bar")
 
-      reader
-        .readTry(BSONDocument("foo" -> "bar"))
-        .aka("field") must beSuccessfulTry("bar")
-
+      reader.readTry(doc) must beSuccessfulTry("bar") and {
+        reader.readOrElse(doc, "lorem") must_=== "bar"
+      } and {
+        reader.readOrElse(BSONDocument.empty, "lorem") must_=== "lorem"
+      } and {
+        reader.readOrElseTry(doc, "lorem") must beSuccessfulTry("bar")
+      } and {
+        // Missing != BSONNull
+        reader.readOrElseTry(BSONDocument.empty, "lorem") must beFailedTry
+      }
     }
 
     "be written" in {
