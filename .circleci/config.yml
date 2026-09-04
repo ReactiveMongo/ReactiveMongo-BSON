@@ -138,7 +138,7 @@ jobs:
     working_directory: ~/repo
 
     environment:
-      SCALA_VERSION: 2.13.18
+      SCALA_VERSION: 3.9.0
     
     steps:
       - checkout
