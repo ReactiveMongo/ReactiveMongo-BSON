@@ -73,7 +73,7 @@ ThisBuild / scalacOptions ++= {
     )
   } else if (sv == "2.13") {
     Seq(
-      "--release",
+      "-release",
       "8",
       "-explaintypes",
       "-Werror",
@@ -85,7 +85,7 @@ ThisBuild / scalacOptions ++= {
       "-Wunused"
     )
   } else {
-    Seq("--release", "8", "-Wunused:all", "-language:implicitConversions")
+    Seq("-release", "8", "-Wunused:all", "-language:implicitConversions")
   }
 }
 
